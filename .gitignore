@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...but DO commit the template, which documents required vars (no real secrets in it).
+# The leading "!" un-ignores a file that an earlier pattern ignored.
+!.env.example
 
 # vercel
 .vercel
