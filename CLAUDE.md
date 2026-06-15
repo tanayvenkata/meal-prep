@@ -33,10 +33,9 @@ This is a **learning project first, product second.** Not trying to make money.
 
 ## Milestone roadmap (build small, ship each one)
 
-- [ ] **M1 — Streaming chat clone.** One page: a text box, hit send, Claude's reply
-      streams back token-by-token. No database, no auth, no saving. Goal: *feel the full
-      loop* (browser → server API route → AI → stream back). ← **WE ARE HERE**
-- [ ] **M2 — Deploy to Vercel.** Get the public deploy pipeline working early.
+- [x] **M1 — Streaming chat clone.** DONE. Text box → send → Claude streams back live.
+      Full loop working: browser → /api/chat → ai.ts → Claude → streamed to screen.
+- [ ] **M2 — Deploy to Vercel.** Get the public deploy pipeline working early. ← **NEXT**
 - [ ] **M3 — Pantry CRUD.** Add/edit/delete ingredients. *This is when Postgres earns
       its place* (we'll feel the pain of state not persisting first).
 - [ ] **M4 — Recipe suggestions.** Send pantry + mood + time to the AI; get ideas back.
