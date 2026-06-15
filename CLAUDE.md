@@ -35,9 +35,10 @@ This is a **learning project first, product second.** Not trying to make money.
 
 - [x] **M1 — Streaming chat clone.** DONE. Text box → send → Claude streams back live.
       Full loop working: browser → /api/chat → ai.ts → Claude → streamed to screen.
-- [ ] **M2 — Deploy to Vercel.** Get the public deploy pipeline working early. ← **NEXT**
+- [x] **M2 — Deploy to Vercel.** DONE. Live at https://meal-prep-tawny-kappa.vercel.app —
+      same `curl -N` from M1 works against the public URL. Public deploy pipeline proven.
 - [ ] **M3 — Pantry CRUD.** Add/edit/delete ingredients. *This is when Postgres earns
-      its place* (we'll feel the pain of state not persisting first).
+      its place* (we'll feel the pain of state not persisting first). ← **NEXT**
 - [ ] **M4 — Recipe suggestions.** Send pantry + mood + time to the AI; get ideas back.
 - [ ] **M5 — Auth + saving recipes.** Real multi-user-capable app (Supabase auth).
 - [ ] **M6 — Voice mode.** Web Speech API (free, in-browser) first.
@@ -75,22 +76,32 @@ This is a **learning project first, product second.** Not trying to make money.
 - **Prompt caching deferred to ~M4** — needs a big reused prefix (>=1,024 tok) to do anything.
 - **No OpenTelemetry yet** — it monitors prod; we have none.
 - **Secrets only in `.env.local`** (git-ignored); `.env.example` is the committed template.
+- **Deployed on Vercel, not Railway** (M2) — brief's reasoning still held: Vercel is the
+  verified Next.js adapter (zero build config), and the Vercel+Supabase pairing keeps the
+  M3 DB decision cleanly deferred. Railway tooling being in-session wasn't a reason.
+- **Env vars live per-platform, pasted manually** — `.env.local` for local, Vercel's
+  encrypted store for prod. Same var name, two homes, neither in git. The manual paste
+  IS the security feature (each copy is a deliberate, auditable act), not missing polish.
+- **Secrets manager (Doppler/Infisical) deferred to ~M3–M5** — the "one source of truth,
+  connectors sync from it" pattern the user asked about. Overhead for 1 secret in 2 places;
+  earns its place once secrets cross ~4 across local + prod + preview (Supabase URL/keys + auth).
 - Unifying principle: *defer capability until the need is real; structure so adding it is cheap.*
 
 ## Current state
 
-- M1 in progress. `@anthropic-ai/sdk` installed. Model: `claude-sonnet-4-6` (cheap for
-  M1; revisit at M4).
-- **Piece 1 DONE:** `src/lib/ai.ts` — the boundary. `streamChat(messages)`, an async
-  generator yielding text chunks. Only file that imports the SDK.
-- **Piece 2 DONE + VERIFIED:** `src/app/api/chat/route.ts` — POST handler. Reads
-  `messages` from the request body, calls `streamChat`, wraps the generator in a
-  `ReadableStream`, returns `new Response(stream)`. Hand-written by the user.
-  Confirmed working via `curl -N -X POST localhost:3000/api/chat` — Claude's reply
-  streamed back. New API key confirmed valid (no 401).
+- **M1 + M2 DONE.** `@anthropic-ai/sdk` installed. Model: `claude-sonnet-4-6` (cheap for
+  now; revisit at M4).
+- **Full streaming loop works, local AND live:** `src/lib/ai.ts` (the SDK boundary —
+  `streamChat(messages)`, async generator) → `src/app/api/chat/route.ts` (POST handler,
+  wraps the generator in a `ReadableStream`) → `src/app/page.tsx` (chat UI). Verified via
+  the browser and `curl -sN` against both `localhost:3000` and the live Vercel URL.
+- **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`
+  (Vercel watches GitHub). `ANTHROPIC_API_KEY` set in Vercel's env-var store for prod.
 - Env files: `.env.example` (template, committed) + `.env.local` (real key, git-ignored).
-- **Next:** Piece 3 — chat UI in `src/app/page.tsx`: text box + send button that POSTs
-  to `/api/chat` and renders the streamed reply. The "button" that replaces curl.
+- **⚠️ TODO:** rotate the Anthropic API key — it was printed into a session transcript on
+  2026-06-15. Revoke at console.anthropic.com, update BOTH `.env.local` and Vercel, redeploy.
+- **Next:** M3 — Pantry CRUD. This is where Postgres (Supabase) earns its place. Build the
+  UI to add/edit/delete ingredients, feel state not persisting on refresh, THEN add the DB.
 
 ## Commands
 
