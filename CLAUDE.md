@@ -37,14 +37,19 @@ This is a **learning project first, product second.** Not trying to make money.
       Full loop working: browser → /api/chat → ai.ts → Claude → streamed to screen.
 - [x] **M2 — Deploy to Vercel.** DONE. Live at https://meal-prep-tawny-kappa.vercel.app —
       same `curl -N` from M1 works against the public URL. Public deploy pipeline proven.
-- [x] **M3 — Pantry CRUD.** DONE locally (NOT yet deployed). Add/edit/delete ingredients,
-      persisted in Supabase Postgres. Full loop: /pantry page → fetch → /api/pantry route
-      → db.ts boundary → postgres driver → Supabase. Survives refresh. *Postgres earned its
-      place* (we felt state vanish on refresh first, then added the DB). ⚠️ Live deploy
-      pending: Vercel still needs `DATABASE_URL` added to its env store before pushing.
+- [x] **M3 — Pantry CRUD.** DONE + DEPLOYED. Add/edit/delete ingredients, persisted in
+      Supabase Postgres. Full loop: /pantry page → fetch → /api/pantry route → db.ts boundary
+      → postgres driver → Supabase. Survives refresh; verified live (curl'd CRUD against the
+      prod URL). `DATABASE_URL` set in Vercel for Production + Preview. *Postgres earned its
+      place* (we felt state vanish on refresh first, then added the DB).
+      ⚠️ **Known open door (deliberate, fix at M5):** `/api/pantry` has NO auth — anyone with
+      the URL can add/delete items. The SECRET (DATABASE_URL) is safe (server-only, Pattern A);
+      only the *data* is unprotected. Low risk now (random unshared URL, trivial stakes,
+      single-user). A stopgap was deliberately NOT added (throwaway once M5 lands).
 - [ ] **M4 — Recipe suggestions.** Send pantry + mood + time to the AI; get ideas back.
       *This is where M1's AI (ai.ts) meets M3's pantry (db.ts) — the two halves join.* ← **NEXT**
-- [ ] **M5 — Auth + saving recipes.** Real multi-user-capable app (Supabase auth).
+- [ ] **M5 — Auth + saving recipes.** Real multi-user-capable app (Supabase auth). *Closes the
+      M3 open-door: login → per-user data → turn on RLS so each pantry is its owner's only.*
 - [ ] **M6 — Voice mode.** Web Speech API (free, in-browser) first.
 - [ ] **M7 — Receipt scanning (OCR).** Evaluate if it's worth it by now.
 
@@ -121,17 +126,20 @@ This is a **learning project first, product second.** Not trying to make money.
 
 ## Current state
 
-- **M1 + M2 DONE.** `@anthropic-ai/sdk` installed. Model: `claude-sonnet-4-6` (cheap for
-  now; revisit at M4).
-- **Full streaming loop works, local AND live:** `src/lib/ai.ts` (the SDK boundary —
-  `streamChat(messages)`, async generator) → `src/app/api/chat/route.ts` (POST handler,
-  wraps the generator in a `ReadableStream`) → `src/app/page.tsx` (chat UI). Verified via
-  the browser and `curl -sN` against both `localhost:3000` and the live Vercel URL.
-- **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`
-  (Vercel watches GitHub). `ANTHROPIC_API_KEY` set in Vercel's env-var store for prod.
-- Env files: `.env.example` (template, committed) + `.env.local` (real key, git-ignored).
-- **Next:** M3 — Pantry CRUD. This is where Postgres (Supabase) earns its place. Build the
-  UI to add/edit/delete ingredients, feel state not persisting on refresh, THEN add the DB.
+- **M1 + M2 + M3 DONE & DEPLOYED.** `@anthropic-ai/sdk` + `postgres` installed. Model:
+  `claude-sonnet-4-6` (cheap for now; revisit at M4).
+- **Chat loop (M1/M2):** `src/lib/ai.ts` (SDK boundary, `streamChat`, async generator) →
+  `src/app/api/chat/route.ts` (POST, `ReadableStream`) → `src/app/page.tsx` (chat UI).
+- **Pantry loop (M3):** `src/app/pantry/page.tsx` (UI, `useEffect` load + `mutate()` helper)
+  → `src/app/api/pantry/route.ts` (GET/POST/PUT/DELETE, thin handler + backend validation)
+  → `src/lib/db.ts` (DB boundary, raw SQL via `postgres` driver) → Supabase Postgres `items`
+  table. DB = source of truth (re-fetch after every change). Home↔Pantry linked via `next/link`.
+- **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
+  Env in Vercel store: `ANTHROPIC_API_KEY` + `DATABASE_URL` (Production + Preview).
+- Env files: `.env.example` (template, committed) + `.env.local` (real secrets, git-ignored).
+- **Next:** M4 — Recipe suggestions. Combine the pantry (`db.ts`/`getItems`) with the AI
+  (`ai.ts`/`streamChat`): send "here's my pantry + mood + time" to Claude, get ideas back.
+  The two halves of the app finally join.
 
 ## Commands
 
