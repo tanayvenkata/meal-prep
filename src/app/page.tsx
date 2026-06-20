@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { ChatMessage } from "@/lib/ai";
 
 export default function Home() {
@@ -46,6 +47,12 @@ export default function Home() {
   return (
     <main className="mx-auto flex h-screen max-w-2xl flex-col p-4">
       <h1 className="mb-4 text-xl font-bold">Meal Prep Chat</h1>
+
+      {/* next/link navigates WITHOUT a full page reload (client-side transition)
+          and prefetches the target — faster than a plain <a href>. */}
+      <Link href="/pantry" className="mb-4 text-blue-600 underline">
+        → My Pantry
+      </Link>
 
       <div className="flex-1 overflow-y-auto rounded border p-3 space-y-3">
         {messages.map((m, i) => (

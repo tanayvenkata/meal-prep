@@ -37,9 +37,13 @@ This is a **learning project first, product second.** Not trying to make money.
       Full loop working: browser → /api/chat → ai.ts → Claude → streamed to screen.
 - [x] **M2 — Deploy to Vercel.** DONE. Live at https://meal-prep-tawny-kappa.vercel.app —
       same `curl -N` from M1 works against the public URL. Public deploy pipeline proven.
-- [ ] **M3 — Pantry CRUD.** Add/edit/delete ingredients. *This is when Postgres earns
-      its place* (we'll feel the pain of state not persisting first). ← **NEXT**
+- [x] **M3 — Pantry CRUD.** DONE locally (NOT yet deployed). Add/edit/delete ingredients,
+      persisted in Supabase Postgres. Full loop: /pantry page → fetch → /api/pantry route
+      → db.ts boundary → postgres driver → Supabase. Survives refresh. *Postgres earned its
+      place* (we felt state vanish on refresh first, then added the DB). ⚠️ Live deploy
+      pending: Vercel still needs `DATABASE_URL` added to its env store before pushing.
 - [ ] **M4 — Recipe suggestions.** Send pantry + mood + time to the AI; get ideas back.
+      *This is where M1's AI (ai.ts) meets M3's pantry (db.ts) — the two halves join.* ← **NEXT**
 - [ ] **M5 — Auth + saving recipes.** Real multi-user-capable app (Supabase auth).
 - [ ] **M6 — Voice mode.** Web Speech API (free, in-browser) first.
 - [ ] **M7 — Receipt scanning (OCR).** Evaluate if it's worth it by now.
@@ -85,6 +89,34 @@ This is a **learning project first, product second.** Not trying to make money.
 - **Secrets manager (Doppler/Infisical) deferred to ~M3–M5** — the "one source of truth,
   connectors sync from it" pattern the user asked about. Overhead for 1 secret in 2 places;
   earns its place once secrets cross ~4 across local + prod + preview (Supabase URL/keys + auth).
+- **M3: Pattern A (own backend), not Pattern B (Supabase client in the browser)** — Supabase
+  pushes browser→DB-direct via `supabase-js`+RLS. We chose browser→our `/api/pantry`→DB instead:
+  it teaches the fundamentals (endpoints, the secret boundary, backend logic) and mirrors the
+  M1 chat shape. Pattern B hides exactly what we're here to learn, and its guard (RLS) is off
+  until M5 anyway. More code = more learning, and it's the transferable kind.
+- **M3: raw SQL via `postgres` driver, not an ORM (Prisma/Drizzle)** — SQL is the forever,
+  transferable skill; an ORM hides the SQL we're here to learn. Learn the fundamental deeply
+  now; reach for an ORM later, once we can read the SQL it generates and choose it on purpose.
+- **M3: `src/lib/db.ts` is THE DB boundary** — only file that imports the driver / knows the
+  connection string. Mirrors `ai.ts`. Swap Supabase/driver/host = change this one file. Will
+  split into a `db/` folder (connection + per-table files) when it outgrows one file, keeping
+  the same principle. Same swappability reasoning as the `ai.ts` decision above.
+- **M3: transaction-pooler connection string (port 6543), not direct connection** — direct is
+  IPv6-only by default and would break on Vercel's serverless functions; the pooler is built
+  for stateless/serverless and is the standard Next-on-Vercel + Postgres choice.
+- **M3: RLS off, deferred to M5** — RLS distinguishes *users*, and there are none until auth.
+  Turning it on now (no login) would lock us out of our own table. Security sequenced to when
+  it's real, not skipped. `items` table: DB-generated `id` (bigint identity), `name not null`,
+  `quantity` optional, `created_at` default now() — the DB owns ids (no more `Date.now()` hack).
+- **M3: re-fetch the list after every change (DB = source of truth), not local state updates** —
+  simplest, always-correct mental model: screen mirrors the DB. Optimize to local/optimistic
+  updates only when a *concrete* pain appears (visible lag, cost at scale, a UX requirement).
+- **M3: `next/link` for navigation, not `<a href>`** — `<Link>` does client-side transitions
+  (no full reload, preserves React state) and prefetches. Home↔Pantry linked both ways.
+- **M3 known debt (deliberate, not drift):** pantry page uses inline `style={{}}` while the chat
+  page uses Tailwind `className`. Cosmetic only, crosses no boundary — left for a later styling
+  pass rather than churned mid-milestone. Also: front-end mutate() helper has no `res.ok` check
+  yet (backend 400s are silently swallowed) — the natural next error-handling lesson.
 - Unifying principle: *defer capability until the need is real; structure so adding it is cheap.*
 
 ## Current state
@@ -98,8 +130,6 @@ This is a **learning project first, product second.** Not trying to make money.
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`
   (Vercel watches GitHub). `ANTHROPIC_API_KEY` set in Vercel's env-var store for prod.
 - Env files: `.env.example` (template, committed) + `.env.local` (real key, git-ignored).
-- **⚠️ TODO:** rotate the Anthropic API key — it was printed into a session transcript on
-  2026-06-15. Revoke at console.anthropic.com, update BOTH `.env.local` and Vercel, redeploy.
 - **Next:** M3 — Pantry CRUD. This is where Postgres (Supabase) earns its place. Build the
   UI to add/edit/delete ingredients, feel state not persisting on refresh, THEN add the DB.
 
