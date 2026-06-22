@@ -46,11 +46,12 @@ This is a **learning project first, product second.** Not trying to make money.
       the URL can add/delete items. The SECRET (DATABASE_URL) is safe (server-only, Pattern A);
       only the *data* is unprotected. Low risk now (random unshared URL, trivial stakes,
       single-user). A stopgap was deliberately NOT added (throwaway once M5 lands).
-- [x] **M4 — Recipe suggestions.** DONE (local). Pantry-aware chat at `/recipes` — fetches
+- [x] **M4 — Recipe suggestions.** DONE + DEPLOYED. Pantry-aware chat at `/recipes` — fetches
       pantry from DB, injects as system prompt, streams Claude's response. Two halves joined.
-      `src/components/ChatWindow.tsx` extracted to eliminate duplicate chat UI logic. ← **NEXT: deploy**
-- [ ] **M5 — Auth + saving recipes.** Real multi-user-capable app (Supabase auth). *Closes the
-      M3 open-door: login → per-user data → turn on RLS so each pantry is its owner's only.*
+      `src/components/ChatWindow.tsx` extracted to eliminate duplicate chat UI logic.
+- [x] **M5 — Auth + per-user pantry.** DONE + DEPLOYED. Supabase Auth (email/password). Each
+      user has their own pantry. JWT verified on every API request. RLS enabled on `items` table.
+      `supabase.ts` boundary + `login/page.tsx` + `SignOutButton` in layout. M3 open door closed.
 - [ ] **M6 — Voice mode.** Web Speech API (free, in-browser) first.
 - [ ] **M7 — Receipt scanning (OCR).** Evaluate if it's worth it by now.
 
@@ -140,13 +141,39 @@ This is a **learning project first, product second.** Not trying to make money.
 
 ## Current state
 
-- **M1–M4 DONE (local).** M1–M3 deployed. M4 needs a deploy push.
+- **M1–M5 DONE & DEPLOYED.**
 - **Chat loop (M1/M2):** `src/lib/ai.ts` → `src/app/api/chat/route.ts` → `src/app/page.tsx`
 - **Pantry loop (M3):** `src/app/pantry/page.tsx` → `src/app/api/pantry/route.ts` → `src/lib/db.ts` → Supabase
 - **Recipe loop (M4):** `src/app/recipes/page.tsx` → `src/app/api/recipes/route.ts` → `db.ts` + `ai.ts`
-- **Shared UI:** `src/components/ChatWindow.tsx` — used by both chat and recipes pages.
+- **Auth (M5):** `src/lib/supabase.ts` → `login/page.tsx` + `SignOutButton` + JWT on all user-scoped routes
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
-- **Next:** deploy M4, then M5 — Auth (Supabase auth, per-user pantry, RLS on).
+- **Next:** M6 (voice) or testing or UI polish — see known debt below.
+
+## Known debt & gaps (things real apps have that we don't yet)
+
+### Security
+- ⬜ **Rate limiting** — `/api/recipes` is unprotected from spam; someone could rack up Anthropic bill
+- ⬜ **Input sanitization** — `name` is validated for existence but not length/content
+
+### Reliability
+- ⬜ **Error handling** — frontend `mutate()` has no `res.ok` check; backend 400s silently swallowed
+- ⬜ **Loading states** — no spinner while pantry loads
+- ⬜ **Empty states** — pantry shows nothing with no message when empty
+- ⬜ **Auth redirect** — unauthenticated users hitting `/pantry` or `/recipes` see empty page, not `/login`
+- ⬜ **Tests** — no unit or integration tests yet (highest value: API routes + db.ts functions)
+
+### Observability
+- ⬜ **Error monitoring** — no Sentry or equivalent; silent failures in prod go unnoticed
+- ⬜ **Logging** — no structured server logs beyond what Vercel captures
+
+### Developer experience
+- ⬜ **Shared `auth.ts`** — `getUserId()` duplicated in `/api/pantry` and `/api/recipes`; extract to `src/lib/auth.ts`
+- ⬜ **UI consistency** — pantry page uses inline `style={{}}`, chat/recipes use Tailwind `className`
+
+### Future skills to learn (different domain, not urgent)
+- **Docker** — containerize the app so it runs the same everywhere; relevant when moving off Vercel
+- **Kubernetes** — orchestrate containers at scale; needed only with real traffic
+- **OpenTelemetry** — structured observability for prod; earns its place once the app has real users
 
 ## Commands
 
