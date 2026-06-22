@@ -6,6 +6,7 @@ export default function Recipes() {
       title="Recipe Suggestions"
       apiRoute="/api/recipes"
       placeholder="What are you in the mood for?"
+      requiresAuth
       links={[
         { href: "/", label: "Regular Chat" },
         { href: "/pantry", label: "My Pantry" },

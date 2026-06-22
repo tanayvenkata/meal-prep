@@ -2,15 +2,22 @@
 
 import { useState } from "react";
 import type { ChatMessage } from "@/lib/ai";
+import { supabase } from "@/lib/supabase";
 
 type Props = {
   title: string;
   apiRoute: string;
   placeholder: string;
+  requiresAuth?: boolean;
   links?: { href: string; label: string }[];
 };
 
-export default function ChatWindow({ title, apiRoute, placeholder, links }: Props) {
+async function getToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
+export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth, links }: Props) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reply, setReply] = useState("");
@@ -26,9 +33,15 @@ export default function ChatWindow({ title, apiRoute, placeholder, links }: Prop
     setInput("");
     setReply("");
 
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (requiresAuth) {
+      const token = await getToken();
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const res = await fetch(apiRoute, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ messages: newMessages }),
     });
 

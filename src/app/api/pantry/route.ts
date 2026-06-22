@@ -1,53 +1,61 @@
-// src/app/api/pantry/route.ts — the thin HANDLER.
-//
-// Same shape as chat/route.ts: it imports the real work from the lib boundary
-// (db.ts) and just handles the HTTP part — receive request, call the lib, return
-// a response. The SQL lives in db.ts; this file only deals with HTTP.
-
+import { createClient } from "@supabase/supabase-js";
 import { getItems, addItem, updateItem, deleteItem } from "@/lib/db";
 
-// GET /api/pantry — READ. Returns the full pantry as JSON.
-// HTTP method GET maps to CRUD's "Read", exactly as you predicted.
-export async function GET() {
-  const items = await getItems();
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  );
+}
+
+// Extracts and verifies the JWT from the Authorization header.
+// Returns the user_id string, or null if missing/invalid.
+async function getUserId(request: Request): Promise<string | null> {
+  const token = request.headers.get("Authorization")?.replace("Bearer ", "");
+  if (!token) return null;
+  const { data } = await getSupabase().auth.getUser(token);
+  return data.user?.id ?? null;
+}
+
+export async function GET(request: Request) {
+  const userId = await getUserId(request);
+  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+
+  const items = await getItems(userId);
   return Response.json(items);
 }
 
-// POST /api/pantry — CREATE. Body: { name, quantity }. Returns the new item.
 export async function POST(request: Request) {
-  const { name, quantity } = await request.json();
+  const userId = await getUserId(request);
+  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  // BACKEND validation — re-checked here even though the frontend also checks,
-  // because the frontend can be bypassed (curl hits this directly). The backend
-  // is the only place we can actually trust.
+  const { name, quantity } = await request.json();
   if (!name || name.trim() === "") {
     return Response.json({ error: "name is required" }, { status: 400 });
   }
 
-  const item = await addItem(name.trim(), (quantity ?? "").trim());
-  return Response.json(item, { status: 201 }); // 201 = "Created"
+  const item = await addItem(userId, name.trim(), (quantity ?? "").trim());
+  return Response.json(item, { status: 201 });
 }
 
-// PUT /api/pantry — UPDATE. Body: { id, quantity }. Returns the updated item.
 export async function PUT(request: Request) {
+  const userId = await getUserId(request);
+  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+
   const { id, quantity } = await request.json();
+  if (!id) return Response.json({ error: "id is required" }, { status: 400 });
 
-  if (!id) {
-    return Response.json({ error: "id is required" }, { status: 400 });
-  }
-
-  const item = await updateItem(id, (quantity ?? "").trim());
+  const item = await updateItem(userId, id, (quantity ?? "").trim());
   return Response.json(item);
 }
 
-// DELETE /api/pantry — DELETE. Body: { id }. Returns success.
 export async function DELETE(request: Request) {
+  const userId = await getUserId(request);
+  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+
   const { id } = await request.json();
+  if (!id) return Response.json({ error: "id is required" }, { status: 400 });
 
-  if (!id) {
-    return Response.json({ error: "id is required" }, { status: 400 });
-  }
-
-  await deleteItem(id);
+  await deleteItem(userId, id);
   return Response.json({ success: true });
 }
