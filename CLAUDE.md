@@ -46,8 +46,9 @@ This is a **learning project first, product second.** Not trying to make money.
       the URL can add/delete items. The SECRET (DATABASE_URL) is safe (server-only, Pattern A);
       only the *data* is unprotected. Low risk now (random unshared URL, trivial stakes,
       single-user). A stopgap was deliberately NOT added (throwaway once M5 lands).
-- [ ] **M4 — Recipe suggestions.** Send pantry + mood + time to the AI; get ideas back.
-      *This is where M1's AI (ai.ts) meets M3's pantry (db.ts) — the two halves join.* ← **NEXT**
+- [x] **M4 — Recipe suggestions.** DONE (local). Pantry-aware chat at `/recipes` — fetches
+      pantry from DB, injects as system prompt, streams Claude's response. Two halves joined.
+      `src/components/ChatWindow.tsx` extracted to eliminate duplicate chat UI logic. ← **NEXT: deploy**
 - [ ] **M5 — Auth + saving recipes.** Real multi-user-capable app (Supabase auth). *Closes the
       M3 open-door: login → per-user data → turn on RLS so each pantry is its owner's only.*
 - [ ] **M6 — Voice mode.** Web Speech API (free, in-browser) first.
@@ -118,6 +119,19 @@ This is a **learning project first, product second.** Not trying to make money.
   updates only when a *concrete* pain appears (visible lag, cost at scale, a UX requirement).
 - **M3: `next/link` for navigation, not `<a href>`** — `<Link>` does client-side transitions
   (no full reload, preserves React state) and prefetches. Home↔Pantry linked both ways.
+- **M4: system prompt built in `/api/recipes`, not injected from the frontend** — the route
+  fetches the pantry and builds the `system` string server-side on every request. Frontend never
+  sees or touches the system prompt. Same "secrets/logic stay server-side" principle as M1.
+- **M4: `/api/recipes` is a separate route, not a modification of `/api/chat`** — built in
+  isolation first (bottom-up), then integrated via shared `ChatWindow` component. Same pattern
+  real firms use: new feature separate → verify → merge/share.
+- **M4: shared `ChatWindow` component, not duplicated page logic** — same principle as `db.ts`
+  and `ai.ts`: extract when duplication is *logic*, not just when two files import the same thing.
+  Pages are now just configuration (title, apiRoute, placeholder, links).
+- **M4: pantry re-fetched on every message turn, not cached** — simple and correct for now.
+  Optimization (cache the pantry for a session) deferred until lag is actually felt.
+- **M4: UI polish deferred to after M5** — styling is cosmetic; auth changes the data model.
+  Polish after the structure is stable.
 - **M3 known debt (deliberate, not drift):** pantry page uses inline `style={{}}` while the chat
   page uses Tailwind `className`. Cosmetic only, crosses no boundary — left for a later styling
   pass rather than churned mid-milestone. Also: front-end mutate() helper has no `res.ok` check
@@ -126,20 +140,13 @@ This is a **learning project first, product second.** Not trying to make money.
 
 ## Current state
 
-- **M1 + M2 + M3 DONE & DEPLOYED.** `@anthropic-ai/sdk` + `postgres` installed. Model:
-  `claude-sonnet-4-6` (cheap for now; revisit at M4).
-- **Chat loop (M1/M2):** `src/lib/ai.ts` (SDK boundary, `streamChat`, async generator) →
-  `src/app/api/chat/route.ts` (POST, `ReadableStream`) → `src/app/page.tsx` (chat UI).
-- **Pantry loop (M3):** `src/app/pantry/page.tsx` (UI, `useEffect` load + `mutate()` helper)
-  → `src/app/api/pantry/route.ts` (GET/POST/PUT/DELETE, thin handler + backend validation)
-  → `src/lib/db.ts` (DB boundary, raw SQL via `postgres` driver) → Supabase Postgres `items`
-  table. DB = source of truth (re-fetch after every change). Home↔Pantry linked via `next/link`.
+- **M1–M4 DONE (local).** M1–M3 deployed. M4 needs a deploy push.
+- **Chat loop (M1/M2):** `src/lib/ai.ts` → `src/app/api/chat/route.ts` → `src/app/page.tsx`
+- **Pantry loop (M3):** `src/app/pantry/page.tsx` → `src/app/api/pantry/route.ts` → `src/lib/db.ts` → Supabase
+- **Recipe loop (M4):** `src/app/recipes/page.tsx` → `src/app/api/recipes/route.ts` → `db.ts` + `ai.ts`
+- **Shared UI:** `src/components/ChatWindow.tsx` — used by both chat and recipes pages.
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
-  Env in Vercel store: `ANTHROPIC_API_KEY` + `DATABASE_URL` (Production + Preview).
-- Env files: `.env.example` (template, committed) + `.env.local` (real secrets, git-ignored).
-- **Next:** M4 — Recipe suggestions. Combine the pantry (`db.ts`/`getItems`) with the AI
-  (`ai.ts`/`streamChat`): send "here's my pantry + mood + time" to Claude, get ideas back.
-  The two halves of the app finally join.
+- **Next:** deploy M4, then M5 — Auth (Supabase auth, per-user pantry, RLS on).
 
 ## Commands
 
