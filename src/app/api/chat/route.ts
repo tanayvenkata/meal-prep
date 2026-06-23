@@ -1,11 +1,15 @@
 import { streamChat } from "@/lib/ai";
+import { getUserId } from "@/lib/auth";
 
 export async function POST(request: Request) {
-    const { messages } = await request.json();
+  const userId = await getUserId(request);
+  if (!userId) return new Response("Unauthorized", { status: 401 });
 
-    if (!messages || messages.length === 0) {
-      return new Response("No messages provided", { status: 400 });
-    }
+  const { messages } = await request.json();
+
+  if (!messages || messages.length === 0) {
+    return new Response("No messages provided", { status: 400 });
+  }
 
   let chunks;
   try {

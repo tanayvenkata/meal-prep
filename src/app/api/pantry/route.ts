@@ -1,21 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { getItems, addItem, updateItem, deleteItem } from "@/lib/db";
-
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-  );
-}
-
-// Extracts and verifies the JWT from the Authorization header.
-// Returns the user_id string, or null if missing/invalid.
-async function getUserId(request: Request): Promise<string | null> {
-  const token = request.headers.get("Authorization")?.replace("Bearer ", "");
-  if (!token) return null;
-  const { data } = await getSupabase().auth.getUser(token);
-  return data.user?.id ?? null;
-}
+import { getUserId } from "@/lib/auth";
 
 export async function GET(request: Request) {
   const userId = await getUserId(request);

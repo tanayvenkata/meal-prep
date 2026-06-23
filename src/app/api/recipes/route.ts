@@ -1,20 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
 import { getItems } from "@/lib/db";
 import { streamChat } from "@/lib/ai";
-
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-  );
-}
-
-async function getUserId(request: Request): Promise<string | null> {
-  const token = request.headers.get("Authorization")?.replace("Bearer ", "");
-  if (!token) return null;
-  const { data } = await getSupabase().auth.getUser(token);
-  return data.user?.id ?? null;
-}
+import { getUserId } from "@/lib/auth";
 
 export async function POST(req: Request) {
   const userId = await getUserId(req);
