@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-export default function Login() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo") ?? "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,7 +20,7 @@ export default function Login() {
     if (error) {
       setError(error.message);
     } else {
-      router.push("/");
+      router.push(returnTo);
     }
     setLoading(false);
   }
@@ -30,7 +32,7 @@ export default function Login() {
     if (error) {
       setError(error.message);
     } else {
-      router.push("/");
+      router.push(returnTo);
     }
     setLoading(false);
   }
@@ -74,5 +76,13 @@ export default function Login() {
         </button>
       </div>
     </main>
+  );
+}
+
+export default function Login() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
