@@ -52,6 +52,11 @@ This is a **learning project first, product second.** Not trying to make money.
 - [x] **M5 — Auth + per-user pantry.** DONE + DEPLOYED. Supabase Auth (email/password). Each
       user has their own pantry. JWT verified on every API request. RLS enabled on `items` table.
       `supabase.ts` boundary + `login/page.tsx` + `SignOutButton` in layout. M3 open door closed.
+- [ ] **M5.5 — Tests.** IN PROGRESS. 26 tests across 4 files so far. Vitest.
+      ✅ API route tests (mock db+auth, test 3 zones: auth gate, input validation, happy path)
+      ✅ db.ts integration tests (real local Postgres via Supabase CLI, SQL correctness + user isolation)
+      ✅ helpers/fixtures.ts for shared fake data (Rule of Three)
+      ⬜ Frontend component tests (not started)
 - [ ] **M6 — Voice mode.** Web Speech API (free, in-browser) first.
 - [ ] **M7 — Receipt scanning (OCR).** Evaluate if it's worth it by now.
 
@@ -142,6 +147,13 @@ This is a **learning project first, product second.** Not trying to make money.
   page uses Tailwind `className`. Cosmetic only, crosses no boundary — left for a later styling
   pass rather than churned mid-milestone. Also: front-end mutate() helper has no `res.ok` check
   yet (backend 400s are silently swallowed) — the natural next error-handling lesson.
+- **M5.5: Vitest, not Jest** — near-identical API, but faster and native ESM support; standard for Next.js/Vite projects now.
+- **M5.5: route tests mock db+auth, db tests hit real local DB** — each layer tests itself, mocks everything below. Route tests prove the route logic; db tests prove the SQL. No overlap.
+- **M5.5: `src/__tests__/` mirrors `src/` structure** — no hunting; test file path = source file path, just under `__tests__/`.
+- **M5.5: three zones per endpoint** — auth gate, input validation, happy path. One test per branch in the code.
+- **M5.5: db tests use real local Postgres via Supabase CLI** — `supabase start` boots local stack; `beforeAll` creates test users, `afterEach` wipes items, `afterAll` cleans users. No mocks at the db layer.
+- **M5.5: helpers/fixtures.ts for shared fake data** — extracted at Rule of Three (3 files reusing same Item shape). `vi.mock()` stays per-file (Vitest hoists it; can't be shared).
+- **M5.5: user isolation tested explicitly on updateItem + deleteItem** — write ops that take a row id can silently affect another user's data if `and user_id = $userId` is missing. Read ops and insert ops don't have this risk.
 - Unifying principle: *defer capability until the need is real; structure so adding it is cheap.*
 
 ## Current state
@@ -185,3 +197,12 @@ This is a **learning project first, product second.** Not trying to make money.
 - `npm run dev` — start local dev server (http://localhost:3000)
 - `npm run build` — production build
 - `npm run lint` — lint
+- `npm test` — run all tests (requires local Supabase running for db.ts tests)
+
+### Before running db.ts tests (once per dev session)
+1. Open OrbStack
+2. `supabase start` — boots local Postgres at postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
+### When schema changes (remote DB changed)
+- `supabase db pull` — pulls new schema into supabase/migrations/
+- `supabase db push` — pushes local migration files to remote DB
