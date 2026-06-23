@@ -133,6 +133,11 @@ This is a **learning project first, product second.** Not trying to make money.
   Optimization (cache the pantry for a session) deferred until lag is actually felt.
 - **M4: UI polish deferred to after M5** — styling is cosmetic; auth changes the data model.
   Polish after the structure is stable.
+- **Post-M5: switched to `@supabase/ssr`** — old `createClient` stored session in localStorage (server-blind);
+  `createBrowserClient` stores in cookies so middleware can read the session on every request.
+- **Post-M5: middleware.ts at project root** — gates all routes except `/login` before React renders;
+  appends `?returnTo=` so login can redirect back to the original destination.
+- **Post-M5: `src/lib/auth.ts` boundary** — `getUserId()` extracted from pantry+recipes routes; `/api/chat` now also requires JWT.
 - **M3 known debt (deliberate, not drift):** pantry page uses inline `style={{}}` while the chat
   page uses Tailwind `className`. Cosmetic only, crosses no boundary — left for a later styling
   pass rather than churned mid-milestone. Also: front-end mutate() helper has no `res.ok` check
@@ -159,7 +164,7 @@ This is a **learning project first, product second.** Not trying to make money.
 - ✅ **Error handling** — all API routes have auth checks, input validation, and try/catch around DB/stream calls; frontend checks `res.ok`, sets error state, and displays inline messages; streaming errors caught and surfaced
 - ⬜ **Loading states** — no spinner while pantry loads
 - ⬜ **Empty states** — pantry shows nothing with no message when empty
-- ⬜ **Auth redirect** — unauthenticated users hitting `/pantry` or `/recipes` see empty page, not `/login`
+- ✅ **Auth redirect** — middleware gates all routes except `/login`; appends `?returnTo=` so users land where they were headed after login
 - ⬜ **Tests** — no unit or integration tests yet (highest value: API routes + db.ts functions)
 
 ### Observability
@@ -167,7 +172,7 @@ This is a **learning project first, product second.** Not trying to make money.
 - ⬜ **Logging** — no structured server logs beyond what Vercel captures
 
 ### Developer experience
-- ⬜ **Shared `auth.ts`** — `getUserId()` duplicated in `/api/pantry` and `/api/recipes`; extract to `src/lib/auth.ts`
+- ✅ **Shared `auth.ts`** — `getUserId()` extracted to `src/lib/auth.ts`; all three API routes import from it
 - ⬜ **UI consistency** — pantry page uses inline `style={{}}`, chat/recipes use Tailwind `className`
 
 ### Future skills to learn (different domain, not urgent)
