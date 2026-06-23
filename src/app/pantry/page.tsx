@@ -19,6 +19,7 @@ export default function PantryPage() {
   const [items, setItems] = useState<Item[]>([])
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   async function loadItems() {
     const token = await getToken()
@@ -56,7 +57,8 @@ export default function PantryPage() {
   async function mutate(method: 'POST' | 'PUT' | 'DELETE', body: object) {
     const token = await getToken()
     if (!token) return
-    await fetch('/api/pantry', {
+    setError(null)
+    const res = await fetch('/api/pantry', {
       method,
       headers: {
         'Content-Type': 'application/json',
@@ -64,6 +66,11 @@ export default function PantryPage() {
       },
       body: JSON.stringify(body),
     })
+    if (!res.ok) {
+      const data = await res.json()
+      setError(data.error ?? 'Something went wrong')
+      return
+    }
     await loadItems()
   }
 
@@ -91,6 +98,7 @@ export default function PantryPage() {
         ← Back to chat
       </Link>
       <p>{items.length} item(s)</p>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <input

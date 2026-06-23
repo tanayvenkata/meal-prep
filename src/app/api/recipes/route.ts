@@ -21,17 +21,32 @@ export async function POST(req: Request) {
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   const { messages } = await req.json();
+  if (!messages || messages.length === 0) {
+    return Response.json({ error: "messages are required" }, { status: 400 });
+  }
 
-  const items = await getItems(userId);
+  let items;
+  try {
+    items = await getItems(userId);
+  } catch (err) {
+    console.error("POST /api/recipes failed (db):", err);
+    return Response.json({ error: "failed to load pantry" }, { status: 500 });
+  }
+
   const pantryList = items.map((i) => i.name).join(", ");
   const system = `You are a helpful cooking assistant. The user has these ingredients in their pantry: ${pantryList}. Suggest recipes based on what they have.`;
 
   const stream = new ReadableStream({
     async start(controller) {
-      for await (const chunk of streamChat(messages, system)) {
-        controller.enqueue(new TextEncoder().encode(chunk));
+      try {
+        for await (const chunk of streamChat(messages, system)) {
+          controller.enqueue(new TextEncoder().encode(chunk));
+        }
+        controller.close();
+      } catch (err) {
+        console.error("POST /api/recipes failed (stream):", err);
+        controller.error(err);
       }
-      controller.close();
     },
   });
 

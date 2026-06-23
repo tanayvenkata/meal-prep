@@ -7,7 +7,13 @@ export async function POST(request: Request) {
       return new Response("No messages provided", { status: 400 });
     }
 
-  const chunks = streamChat(messages);
+  let chunks;
+  try {
+    chunks = streamChat(messages);
+  } catch (err) {
+    console.error("POST /api/chat failed:", err);
+    return new Response("Failed to start chat", { status: 500 });
+  }
 
   // Created once and reused for every chunk — cheaper than rebuilding it each loop.
   const encoder = new TextEncoder();

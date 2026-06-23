@@ -21,6 +21,7 @@ export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth,
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reply, setReply] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   async function sendMessage() {
     if (!input.trim()) return;
@@ -32,6 +33,7 @@ export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth,
     setMessages(newMessages);
     setInput("");
     setReply("");
+    setError(null);
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (requiresAuth) {
@@ -45,18 +47,29 @@ export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth,
       body: JSON.stringify({ messages: newMessages }),
     });
 
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "Something went wrong");
+      return;
+    }
+
     const reader = res.body!.getReader();
     const decoder = new TextDecoder();
     let full = "";
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      full += decoder.decode(value);
-      setReply(full);
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        full += decoder.decode(value);
+        setReply(full);
+      }
+      setMessages([...newMessages, { role: "assistant", content: full }]);
+    } catch (err) {
+      console.error("stream error:", err);
+      setError("Response interrupted, please try again");
     }
 
-    setMessages([...newMessages, { role: "assistant", content: full }]);
     setReply("");
   }
 
@@ -86,6 +99,8 @@ export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth,
           </div>
         )}
       </div>
+
+      {error && <p className="mt-2 text-red-500">{error}</p>}
 
       <div className="mt-4 flex gap-2">
         <input

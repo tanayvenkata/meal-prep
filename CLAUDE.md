@@ -156,7 +156,7 @@ This is a **learning project first, product second.** Not trying to make money.
 - ⬜ **Input sanitization** — `name` is validated for existence but not length/content
 
 ### Reliability
-- ⬜ **Error handling** — frontend `mutate()` has no `res.ok` check; backend 400s silently swallowed
+- ✅ **Error handling** — all API routes have auth checks, input validation, and try/catch around DB/stream calls; frontend checks `res.ok`, sets error state, and displays inline messages; streaming errors caught and surfaced
 - ⬜ **Loading states** — no spinner while pantry loads
 - ⬜ **Empty states** — pantry shows nothing with no message when empty
 - ⬜ **Auth redirect** — unauthenticated users hitting `/pantry` or `/recipes` see empty page, not `/login`
