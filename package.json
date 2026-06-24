@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "test:unit": "vitest --run --ignore src/__tests__/lib/db.test.ts",
+    "test:unit": "vitest --run src/__tests__/api src/__tests__/lib/auth.test.ts src/__tests__/middleware.test.ts",
     "test:integration": "vitest --run src/__tests__/lib/db.test.ts",
     "prepare": "husky"
   },
