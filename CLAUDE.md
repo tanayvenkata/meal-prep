@@ -176,7 +176,7 @@ This is a **learning project first, product second.** Not trying to make money.
 - **Recipe loop (M4):** `src/app/recipes/page.tsx` → `src/app/api/recipes/route.ts` → `db.ts` + `ai.ts`
 - **Auth (M5):** `src/lib/supabase.ts` → `login/page.tsx` + `SignOutButton` + JWT on all user-scoped routes
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
-- **Next:** M6 (voice) or testing or UI polish — see known debt below.
+- **Next:** M6 voice input in progress on `feat/voice-input` branch.
 
 ## Known debt & gaps (things real apps have that we don't yet)
 
@@ -185,7 +185,8 @@ This is a **learning project first, product second.** Not trying to make money.
 - ⬜ **Input sanitization** — `name` is validated for existence but not length/content
 
 ### Reliability
-- ✅ **Error handling** — all API routes have auth checks, input validation, and try/catch around DB/stream calls; frontend checks `res.ok`, sets error state, and displays inline messages; streaming errors caught and surfaced
+- ⬜ **Error handling (API responses)** — routes return `new Response("Unauthorized", { status: 401 })` (plain text) instead of `Response.json({ error: "..." }, { status: 401 })`. Frontend does `res.json()` which throws trying to parse plain text — user sees nothing useful. Fix: all routes should return consistent JSON error bodies. Three audiences: developer (terminal logs), user (plain English in UI), API consumer (correct status code + JSON). Own PR after M6.
+- ⬜ **Error handling (frontend)** — 401 should show "Session expired — please sign in again", not a raw parse error. Frontend should handle status codes explicitly before calling res.json().
 - ⬜ **Loading states** — no spinner while pantry loads
 - ⬜ **Empty states** — pantry shows nothing with no message when empty
 - ✅ **Auth redirect** — middleware gates all routes except `/login`; appends `?returnTo=` so users land where they were headed after login

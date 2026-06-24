@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { ChatMessage } from "@/lib/ai";
 import { supabase } from "@/lib/supabase";
 
@@ -22,9 +22,59 @@ export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth,
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
+
+  function toggleListening() {
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError("Voice input is not supported in this browser");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (e: { results: SpeechRecognitionResultList }) => {
+      const transcript = e.results[0][0].transcript;
+      setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+    };
+
+    recognition.onerror = (e: { error: string }) => {
+      if (e.error === "not-allowed") {
+        setError("Microphone access blocked — click the 🔒 icon in your browser's address bar to allow it");
+      } else {
+        setError("Microphone error — please try again");
+      }
+      setListening(false);
+    };
+
+    recognition.onend = () => setListening(false);
+
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+      setListening(true);
+    } catch {
+      setError("Could not start voice input — try clicking the button again");
+    }
+  }
 
   async function sendMessage() {
     if (!input.trim()) return;
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+    }
 
     const newMessages: ChatMessage[] = [
       ...messages,
@@ -110,6 +160,13 @@ export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth,
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
         />
+        <button
+          className={`rounded px-3 text-lg ${listening ? "bg-red-500 text-white" : "bg-gray-100"}`}
+          onClick={toggleListening}
+          title={listening ? "Stop listening" : "Voice input"}
+        >
+          🎤
+        </button>
         <button
           className="rounded bg-black px-4 text-white"
           onClick={sendMessage}
