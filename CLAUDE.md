@@ -61,7 +61,11 @@ This is a **learning project first, product second.** Not trying to make money.
       ⬜ Frontend component tests — deliberately skipped (components too thin, redundant with route tests)
       ⬜ E2E tests — deliberately skipped (app still evolving; add after M6)
 - [x] **M5.6 — CI/CD + local hooks.** GitHub Actions on every push. Husky pre-commit (lint) + pre-push (build + unit tests). Testing pyramid: unit locally, integration in CI.
-- [ ] **M6 — Voice mode.** Web Speech API (free, in-browser) first.
+- [x] **M6 — Voice mode.** DONE + DEPLOYED. Mic button in `ChatWindow.tsx` toggles
+      listening on/off via Web Speech API. Transcript lands in the input box; user reviews
+      and sends manually (intentional — no accidental sends). Handles permission-denied,
+      unsupported browsers, and WebKit start errors. No backend changes needed.
+      `src/types/speech.d.ts` added for Web Speech API types.
 - [ ] **M7 — Receipt scanning (OCR).** Evaluate if it's worth it by now.
 
 ## Architecture (current — the lightweight system design)
@@ -166,17 +170,22 @@ This is a **learning project first, product second.** Not trying to make money.
 - **M5.5→M6: Husky pre-commit + pre-push hooks** — pre-commit runs lint only (~3s, every commit); pre-push runs build + 26 unit tests (~30s, no Supabase needed). Defense in depth: catch errors on your machine before CI sees them.
 - **M5.5→M6: test:unit vs test:integration split** — `npm run test:unit` runs the 26 mock-based tests (no infrastructure); `npm run test:integration` runs the 6 db tests (needs `supabase start`). pre-push uses test:unit so it works without Supabase running locally.
 - **M5.5→M6: branch protection deferred** — requires GitHub Team plan for private repos. pre-push hook is the local gate; CI is the remote gate. Branch protection is the repo-level enforcement layer — add when repo goes public or plan upgrades.
+- **M6: Web Speech API, not a third-party service** — free, in-browser, no backend needed. Transcript-then-send (not auto-send) was intentional: gives user a review step before the message goes to Claude. No accidental sends mid-sentence.
+- **M6: `src/types/speech.d.ts` for Web Speech API types** — the Web Speech API isn't in TypeScript's default lib; a small `.d.ts` shim is the standard fix rather than casting to `any` everywhere.
+- **Post-M6: JSON error bodies on all routes** — `Response.json({ error: "..." }, { status })` instead of `new Response("text", { status })`. Frontend can always call `res.json()` without throwing; status codes remain correct for API consumers.
+- **Post-M6: frontend checks `res.status` before `res.json()`** — explicit status-code handling in `ChatWindow.tsx` means the user sees "Session expired — please sign in again" on a 401 instead of a raw parse error crashing silently.
 - Unifying principle: *defer capability until the need is real; structure so adding it is cheap.*
 
 ## Current state
 
-- **M1–M5 DONE & DEPLOYED.**
+- **M1–M6 DONE & DEPLOYED.**
 - **Chat loop (M1/M2):** `src/lib/ai.ts` → `src/app/api/chat/route.ts` → `src/app/page.tsx`
 - **Pantry loop (M3):** `src/app/pantry/page.tsx` → `src/app/api/pantry/route.ts` → `src/lib/db.ts` → Supabase
 - **Recipe loop (M4):** `src/app/recipes/page.tsx` → `src/app/api/recipes/route.ts` → `db.ts` + `ai.ts`
 - **Auth (M5):** `src/lib/supabase.ts` → `login/page.tsx` + `SignOutButton` + JWT on all user-scoped routes
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
-- **Next:** M6 voice input in progress on `feat/voice-input` branch.
+- **Voice (M6):** mic button in `src/components/ChatWindow.tsx` via Web Speech API
+- **Next:** M7 receipt scanning (OCR) — evaluate whether it's worth it.
 
 ## Known debt & gaps (things real apps have that we don't yet)
 
@@ -185,8 +194,8 @@ This is a **learning project first, product second.** Not trying to make money.
 - ⬜ **Input sanitization** — `name` is validated for existence but not length/content
 
 ### Reliability
-- ⬜ **Error handling (API responses)** — routes return `new Response("Unauthorized", { status: 401 })` (plain text) instead of `Response.json({ error: "..." }, { status: 401 })`. Frontend does `res.json()` which throws trying to parse plain text — user sees nothing useful. Fix: all routes should return consistent JSON error bodies. Three audiences: developer (terminal logs), user (plain English in UI), API consumer (correct status code + JSON). Own PR after M6.
-- ⬜ **Error handling (frontend)** — 401 should show "Session expired — please sign in again", not a raw parse error. Frontend should handle status codes explicitly before calling res.json().
+- ✅ **Error handling (API responses)** — `/api/chat` now returns `Response.json({ error: "..." }, { status: 401 })` instead of plain text. Consistent JSON bodies mean the frontend can always call `res.json()` safely.
+- ✅ **Error handling (frontend)** — `ChatWindow.tsx` checks `res.status === 401` explicitly and shows "Session expired — please sign in again" before attempting `res.json()`.
 - ⬜ **Loading states** — no spinner while pantry loads
 - ⬜ **Empty states** — pantry shows nothing with no message when empty
 - ✅ **Auth redirect** — middleware gates all routes except `/login`; appends `?returnTo=` so users land where they were headed after login
