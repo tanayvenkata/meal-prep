@@ -98,8 +98,16 @@ export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth,
     });
 
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error ?? "Something went wrong");
+      if (res.status === 401) {
+        setError("Session expired — please sign out and sign in again");
+        return;
+      }
+      try {
+        const data = await res.json();
+        setError(data.error ?? "Something went wrong");
+      } catch {
+        setError("Something went wrong");
+      }
       return;
     }
 
