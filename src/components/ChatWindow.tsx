@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import { Mic, ArrowUp } from "lucide-react";
 import type { ChatMessage } from "@/lib/ai";
 import { supabase } from "@/lib/supabase";
 
 type Props = {
-  title: string;
   apiRoute: string;
   placeholder: string;
   requiresAuth?: boolean;
-  links?: { href: string; label: string }[];
 };
 
 async function getToken(): Promise<string | null> {
@@ -17,7 +17,7 @@ async function getToken(): Promise<string | null> {
   return data.session?.access_token ?? null;
 }
 
-export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth, links }: Props) {
+export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Props) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reply, setReply] = useState("");
@@ -25,6 +25,11 @@ export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth,
   const [listening, setListening] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, reply]);
 
   function toggleListening() {
     if (listening) {
@@ -51,7 +56,7 @@ export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth,
 
     recognition.onerror = (e: { error: string }) => {
       if (e.error === "not-allowed") {
-        setError("Microphone access blocked — click the 🔒 icon in your browser's address bar to allow it");
+        setError("Microphone access blocked — click the lock icon in your browser's address bar to allow it");
       } else {
         setError("Microphone error — please try again");
       }
@@ -131,55 +136,105 @@ export default function ChatWindow({ title, apiRoute, placeholder, requiresAuth,
     setReply("");
   }
 
+  const isEmpty = messages.length === 0 && !reply;
+
   return (
-    <main className="mx-auto flex h-screen max-w-2xl flex-col p-4">
-      <h1 className="mb-4 text-xl font-bold">{title}</h1>
-
-      {links?.map((l) => (
-        <a key={l.href} href={l.href} className="mb-2 text-blue-600 underline">
-          → {l.label}
-        </a>
-      ))}
-
-      <div className="flex-1 overflow-y-auto rounded border p-3 space-y-3">
-        {messages.map((m, i) => (
-          <div key={i}>
-            <span className="font-semibold">
-              {m.role === "user" ? "You" : "Claude"}:
-            </span>{" "}
-            {m.content}
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-hidden px-4 py-4">
+      {/* message list — min-h-0 lets this flex child shrink below content size so it actually scrolls */}
+      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto space-y-3 pb-2">
+        {isEmpty ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center py-16">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-ink">
+              <span className="font-serif text-2xl font-semibold text-paper">M</span>
+            </div>
+            <h2 className="font-serif text-2xl font-semibold text-ink">What are we making?</h2>
+            <p className="text-sm text-muted max-w-xs">
+              Tell me what you&apos;re in the mood for and I&apos;ll work with what&apos;s in your pantry.
+            </p>
           </div>
-        ))}
+        ) : (
+          <>
+            {messages.map((m, i) => (
+              <div
+                key={i}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`prose prose-sm max-w-[82%] px-4 py-2.5 text-sm leading-relaxed ${
+                    m.role === "user"
+                      ? "bg-ink text-paper prose-invert rounded-2xl rounded-br-md"
+                      : "bg-surface text-ink rounded-2xl rounded-bl-md"
+                  }`}
+                  style={
+                    m.role === "assistant"
+                      ? { boxShadow: "0 1px 4px rgba(34,29,24,.07)" }
+                      : undefined
+                  }
+                >
+                  <ReactMarkdown>{m.content}</ReactMarkdown>
+                </div>
+              </div>
+            ))}
 
-        {reply && (
-          <div>
-            <span className="font-semibold">Claude:</span> {reply}
-          </div>
+            {reply && (
+              <div className="flex justify-start">
+                <div
+                  className="prose prose-sm max-w-[82%] rounded-2xl rounded-bl-md bg-surface px-4 py-2.5 text-sm leading-relaxed text-ink"
+                  style={{ boxShadow: "0 1px 4px rgba(34,29,24,.07)" }}
+                >
+                  <ReactMarkdown>{reply}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </>
         )}
+        <div ref={bottomRef} />
       </div>
 
-      {error && <p className="mt-2 text-red-500">{error}</p>}
+      {/* error banner */}
+      {error && (
+        <div
+          className="mb-3 rounded-xl border bg-surface px-4 py-3 text-sm text-ink"
+          style={{
+            borderColor: "#e6c4ba",
+            boxShadow: "0 1px 4px rgba(34,29,24,.07)",
+          }}
+        >
+          <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-ember text-xs font-bold text-white">!</span>
+          {error}
+        </div>
+      )}
 
-      <div className="mt-4 flex gap-2">
+      {/* input bar */}
+      <div
+        className="flex items-center gap-2 rounded-full bg-surface px-3 py-2"
+        style={{ boxShadow: "0 2px 12px rgba(34,29,24,.08)" }}
+      >
         <input
-          className="flex-1 rounded border p-2"
+          className="flex-1 bg-transparent px-2 py-1 text-sm text-ink placeholder:text-muted outline-none"
           placeholder={placeholder}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
         />
         <button
-          className={`rounded px-3 text-lg ${listening ? "bg-red-500 text-white" : "bg-gray-100"}`}
+          className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-colors ${
+            listening
+              ? "bg-ember text-white"
+              : "bg-pantry-strip text-ink hover:bg-sand"
+          }`}
           onClick={toggleListening}
           title={listening ? "Stop listening" : "Voice input"}
         >
-          🎤
+          <Mic size={16} strokeWidth={2.2} />
         </button>
         <button
-          className="rounded bg-black px-4 text-white"
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-ember text-white hover:opacity-90 transition-opacity disabled:opacity-40"
           onClick={sendMessage}
+          disabled={!input.trim()}
+          title="Send"
         >
-          Send
+          <ArrowUp size={18} strokeWidth={2.2} />
         </button>
       </div>
     </main>

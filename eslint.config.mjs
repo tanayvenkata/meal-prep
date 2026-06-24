@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Claude Design runtime — third-party file, not our code
+    "design_handoff/**",
   ]),
   {
     files: ["src/__tests__/**/*.ts"],
