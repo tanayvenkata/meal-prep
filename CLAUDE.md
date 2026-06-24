@@ -60,6 +60,7 @@ This is a **learning project first, product second.** Not trying to make money.
       ✅ helpers/fixtures.ts — shared fake data factories (Rule of Three)
       ⬜ Frontend component tests — deliberately skipped (components too thin, redundant with route tests)
       ⬜ E2E tests — deliberately skipped (app still evolving; add after M6)
+- [x] **M5.6 — CI/CD + local hooks.** GitHub Actions on every push. Husky pre-commit (lint) + pre-push (build + unit tests). Testing pyramid: unit locally, integration in CI.
 - [ ] **M6 — Voice mode.** Web Speech API (free, in-browser) first.
 - [ ] **M7 — Receipt scanning (OCR).** Evaluate if it's worth it by now.
 
@@ -161,6 +162,10 @@ This is a **learning project first, product second.** Not trying to make money.
 - **M5.5: auth.ts mock defined before vi.mock() factory** — `getSupabase()` creates a fresh `createClient()` on every call; defining `mockGetUser` outside the factory and referencing it inside ensures all calls share the same mock function.
 - **M5.5: `npm test` = watch mode, `npm test -- --run` = run once** — watch mode for active development; --run for CI and one-off checks.
 - **M5.5: frontend + E2E deliberately skipped** — components are thin wrappers around API calls (redundant with route tests); E2E better after app stabilizes post-M6.
+- **M5.5→M6: GitHub Actions CI** — `.github/workflows/ci.yml`; triggers on every push + PR to main. Runs lint → build → all 32 tests. Boots Supabase local stack in CI so db integration tests hit real Postgres. Ubuntu VM, Node 20, npm cache.
+- **M5.5→M6: Husky pre-commit + pre-push hooks** — pre-commit runs lint only (~3s, every commit); pre-push runs build + 26 unit tests (~30s, no Supabase needed). Defense in depth: catch errors on your machine before CI sees them.
+- **M5.5→M6: test:unit vs test:integration split** — `npm run test:unit` runs the 26 mock-based tests (no infrastructure); `npm run test:integration` runs the 6 db tests (needs `supabase start`). pre-push uses test:unit so it works without Supabase running locally.
+- **M5.5→M6: branch protection deferred** — requires GitHub Team plan for private repos. pre-push hook is the local gate; CI is the remote gate. Branch protection is the repo-level enforcement layer — add when repo goes public or plan upgrades.
 - Unifying principle: *defer capability until the need is real; structure so adding it is cheap.*
 
 ## Current state
@@ -204,7 +209,10 @@ This is a **learning project first, product second.** Not trying to make money.
 - `npm run dev` — start local dev server (http://localhost:3000)
 - `npm run build` — production build
 - `npm run lint` — lint
-- `npm test` — run all tests (requires local Supabase running for db.ts tests)
+- `npm test` — run all tests in watch mode (requires local Supabase running for db.ts tests)
+- `npm run test:unit` — run 26 unit/mock tests only (no Supabase needed)
+- `npm run test:integration` — run 6 db integration tests only (requires Supabase running)
+- `npm test -- --run` — run all tests once and exit
 
 ### Before running db.ts tests (once per dev session)
 1. Open OrbStack
