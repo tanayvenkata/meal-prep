@@ -62,6 +62,17 @@ describe("updateItem", () => {
     expect(updated.name).toBe("eggs");
   });
 
+  it("updates both name and quantity when name is provided", async () => {
+    const [inserted] = await sql`
+      insert into items (user_id, name, quantity) values (${TEST_USER_A}, 'eggs', '12') returning *
+    `;
+
+    const updated = await updateItem(TEST_USER_A, inserted.id, "6", "duck eggs");
+
+    expect(updated.name).toBe("duck eggs");
+    expect(updated.quantity).toBe("6");
+  });
+
   it("cannot update another user's item", async () => {
     const [inserted] = await sql`
       insert into items (user_id, name, quantity) values (${TEST_USER_B}, 'milk', '1L') returning *

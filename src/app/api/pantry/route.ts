@@ -36,11 +36,11 @@ export async function PUT(request: Request) {
   const userId = await getUserId(request);
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const { id, quantity } = await request.json();
+  const { id, quantity, name } = await request.json();
   if (!id) return Response.json({ error: "id is required" }, { status: 400 });
 
   try {
-    const item = await updateItem(userId, id, (quantity ?? "").trim());
+    const item = await updateItem(userId, id, (quantity ?? "").trim(), name?.trim());
     return Response.json(item);
   } catch (err) {
     console.error("PUT /api/pantry failed:", err);

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <meta name="design_doc_mode" content="canvas">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .hs::-webkit-scrollbar { display: none; }
+  </style>
+</helmet>
+
+<!-- TITLE -->
+<div style="position:absolute; left:60px; top:34px; width:1100px;">
+  <div style="font-family:'Spectral',serif; font-size:34px; font-weight:600; color:#221d18; letter-spacing:-0.01em;">Mise — the app, in house style</div>
+  <div style="font-family:'Geist',sans-serif; font-size:14px; color:#8a8073; margin-top:4px;">All 8 mobile screens, one coherent system. Paper + ink + ember, Spectral / Geist / Geist Mono, Mise's voice, real icons.</div>
+</div>
+
+<!-- ============ 1 · CHAT (HOME) ============ -->
+<div style="position:absolute; left:60px; top:150px; width:390px;">
+  <div data-drags-parent="1" style="font-family:'Geist',sans-serif; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#8a8073; font-weight:600; margin-bottom:12px;">1 · Chat — home</div>
+  <div data-screen-label="Chat" style="width:390px; height:844px; background:#f6f1e7; border-radius:42px; box-shadow:0 8px 34px rgba(34,29,24,.18); border:1px solid #e6dcc8; overflow:hidden; display:flex; flex-direction:column;">
+    <div style="flex-shrink:0; height:50px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; background:#fffdf8;">
+      <span style="font-family:'Geist',sans-serif; font-size:15px; font-weight:600; color:#221d18;">9:41</span>
+      <div style="display:flex; align-items:center; gap:6px; font-size:13px; color:#221d18;"><span>▦</span><span>◗</span><span style="font-size:11px;">▮▮▮</span></div>
+    </div>
+    <div style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:9px 18px 12px; background:#fffdf8; border-bottom:1px solid #e6dcc8; position:relative;">
+      <button style="width:38px; height:38px; border:none; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; padding:0;"><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span></button>
+      <span style="font-family:'Spectral',serif; font-weight:600; font-size:21px; color:#221d18; letter-spacing:-0.01em; position:absolute; left:50%; transform:translateX(-50%);">Mise</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="display:flex; align-items:center; gap:5px; height:28px; padding:0 10px; border-radius:8px; background:#f1ead9; border:1px solid #e6dcc8;"><span style="font-family:'Geist Mono',monospace; font-size:13px; font-weight:600; color:#c8492f;">12</span><span style="font-family:'Geist Mono',monospace; font-size:8.5px; letter-spacing:0.04em; color:#9a8f7e;">DAYS</span></div>
+        <div style="width:34px; height:34px; border-radius:50%; background:#e6dcc8; display:flex; align-items:center; justify-content:center; font-family:'Geist',sans-serif; font-size:13px; font-weight:600; color:#544c41;">A</div>
+      </div>
+    </div>
+    <!-- pantry strip -->
+    <div class="hs" style="flex-shrink:0; display:flex; align-items:center; gap:8px; padding:11px 18px; background:#f1ead9; border-bottom:1px solid #e6dcc8; overflow-x:auto;">
+      <span style="flex-shrink:0; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:#9a8f7e;">Pantry</span>
+      <div style="flex-shrink:0; display:flex; align-items:center; height:30px; padding:0 13px; border-radius:999px; background:#fffdf8; border:1px solid #e0d4bf; font-family:'Geist',sans-serif; font-size:12.5px; font-weight:500; color:#544c41;">Chicken thighs</div>
+      <div style="flex-shrink:0; display:flex; align-items:center; height:30px; padding:0 13px; border-radius:999px; background:#fffdf8; border:1px solid #e0d4bf; font-family:'Geist',sans-serif; font-size:12.5px; font-weight:500; color:#544c41;">Spinach</div>
+      <div style="flex-shrink:0; display:flex; align-items:center; height:30px; padding:0 13px; border-radius:999px; background:#fffdf8; border:1px solid #e0d4bf; font-family:'Geist',sans-serif; font-size:12.5px; font-weight:500; color:#544c41;">Butter</div>
+      <div style="flex-shrink:0; display:flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:#fffdf8; border:1px dashed #c9bda4;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9a8f7e" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg></div>
+    </div>
+    <div style="flex:1; min-height:0; overflow:hidden; padding:20px 18px; display:flex; flex-direction:column; gap:14px;">
+      <div style="align-self:center; font-family:'Geist Mono',monospace; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#b3a892;">Today</div>
+      <div style="align-self:flex-start; max-width:82%; background:#fffdf8; box-shadow:0 1px 4px rgba(34,29,24,.07); color:#221d18; border-radius:16px 16px 16px 5px; padding:11px 15px; font-family:'Geist',sans-serif; font-size:14.5px; line-height:1.5;">Hey. That spinach is on its last day, let's not waste it. Want to build dinner around it tonight?</div>
+      <div style="align-self:flex-end; max-width:82%; background:#221d18; color:#f6f1e7; border-radius:16px 16px 5px 16px; padding:11px 15px; font-family:'Geist',sans-serif; font-size:14.5px; line-height:1.5;">Yeah, something with the chicken too. Airfryer.</div>
+      <div style="align-self:flex-start; max-width:82%; background:#fffdf8; box-shadow:0 1px 4px rgba(34,29,24,.07); color:#221d18; border-radius:16px 16px 16px 5px; padding:11px 15px; font-family:'Geist',sans-serif; font-size:14.5px; line-height:1.5;">Airfryer garlic chicken over wilted spinach. 22 minutes, barely any cleanup. That's my kind of weeknight. Want the steps?</div>
+    </div>
+    <div style="flex-shrink:0; padding:10px 16px;">
+      <div style="display:flex; align-items:center; gap:8px; background:#fffdf8; box-shadow:0 2px 12px rgba(34,29,24,.08); border-radius:999px; padding:6px;">
+        <button style="flex-shrink:0; width:38px; height:38px; border:none; border-radius:50%; background:#f1ead9; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b6457" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg></button>
+        <input placeholder="Message Mise…" style="flex:1; min-width:0; border:none; background:transparent; font-family:'Geist',sans-serif; font-size:14.5px; color:#221d18; outline:none;" />
+        <button style="flex-shrink:0; width:38px; height:38px; border:none; border-radius:50%; background:#f1ead9; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b6457" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/></svg></button>
+        <button style="flex-shrink:0; width:42px; height:42px; border:none; border-radius:50%; background:#c8492f; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="6"/><polyline points="6 12 12 6 18 12"/></svg></button>
+      </div>
+    </div>
+    <div style="flex-shrink:0; height:22px; display:flex; align-items:center; justify-content:center;"><div style="width:128px; height:5px; border-radius:3px; background:#d8cdb8;"></div></div>
+  </div>
+</div>
+
+<!-- ============ 2 · PANTRY SHEET ============ -->
+<div style="position:absolute; left:520px; top:150px; width:390px;">
+  <div data-drags-parent="1" style="font-family:'Geist',sans-serif; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#8a8073; font-weight:600; margin-bottom:12px;">2 · Pantry — context sheet</div>
+  <div data-screen-label="Pantry" style="width:390px; height:844px; background:#f6f1e7; border-radius:42px; box-shadow:0 8px 34px rgba(34,29,24,.18); border:1px solid #e6dcc8; overflow:hidden; display:flex; flex-direction:column; position:relative;">
+    <div style="position:absolute; inset:0; display:flex; flex-direction:column;"><div style="height:50px; background:#fffdf8;"></div><div style="height:62px; background:#fffdf8; border-bottom:1px solid #e6dcc8;"></div><div style="flex:1; background:#f6f1e7;"></div></div>
+    <div style="position:absolute; inset:0; background:rgba(28,24,19,.40);"></div>
+    <div style="position:absolute; left:0; right:0; bottom:0; top:96px; background:#f6f1e7; border-radius:26px 26px 0 0; box-shadow:0 -6px 30px rgba(28,24,19,.22); display:flex; flex-direction:column; overflow:hidden;">
+      <div style="flex-shrink:0; padding:11px 0 4px; display:flex; justify-content:center;"><div style="width:42px; height:5px; border-radius:3px; background:#d8cdb8;"></div></div>
+      <div style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:8px 22px 14px;">
+        <div><h2 style="margin:0; font-family:'Spectral',serif; font-size:26px; font-weight:600; color:#221d18; letter-spacing:-0.01em;">My Pantry</h2><p style="margin:2px 0 0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:0.04em; text-transform:uppercase; color:#9a8f7e;">12 items</p></div>
+        <button style="width:34px; height:34px; border:none; border-radius:50%; background:#e8dfcd; font-size:14px; color:#6b6457; cursor:pointer;">✕</button>
+      </div>
+      <div style="flex-shrink:0; padding:0 22px 12px; display:flex; gap:8px;">
+        <input placeholder="Ingredient" style="flex:1; min-width:0; border:1px solid #e0d4bf; background:#fffdf8; border-radius:12px; padding:11px 13px; font-family:'Geist',sans-serif; font-size:14px; color:#221d18; outline:none;" />
+        <input placeholder="Qty" style="width:70px; border:1px solid #e0d4bf; background:#fffdf8; border-radius:12px; padding:11px 11px; font-family:'Geist',sans-serif; font-size:14px; color:#221d18; outline:none;" />
+        <button style="flex-shrink:0; border:none; border-radius:12px; background:#c8492f; color:#fff; padding:0 16px; font-family:'Geist',sans-serif; font-size:14px; font-weight:600; cursor:pointer;">Add</button>
+      </div>
+      <div style="flex-shrink:0; padding:0 22px 12px; display:flex; align-items:center; justify-content:space-between;">
+        <span style="font-family:'Geist',sans-serif; font-size:12px; color:#9a8f7e;">Sorted by</span>
+        <button style="display:flex; align-items:center; gap:5px; border:1px solid #e0d4bf; background:#fffdf8; border-radius:999px; padding:5px 12px; font-family:'Geist',sans-serif; font-size:12.5px; font-weight:600; color:#544c41; cursor:pointer;">Recently added <span style="font-size:10px; color:#9a8f7e;">▾</span></button>
+      </div>
+      <div style="flex:1; min-height:0; overflow:hidden; padding:0 18px; display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; align-items:center; gap:11px; background:#fffdf8; box-shadow:0 1px 3px rgba(34,29,24,.06); border-radius:13px; padding:13px 16px;"><span style="flex:1; font-family:'Geist',sans-serif; font-size:14.5px; font-weight:600; color:#221d18;">Chicken thighs</span><span style="font-family:'Geist Mono',monospace; font-size:12px; color:#9a8f7e;">2 lbs</span><span style="font-size:18px; color:#c9bda4; margin-left:2px;">›</span></div>
+        <div style="display:flex; align-items:center; gap:11px; background:#fffdf8; box-shadow:0 1px 3px rgba(34,29,24,.06); border-radius:13px; padding:13px 16px;"><span style="flex:1; font-family:'Geist',sans-serif; font-size:14.5px; font-weight:600; color:#221d18;">Baby spinach</span><span style="font-family:'Geist Mono',monospace; font-size:12px; color:#9a8f7e;">1 bag</span><span style="font-size:18px; color:#c9bda4; margin-left:2px;">›</span></div>
+        <div style="display:flex; align-items:center; gap:11px; background:#fffdf8; box-shadow:0 1px 3px rgba(34,29,24,.06); border-radius:13px; padding:13px 16px;"><span style="flex:1; font-family:'Geist',sans-serif; font-size:14.5px; font-weight:600; color:#221d18;">Butter</span><span style="font-family:'Geist Mono',monospace; font-size:12px; color:#9a8f7e;">1 stick</span><span style="font-size:18px; color:#c9bda4; margin-left:2px;">›</span></div>
+        <div style="display:flex; align-items:center; gap:11px; background:#fffdf8; box-shadow:0 1px 3px rgba(34,29,24,.06); border-radius:13px; padding:13px 16px;"><span style="flex:1; font-family:'Geist',sans-serif; font-size:14.5px; font-weight:600; color:#221d18;">Garlic powder</span><span style="font-family:'Geist Mono',monospace; font-size:12px; color:#9a8f7e;">1 jar</span><span style="font-size:18px; color:#c9bda4; margin-left:2px;">›</span></div>
+        <div style="display:flex; align-items:center; gap:11px; background:#fffdf8; box-shadow:0 1px 3px rgba(34,29,24,.06); border-radius:13px; padding:13px 16px;"><span style="flex:1; font-family:'Geist',sans-serif; font-size:14.5px; font-weight:600; color:#221d18;">Jasmine rice</span><span style="font-family:'Geist Mono',monospace; font-size:12px; color:#9a8f7e;">5 lb</span><span style="font-size:18px; color:#c9bda4; margin-left:2px;">›</span></div>
+      </div>
+      <div style="flex-shrink:0; height:22px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 3 · HISTORY DRAWER ============ -->
+<div style="position:absolute; left:980px; top:150px; width:390px;">
+  <div data-drags-parent="1" style="font-family:'Geist',sans-serif; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#8a8073; font-weight:600; margin-bottom:12px;">3 · History — drawer</div>
+  <div data-screen-label="History" style="width:390px; height:844px; background:#f6f1e7; border-radius:42px; box-shadow:0 8px 34px rgba(34,29,24,.18); border:1px solid #e6dcc8; overflow:hidden; display:flex; flex-direction:column; position:relative;">
+    <div style="position:absolute; inset:0; background:#f6f1e7;"></div>
+    <div style="position:absolute; inset:0; background:rgba(28,24,19,.40);"></div>
+    <div style="position:absolute; top:0; bottom:0; left:0; width:84%; background:#fffdf8; box-shadow:6px 0 30px rgba(28,24,19,.20); display:flex; flex-direction:column; overflow:hidden;">
+      <div style="flex-shrink:0; height:50px; display:flex; align-items:center; justify-content:space-between; padding:0 24px;"><span style="font-family:'Geist',sans-serif; font-size:15px; font-weight:600; color:#221d18;">9:41</span><div style="display:flex; align-items:center; gap:6px; font-size:13px; color:#221d18;"><span>▦</span><span>◗</span><span style="font-size:11px;">▮▮▮</span></div></div>
+      <div style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:6px 22px 14px;"><span style="font-family:'Spectral',serif; font-size:24px; font-weight:600; color:#221d18; letter-spacing:-0.01em;">Conversations</span><button style="width:34px; height:34px; border:none; border-radius:50%; background:#f1ead9; font-size:14px; color:#6b6457; cursor:pointer;">✕</button></div>
+      <div style="flex-shrink:0; padding:0 18px 16px;"><button style="width:100%; border:none; border-radius:13px; background:#c8492f; color:#fff; padding:13px; font-family:'Geist',sans-serif; font-size:14.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg> New conversation</button></div>
+      <div style="flex-shrink:0; padding:0 18px 14px;"><div style="display:flex; align-items:center; gap:9px; background:#f1ead9; border:1px solid #e6dcc8; border-radius:11px; padding:9px 13px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9a8f7e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg><input placeholder="Search conversations" style="flex:1; min-width:0; border:none; background:transparent; font-family:'Geist',sans-serif; font-size:13.5px; color:#221d18; outline:none;" /></div></div>
+      <div style="flex:1; min-height:0; overflow:hidden; padding:0 18px; display:flex; flex-direction:column; gap:8px;">
+        <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:#b3a892; padding:4px 2px 2px;">Today</div>
+        <div style="background:#f1ead9; border:1px solid #e6dcc8; border-radius:12px; padding:12px 14px;"><div style="font-family:'Geist',sans-serif; font-size:14px; font-weight:600; color:#221d18;">Garlic butter chicken</div><div style="font-family:'Geist',sans-serif; font-size:12.5px; color:#8a8073; margin-top:2px;">Airfryer, kept it light…</div></div>
+        <div style="background:#fffdf8; border:1px solid #e6dcc8; border-radius:12px; padding:12px 14px;"><div style="font-family:'Geist',sans-serif; font-size:14px; font-weight:600; color:#221d18;">What to do with spinach</div><div style="font-family:'Geist',sans-serif; font-size:12.5px; color:#8a8073; margin-top:2px;">Three ideas before it wilts…</div></div>
+        <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:#b3a892; padding:8px 2px 2px;">Yesterday</div>
+        <div style="background:#fffdf8; border:1px solid #e6dcc8; border-radius:12px; padding:12px 14px;"><div style="font-family:'Geist',sans-serif; font-size:14px; font-weight:600; color:#221d18;">Meal prep for the week</div><div style="font-family:'Geist',sans-serif; font-size:12.5px; color:#8a8073; margin-top:2px;">Five lunches from the pantry…</div></div>
+        <div style="background:#fffdf8; border:1px solid #e6dcc8; border-radius:12px; padding:12px 14px;"><div style="font-family:'Geist',sans-serif; font-size:14px; font-weight:600; color:#221d18;">Rice cooker ratios</div><div style="font-family:'Geist',sans-serif; font-size:12.5px; color:#8a8073; margin-top:2px;">Jasmine, 1 to 1.25…</div></div>
+      </div>
+      <div style="flex-shrink:0; height:22px; display:flex; align-items:center; justify-content:center;"><div style="width:128px; height:5px; border-radius:3px; background:#d8cdb8;"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 4 · EDIT ITEM ============ -->
+<div style="position:absolute; left:1440px; top:150px; width:390px;">
+  <div data-drags-parent="1" style="font-family:'Geist',sans-serif; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#8a8073; font-weight:600; margin-bottom:12px;">4 · Edit item — sheet</div>
+  <div data-screen-label="Edit Item" style="width:390px; height:844px; background:#f6f1e7; border-radius:42px; box-shadow:0 8px 34px rgba(34,29,24,.18); border:1px solid #e6dcc8; overflow:hidden; display:flex; flex-direction:column; position:relative;">
+    <div style="position:absolute; inset:0; display:flex; flex-direction:column;"><div style="height:96px; background:#f6f1e7;"></div><div style="flex:1; background:#f6f1e7;"></div></div>
+    <div style="position:absolute; inset:0; background:rgba(28,24,19,.46);"></div>
+    <div style="position:absolute; left:0; right:0; bottom:0; background:#f6f1e7; border-radius:26px 26px 0 0; box-shadow:0 -6px 30px rgba(28,24,19,.24); display:flex; flex-direction:column; padding:11px 22px 26px;">
+      <div style="flex-shrink:0; padding:0 0 14px; display:flex; justify-content:center;"><div style="width:42px; height:5px; border-radius:3px; background:#d8cdb8;"></div></div>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;"><h2 style="margin:0; font-family:'Spectral',serif; font-size:24px; font-weight:600; color:#221d18; letter-spacing:-0.01em;">Edit ingredient</h2><button style="width:34px; height:34px; border:none; border-radius:50%; background:#e8dfcd; font-size:14px; color:#6b6457; cursor:pointer;">✕</button></div>
+      <label style="display:block; font-family:'Geist Mono',monospace; font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase; color:#9a8f7e; margin-bottom:7px;">Name</label>
+      <input value="Butter" style="width:100%; border:1px solid #e0d4bf; background:#fffdf8; border-radius:12px; padding:13px 14px; font-family:'Geist',sans-serif; font-size:15px; color:#221d18; outline:none; margin-bottom:18px;" />
+      <label style="display:block; font-family:'Geist Mono',monospace; font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase; color:#9a8f7e; margin-bottom:7px;">Quantity</label>
+      <input value="1 stick" style="width:100%; border:1.5px solid #c8492f; background:#fffdf8; border-radius:12px; padding:13px 14px; font-family:'Geist',sans-serif; font-size:15px; color:#221d18; outline:none; margin-bottom:28px;" />
+      <button style="width:100%; border:none; border-radius:13px; background:#c8492f; color:#fff; padding:14px; font-family:'Geist',sans-serif; font-size:15px; font-weight:600; cursor:pointer; margin-bottom:10px;">Save changes</button>
+      <button style="width:100%; border:none; border-radius:13px; background:transparent; color:#a23a2a; padding:12px; font-family:'Geist',sans-serif; font-size:14.5px; font-weight:600; cursor:pointer;">Remove from pantry</button>
+      <div style="flex-shrink:0; height:8px;"></div>
+      <div style="flex-shrink:0; display:flex; align-items:center; justify-content:center;"><div style="width:128px; height:5px; border-radius:3px; background:#d8cdb8;"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 5 · CHAT EMPTY (NEW USER) ============ -->
+<div style="position:absolute; left:60px; top:1090px; width:390px;">
+  <div data-drags-parent="1" style="font-family:'Geist',sans-serif; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#8a8073; font-weight:600; margin-bottom:12px;">5 · Chat — empty (new user)</div>
+  <div data-screen-label="Chat Empty" style="width:390px; height:844px; background:#f6f1e7; border-radius:42px; box-shadow:0 8px 34px rgba(34,29,24,.18); border:1px solid #e6dcc8; overflow:hidden; display:flex; flex-direction:column;">
+    <div style="flex-shrink:0; height:50px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; background:#fffdf8;"><span style="font-family:'Geist',sans-serif; font-size:15px; font-weight:600; color:#221d18;">9:41</span><div style="display:flex; align-items:center; gap:6px; font-size:13px; color:#221d18;"><span>▦</span><span>◗</span><span style="font-size:11px;">▮▮▮</span></div></div>
+    <div style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:9px 18px 12px; background:#fffdf8; border-bottom:1px solid #e6dcc8; position:relative;">
+      <button style="width:38px; height:38px; border:none; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; padding:0;"><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span></button>
+      <span style="font-family:'Spectral',serif; font-weight:600; font-size:21px; color:#221d18; letter-spacing:-0.01em; position:absolute; left:50%; transform:translateX(-50%);">Mise</span>
+      <div style="width:34px; height:34px; border-radius:50%; background:#e6dcc8; display:flex; align-items:center; justify-content:center; font-family:'Geist',sans-serif; font-size:13px; font-weight:600; color:#544c41;">A</div>
+    </div>
+    <div style="flex-shrink:0; display:flex; align-items:center; gap:8px; padding:11px 18px; background:#f1ead9; border-bottom:1px solid #e6dcc8;">
+      <span style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:#9a8f7e;">Pantry empty</span>
+      <div style="display:flex; align-items:center; gap:6px; height:30px; padding:0 13px; border-radius:999px; background:#fffdf8; border:1px dashed #c9bda4;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6b6457" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg><span style="font-family:'Geist',sans-serif; font-size:12.5px; font-weight:500; color:#544c41;">Add ingredients</span></div>
+    </div>
+    <div style="flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:28px 36px; gap:16px;">
+      <div style="width:76px; height:76px; border-radius:22px; background:#1c1813; display:flex; align-items:center; justify-content:center; font-family:'Spectral',serif; font-weight:600; font-size:42px; color:#c8492f;">M</div>
+      <h2 style="margin:0; font-family:'Spectral',serif; font-size:27px; font-weight:600; color:#221d18; letter-spacing:-0.01em; line-height:1.15;">Let's stock your kitchen</h2>
+      <p style="margin:0; font-family:'Geist',sans-serif; font-size:14.5px; color:#8a8073; line-height:1.5; max-width:255px;">Add a few things you've got on hand and I'll tell you what to cook tonight.</p>
+      <button style="margin-top:4px; border:none; border-radius:13px; background:#c8492f; color:#fff; padding:13px 22px; font-family:'Geist',sans-serif; font-size:14.5px; font-weight:600; cursor:pointer;">Add your first ingredient</button>
+    </div>
+    <div style="flex-shrink:0; padding:10px 16px;">
+      <div style="display:flex; align-items:center; gap:8px; background:#fffdf8; box-shadow:0 2px 12px rgba(34,29,24,.06); border-radius:999px; padding:6px; opacity:.55;">
+        <button style="flex-shrink:0; width:38px; height:38px; border:none; border-radius:50%; background:#f1ead9; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9a8f7e" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg></button>
+        <input placeholder="Message Mise…" style="flex:1; min-width:0; border:none; background:transparent; font-family:'Geist',sans-serif; font-size:14.5px; color:#221d18; outline:none;" />
+        <button style="flex-shrink:0; width:42px; height:42px; border:none; border-radius:50%; background:#dccdb8; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="6"/><polyline points="6 12 12 6 18 12"/></svg></button>
+      </div>
+    </div>
+    <div style="flex-shrink:0; height:22px; display:flex; align-items:center; justify-content:center;"><div style="width:128px; height:5px; border-radius:3px; background:#d8cdb8;"></div></div>
+  </div>
+</div>
+
+<!-- ============ 6 · PANTRY EMPTY ============ -->
+<div style="position:absolute; left:520px; top:1090px; width:390px;">
+  <div data-drags-parent="1" style="font-family:'Geist',sans-serif; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#8a8073; font-weight:600; margin-bottom:12px;">6 · Pantry — empty</div>
+  <div data-screen-label="Pantry Empty" style="width:390px; height:844px; background:#f6f1e7; border-radius:42px; box-shadow:0 8px 34px rgba(34,29,24,.18); border:1px solid #e6dcc8; overflow:hidden; display:flex; flex-direction:column; position:relative;">
+    <div style="position:absolute; inset:0; display:flex; flex-direction:column;"><div style="height:50px; background:#fffdf8;"></div><div style="height:62px; background:#fffdf8; border-bottom:1px solid #e6dcc8;"></div><div style="flex:1; background:#f6f1e7;"></div></div>
+    <div style="position:absolute; inset:0; background:rgba(28,24,19,.40);"></div>
+    <div style="position:absolute; left:0; right:0; bottom:0; top:96px; background:#f6f1e7; border-radius:26px 26px 0 0; box-shadow:0 -6px 30px rgba(28,24,19,.22); display:flex; flex-direction:column; overflow:hidden;">
+      <div style="flex-shrink:0; padding:11px 0 4px; display:flex; justify-content:center;"><div style="width:42px; height:5px; border-radius:3px; background:#d8cdb8;"></div></div>
+      <div style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:8px 22px 14px;"><div><h2 style="margin:0; font-family:'Spectral',serif; font-size:26px; font-weight:600; color:#221d18; letter-spacing:-0.01em;">My Pantry</h2><p style="margin:2px 0 0; font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:0.04em; text-transform:uppercase; color:#9a8f7e;">0 items</p></div><button style="width:34px; height:34px; border:none; border-radius:50%; background:#e8dfcd; font-size:14px; color:#6b6457; cursor:pointer;">✕</button></div>
+      <div style="flex-shrink:0; padding:0 22px 16px; display:flex; gap:8px;">
+        <input placeholder="Ingredient" style="flex:1; min-width:0; border:1.5px solid #c8492f; background:#fffdf8; border-radius:12px; padding:11px 13px; font-family:'Geist',sans-serif; font-size:14px; color:#221d18; outline:none;" />
+        <input placeholder="Qty" style="width:70px; border:1px solid #e0d4bf; background:#fffdf8; border-radius:12px; padding:11px 11px; font-family:'Geist',sans-serif; font-size:14px; color:#221d18; outline:none;" />
+        <button style="flex-shrink:0; border:none; border-radius:12px; background:#c8492f; color:#fff; padding:0 16px; font-family:'Geist',sans-serif; font-size:14px; font-weight:600; cursor:pointer;">Add</button>
+      </div>
+      <div style="flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px 40px; gap:13px;">
+        <div style="width:62px; height:62px; border-radius:50%; border:2px dashed #c9bda4; display:flex; align-items:center; justify-content:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b3a892" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg></div>
+        <div style="font-family:'Geist',sans-serif; font-size:15px; font-weight:600; color:#544c41;">Nothing here yet</div>
+        <div style="font-family:'Geist',sans-serif; font-size:13.5px; color:#9a8f7e; line-height:1.5; max-width:230px;">Type an ingredient above to start. Chicken, rice, olive oil, whatever's in your kitchen.</div>
+      </div>
+      <div style="flex-shrink:0; height:22px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 7 · CHAT TYPING ============ -->
+<div style="position:absolute; left:980px; top:1090px; width:390px;">
+  <div data-drags-parent="1" style="font-family:'Geist',sans-serif; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#8a8073; font-weight:600; margin-bottom:12px;">7 · Chat — Mise thinking</div>
+  <div data-screen-label="Chat Typing" style="width:390px; height:844px; background:#f6f1e7; border-radius:42px; box-shadow:0 8px 34px rgba(34,29,24,.18); border:1px solid #e6dcc8; overflow:hidden; display:flex; flex-direction:column;">
+    <div style="flex-shrink:0; height:50px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; background:#fffdf8;"><span style="font-family:'Geist',sans-serif; font-size:15px; font-weight:600; color:#221d18;">9:41</span><div style="display:flex; align-items:center; gap:6px; font-size:13px; color:#221d18;"><span>▦</span><span>◗</span><span style="font-size:11px;">▮▮▮</span></div></div>
+    <div style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:9px 18px 12px; background:#fffdf8; border-bottom:1px solid #e6dcc8; position:relative;">
+      <button style="width:38px; height:38px; border:none; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; padding:0;"><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span></button>
+      <span style="font-family:'Spectral',serif; font-weight:600; font-size:21px; color:#221d18; letter-spacing:-0.01em; position:absolute; left:50%; transform:translateX(-50%);">Mise</span>
+      <div style="display:flex; align-items:center; gap:8px;"><div style="display:flex; align-items:center; gap:5px; height:28px; padding:0 10px; border-radius:8px; background:#f1ead9; border:1px solid #e6dcc8;"><span style="font-family:'Geist Mono',monospace; font-size:13px; font-weight:600; color:#c8492f;">12</span><span style="font-family:'Geist Mono',monospace; font-size:8.5px; letter-spacing:0.04em; color:#9a8f7e;">DAYS</span></div><div style="width:34px; height:34px; border-radius:50%; background:#e6dcc8; display:flex; align-items:center; justify-content:center; font-family:'Geist',sans-serif; font-size:13px; font-weight:600; color:#544c41;">A</div></div>
+    </div>
+    <div class="hs" style="flex-shrink:0; display:flex; align-items:center; gap:8px; padding:11px 18px; background:#f1ead9; border-bottom:1px solid #e6dcc8; overflow-x:auto;">
+      <span style="flex-shrink:0; font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:#9a8f7e;">Pantry</span>
+      <div style="flex-shrink:0; display:flex; align-items:center; height:30px; padding:0 13px; border-radius:999px; background:#fffdf8; border:1px solid #e0d4bf; font-family:'Geist',sans-serif; font-size:12.5px; font-weight:500; color:#544c41;">Chicken thighs</div>
+      <div style="flex-shrink:0; display:flex; align-items:center; height:30px; padding:0 13px; border-radius:999px; background:#fffdf8; border:1px solid #e0d4bf; font-family:'Geist',sans-serif; font-size:12.5px; font-weight:500; color:#544c41;">Spinach</div>
+    </div>
+    <div style="flex:1; min-height:0; overflow:hidden; padding:20px 18px; display:flex; flex-direction:column; gap:14px;">
+      <div style="align-self:flex-end; max-width:82%; background:#221d18; color:#f6f1e7; border-radius:16px 16px 5px 16px; padding:11px 15px; font-family:'Geist',sans-serif; font-size:14.5px; line-height:1.5;">What can I make with the chicken and spinach?</div>
+      <div style="align-self:flex-start; display:flex; gap:6px; align-items:center; background:#fffdf8; box-shadow:0 1px 4px rgba(34,29,24,.07); border-radius:16px 16px 16px 5px; padding:15px 18px;"><span style="width:8px; height:8px; border-radius:50%; background:#c8492f;"></span><span style="width:8px; height:8px; border-radius:50%; background:#d8b5ab;"></span><span style="width:8px; height:8px; border-radius:50%; background:#e6dcc8;"></span></div>
+      <div style="align-self:center; font-family:'Geist Mono',monospace; font-size:10.5px; letter-spacing:0.05em; text-transform:uppercase; color:#b3a892;">Mise is thinking</div>
+    </div>
+    <div style="flex-shrink:0; padding:10px 16px;">
+      <div style="display:flex; align-items:center; gap:8px; background:#fffdf8; box-shadow:0 2px 12px rgba(34,29,24,.08); border-radius:999px; padding:6px;">
+        <button style="flex-shrink:0; width:38px; height:38px; border:none; border-radius:50%; background:#f1ead9; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b6457" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg></button>
+        <input placeholder="Message Mise…" style="flex:1; min-width:0; border:none; background:transparent; font-family:'Geist',sans-serif; font-size:14.5px; color:#221d18; outline:none;" />
+        <button style="flex-shrink:0; width:38px; height:38px; border:none; border-radius:50%; background:#f1ead9; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b6457" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/></svg></button>
+        <button style="flex-shrink:0; width:42px; height:42px; border:none; border-radius:50%; background:#c8492f; display:flex; align-items:center; justify-content:center; cursor:pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="6"/><polyline points="6 12 12 6 18 12"/></svg></button>
+      </div>
+    </div>
+    <div style="flex-shrink:0; height:22px; display:flex; align-items:center; justify-content:center;"><div style="width:128px; height:5px; border-radius:3px; background:#d8cdb8;"></div></div>
+  </div>
+</div>
+
+<!-- ============ 8 · ERROR ============ -->
+<div style="position:absolute; left:1440px; top:1090px; width:390px;">
+  <div data-drags-parent="1" style="font-family:'Geist',sans-serif; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#8a8073; font-weight:600; margin-bottom:12px;">8 · Error — session timed out</div>
+  <div data-screen-label="Error" style="width:390px; height:844px; background:#f6f1e7; border-radius:42px; box-shadow:0 8px 34px rgba(34,29,24,.18); border:1px solid #e6dcc8; overflow:hidden; display:flex; flex-direction:column;">
+    <div style="flex-shrink:0; height:50px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; background:#fffdf8;"><span style="font-family:'Geist',sans-serif; font-size:15px; font-weight:600; color:#221d18;">9:41</span><div style="display:flex; align-items:center; gap:6px; font-size:13px; color:#221d18;"><span>▦</span><span>◗</span><span style="font-size:11px;">▮▮▮</span></div></div>
+    <div style="flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:9px 18px 12px; background:#fffdf8; border-bottom:1px solid #e6dcc8; position:relative;">
+      <button style="width:38px; height:38px; border:none; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; padding:0;"><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span><span style="width:17px; height:2px; background:#544c41; border-radius:2px;"></span></button>
+      <span style="font-family:'Spectral',serif; font-weight:600; font-size:21px; color:#221d18; letter-spacing:-0.01em; position:absolute; left:50%; transform:translateX(-50%);">Mise</span>
+      <div style="width:34px; height:34px; border-radius:50%; background:#e6dcc8; display:flex; align-items:center; justify-content:center; font-family:'Geist',sans-serif; font-size:13px; font-weight:600; color:#544c41;">A</div>
+    </div>
+    <div style="flex-shrink:0; margin:14px 16px 0; background:#fffdf8; border:1px solid #e6c4ba; border-radius:16px; padding:16px; display:flex; gap:13px; align-items:flex-start; box-shadow:0 2px 10px rgba(34,29,24,.06);">
+      <div style="flex-shrink:0; width:28px; height:28px; border-radius:50%; background:#c8492f; color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Spectral',serif; font-size:17px; font-weight:600;">!</div>
+      <div style="flex:1;"><div style="font-family:'Geist',sans-serif; font-size:14.5px; font-weight:600; color:#221d18;">Your session timed out</div><div style="font-family:'Geist',sans-serif; font-size:13px; color:#8a8073; margin-top:2px; line-height:1.45;">Sign back in and you'll pick up right where you left off.</div><button style="margin-top:12px; border:none; border-radius:10px; background:#c8492f; color:#fff; padding:9px 16px; font-family:'Geist',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer;">Sign in again</button></div>
+    </div>
+    <div style="flex:1; min-height:0; overflow:hidden; padding:18px; display:flex; flex-direction:column; gap:13px; opacity:.4;">
+      <div style="align-self:flex-start; max-width:82%; background:#fffdf8; box-shadow:0 1px 4px rgba(34,29,24,.07); border-radius:16px 16px 16px 5px; padding:11px 15px; font-family:'Geist',sans-serif; font-size:14.5px; color:#221d18;">Here's a quick weeknight idea using your chicken…</div>
+      <div style="align-self:flex-end; max-width:60%; height:30px; background:#dcd3c2; border-radius:16px 16px 5px 16px;"></div>
+    </div>
+    <div style="flex-shrink:0; padding:10px 16px;">
+      <div style="display:flex; align-items:center; gap:8px; background:#efe9dd; border-radius:999px; padding:6px; opacity:.6;">
+        <button style="flex-shrink:0; width:38px; height:38px; border:none; border-radius:50%; background:#e2dccd; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9a8f7e" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="18"/><line x1="6" y1="12" x2="18" y2="12"/></svg></button>
+        <input placeholder="Message Mise…" disabled style="flex:1; min-width:0; border:none; background:transparent; font-family:'Geist',sans-serif; font-size:14.5px; color:#a59e8f; outline:none;" />
+        <button style="flex-shrink:0; width:42px; height:42px; border:none; border-radius:50%; background:#dccdb8; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="6"/><polyline points="6 12 12 6 18 12"/></svg></button>
+      </div>
+    </div>
+    <div style="flex-shrink:0; height:22px; display:flex; align-items:center; justify-content:center;"><div style="width:128px; height:5px; border-radius:3px; background:#d8cdb8;"></div></div>
+  </div>
+</div>
+
+</x-dc>
+</body>
+</html>

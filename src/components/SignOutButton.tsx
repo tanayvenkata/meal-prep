@@ -14,7 +14,7 @@ export default function SignOutButton() {
   return (
     <button
       onClick={signOut}
-      className="text-sm text-gray-500 underline hover:text-black"
+      className="text-sm text-muted hover:text-ink transition-colors"
     >
       Sign out
     </button>

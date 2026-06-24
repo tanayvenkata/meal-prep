@@ -30,10 +30,10 @@ export async function addItem(userId: string, name: string, quantity: string): P
   return item;
 }
 
-export async function updateItem(userId: string, id: number, quantity: string): Promise<Item> {
+export async function updateItem(userId: string, id: number, quantity: string, name?: string): Promise<Item> {
   const [item] = await sql<Item[]>`
     update items
-    set quantity = ${quantity}
+    set quantity = ${quantity}${name !== undefined ? sql`, name = ${name}` : sql``}
     where id = ${id} and user_id = ${userId}
     returning *
   `;

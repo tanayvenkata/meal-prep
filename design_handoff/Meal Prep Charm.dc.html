@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <meta name="design_doc_mode" content="canvas">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+  </style>
+</helmet>
+
+<!-- TITLE -->
+<div style="position:absolute; left:60px; top:34px; width:1000px;">
+  <div style="font-family:'Spectral',serif; font-size:34px; font-weight:600; color:#221d18; letter-spacing:-0.01em;">Charm & character</div>
+  <div style="font-family:'Geist',sans-serif; font-size:14px; color:#8a8073; margin-top:4px;">The sous-chef persona (informs every line) + Cooking Wrapped, the shareable north star that defines what we log.</div>
+</div>
+
+<!-- ============ CHARACTER CARD ============ -->
+<div style="position:absolute; left:60px; top:140px; width:470px;">
+  <div data-drags-parent="1" style="font-family:'Geist',sans-serif; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8a8073; font-weight:600; margin-bottom:12px;">The character</div>
+  <div style="width:470px; background:#f6f1e7; border-radius:16px; box-shadow:0 4px 24px rgba(34,29,24,.12); overflow:hidden;">
+
+    <!-- meet mise -->
+    <div style="padding:28px 30px 24px; display:flex; align-items:center; gap:18px; border-bottom:1px solid #e6dcc8;">
+      <div style="flex-shrink:0; width:74px; height:74px; border-radius:20px; background:#1c1813; display:flex; align-items:center; justify-content:center; font-family:'Spectral',serif; font-weight:600; font-size:40px; color:#c8492f;">M</div>
+      <div>
+        <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#9a8f7e;">Your sous-chef</div>
+        <div style="font-family:'Spectral',serif; font-size:32px; font-weight:600; color:#221d18; line-height:1; margin-top:4px;">Mise</div>
+        <div style="font-family:'Geist',sans-serif; font-size:13px; color:#5c6b3f; font-weight:600; margin-top:6px;">/meez/ · from <i>mise en place</i></div>
+      </div>
+    </div>
+
+    <!-- personality -->
+    <div style="padding:22px 30px; border-bottom:1px solid #e6dcc8;">
+      <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#9a8f7e; margin-bottom:12px;">Personality</div>
+      <div style="display:flex; flex-wrap:wrap; gap:7px;">
+        <span style="font-family:'Geist',sans-serif; font-size:13px; font-weight:500; color:#221d18; background:#fffdf8; border:1px solid #e0d4bf; border-radius:999px; padding:6px 13px;">Sharp, never mean</span>
+        <span style="font-family:'Geist',sans-serif; font-size:13px; font-weight:500; color:#221d18; background:#fffdf8; border:1px solid #e0d4bf; border-radius:999px; padding:6px 13px;">Hypes your wins</span>
+        <span style="font-family:'Geist',sans-serif; font-size:13px; font-weight:500; color:#221d18; background:#fffdf8; border:1px solid #e0d4bf; border-radius:999px; padding:6px 13px;">Has opinions</span>
+        <span style="font-family:'Geist',sans-serif; font-size:13px; font-weight:500; color:#221d18; background:#fffdf8; border:1px solid #e0d4bf; border-radius:999px; padding:6px 13px;">Hates waste</span>
+        <span style="font-family:'Geist',sans-serif; font-size:13px; font-weight:500; color:#221d18; background:#fffdf8; border:1px solid #e0d4bf; border-radius:999px; padding:6px 13px;">Brief by default</span>
+      </div>
+    </div>
+
+    <!-- voice: does / reacts -->
+    <div style="padding:22px 30px; display:flex; flex-direction:column; gap:14px;">
+      <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#9a8f7e;">How Mise reacts</div>
+
+      <div>
+        <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:#5c6b3f; margin-bottom:5px;">Empty fridge</div>
+        <div style="background:#fffdf8; box-shadow:0 1px 3px rgba(34,29,24,.07); border-radius:12px 12px 12px 4px; padding:10px 14px; font-family:'Geist',sans-serif; font-size:13.5px; color:#221d18; line-height:1.45;">"Two eggs and a hopeful onion. We can do something with that, but barely. Add a few things?"</div>
+      </div>
+      <div>
+        <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:#5c6b3f; margin-bottom:5px;">Streak milestone</div>
+        <div style="background:#fffdf8; box-shadow:0 1px 3px rgba(34,29,24,.07); border-radius:12px 12px 12px 4px; padding:10px 14px; font-family:'Geist',sans-serif; font-size:13.5px; color:#221d18; line-height:1.45;">"14 nights straight. Most people tap out by day 3. Keep going."</div>
+      </div>
+      <div>
+        <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:#5c6b3f; margin-bottom:5px;">Cuisine streak</div>
+        <div style="background:#fffdf8; box-shadow:0 1px 3px rgba(34,29,24,.07); border-radius:12px 12px 12px 4px; padding:10px 14px; font-family:'Geist',sans-serif; font-size:13.5px; color:#221d18; line-height:1.45;">"Thailand twice this week. That green curry's turning into your signature. Want to lean in?"</div>
+      </div>
+    </div>
+
+    <!-- never -->
+    <div style="padding:16px 30px 24px; background:#efe7d6;">
+      <div style="font-family:'Geist Mono',monospace; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#9a8f7e; margin-bottom:6px;">Never</div>
+      <div style="font-family:'Geist',sans-serif; font-size:13px; color:#544c41; line-height:1.5;">Em dashes. "It's not X, it's Y." "You're not X, you're Y." "Great question!" Emoji spam. Mise writes like a person texting, not an AI.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ COOKING WRAPPED (share card) ============ -->
+<div style="position:absolute; left:600px; top:140px; width:380px;">
+  <div data-drags-parent="1" style="font-family:'Geist',sans-serif; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8a8073; font-weight:600; margin-bottom:12px;">Cooking Wrapped — June (shareable)</div>
+  <div data-screen-label="Cooking Wrapped" style="width:380px; background:#1c1813; border-radius:24px; box-shadow:0 12px 40px rgba(0,0,0,.32); overflow:hidden; padding:0;">
+
+    <!-- ticket header -->
+    <div style="padding:26px 28px 20px; border-bottom:1.5px dashed #3a3428; display:flex; align-items:center; justify-content:space-between;">
+      <div>
+        <div style="font-family:'Geist Mono',monospace; font-size:11px; letter-spacing:0.12em; color:#8d8678;">MEAL PREP · WRAPPED</div>
+        <div style="font-family:'Spectral',serif; font-size:34px; font-weight:600; color:#f2ede2; line-height:1; margin-top:6px;">June, cooked.</div>
+      </div>
+      <div style="width:40px; height:40px; border-radius:11px; background:#c8492f; display:flex; align-items:center; justify-content:center; font-family:'Spectral',serif; font-weight:600; font-size:22px; color:#fff;">M</div>
+    </div>
+
+    <!-- hero stat -->
+    <div style="padding:26px 28px 14px; text-align:center;">
+      <div style="font-family:'Geist Mono',monospace; font-size:72px; font-weight:600; color:#c8492f; line-height:0.9; letter-spacing:-0.02em;">23</div>
+      <div style="font-family:'Geist Mono',monospace; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8d8678; margin-top:8px;">dishes from your own pantry</div>
+    </div>
+
+    <!-- secondary stats -->
+    <div style="padding:6px 28px 20px; display:flex; gap:10px;">
+      <div style="flex:1; background:#262017; border-radius:12px; padding:13px; text-align:center;">
+        <div style="font-family:'Geist Mono',monospace; font-size:26px; font-weight:600; color:#f2ede2; line-height:1;">14</div>
+        <div style="font-family:'Geist Mono',monospace; font-size:9.5px; letter-spacing:0.05em; text-transform:uppercase; color:#8d8678; margin-top:5px;">best streak</div>
+      </div>
+      <div style="flex:1; background:#262017; border-radius:12px; padding:13px; text-align:center;">
+        <div style="font-family:'Geist Mono',monospace; font-size:26px; font-weight:600; color:#f2ede2; line-height:1;">6</div>
+        <div style="font-family:'Geist Mono',monospace; font-size:9.5px; letter-spacing:0.05em; text-transform:uppercase; color:#8d8678; margin-top:5px;">cuisines</div>
+      </div>
+      <div style="flex:1; background:#262017; border-radius:12px; padding:13px; text-align:center;">
+        <div style="font-family:'Geist Mono',monospace; font-size:26px; font-weight:600; color:#f2ede2; line-height:1;">9h</div>
+        <div style="font-family:'Geist Mono',monospace; font-size:9.5px; letter-spacing:0.05em; text-transform:uppercase; color:#8d8678; margin-top:5px;">at the stove</div>
+      </div>
+    </div>
+
+    <!-- top 4 -->
+    <div style="padding:4px 28px 18px;">
+      <div style="font-family:'Geist Mono',monospace; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#5c6b3f; margin-bottom:11px;">Your top 4</div>
+      <div style="display:flex; flex-direction:column; gap:9px;">
+        <div style="display:flex; align-items:center; gap:12px;"><span style="font-family:'Spectral',serif; font-size:20px; font-weight:600; color:#c8492f; width:18px;">1</span><span style="flex:1; font-family:'Geist',sans-serif; font-size:14px; color:#f2ede2;">Green curry chicken</span><span style="font-family:'Geist Mono',monospace; font-size:11px; color:#8d8678;">×4</span></div>
+        <div style="display:flex; align-items:center; gap:12px;"><span style="font-family:'Spectral',serif; font-size:20px; font-weight:600; color:#a59e8f; width:18px;">2</span><span style="flex:1; font-family:'Geist',sans-serif; font-size:14px; color:#f2ede2;">Garlic butter chicken</span><span style="font-family:'Geist Mono',monospace; font-size:11px; color:#8d8678;">×3</span></div>
+        <div style="display:flex; align-items:center; gap:12px;"><span style="font-family:'Spectral',serif; font-size:20px; font-weight:600; color:#a59e8f; width:18px;">3</span><span style="flex:1; font-family:'Geist',sans-serif; font-size:14px; color:#f2ede2;">Shakshuka</span><span style="font-family:'Geist Mono',monospace; font-size:11px; color:#8d8678;">×2</span></div>
+        <div style="display:flex; align-items:center; gap:12px;"><span style="font-family:'Spectral',serif; font-size:20px; font-weight:600; color:#a59e8f; width:18px;">4</span><span style="flex:1; font-family:'Geist',sans-serif; font-size:14px; color:#f2ede2;">Fried rice, clean-out style</span><span style="font-family:'Geist Mono',monospace; font-size:11px; color:#8d8678;">×2</span></div>
+      </div>
+    </div>
+
+    <!-- passport stamps -->
+    <div style="padding:4px 28px 20px;">
+      <div style="font-family:'Geist Mono',monospace; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:#5c6b3f; margin-bottom:11px;">Passport this month</div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        <span style="font-family:'Geist Mono',monospace; font-size:11px; color:#f2ede2; border:1px solid #4a4232; border-radius:7px; padding:5px 10px; transform:rotate(-2deg);">THAILAND</span>
+        <span style="font-family:'Geist Mono',monospace; font-size:11px; color:#f2ede2; border:1px solid #4a4232; border-radius:7px; padding:5px 10px; transform:rotate(1.5deg);">ITALY</span>
+        <span style="font-family:'Geist Mono',monospace; font-size:11px; color:#f2ede2; border:1px solid #4a4232; border-radius:7px; padding:5px 10px; transform:rotate(-1deg);">MEXICO</span>
+        <span style="font-family:'Geist Mono',monospace; font-size:11px; color:#f2ede2; border:1px solid #4a4232; border-radius:7px; padding:5px 10px; transform:rotate(2deg);">INDIA</span>
+        <span style="font-family:'Geist Mono',monospace; font-size:11px; color:#f2ede2; border:1px solid #4a4232; border-radius:7px; padding:5px 10px; transform:rotate(-1.5deg);">JAPAN</span>
+        <span style="font-family:'Geist Mono',monospace; font-size:11px; color:#f2ede2; border:1px solid #4a4232; border-radius:7px; padding:5px 10px; transform:rotate(1deg);">MOROCCO</span>
+      </div>
+    </div>
+
+    <!-- mise's note -->
+    <div style="margin:0 20px 20px; background:#262017; border-radius:14px; padding:16px 18px;">
+      <div style="font-family:'Geist Mono',monospace; font-size:10px; letter-spacing:0.05em; text-transform:uppercase; color:#c8492f; margin-bottom:7px;">Mise's note</div>
+      <div style="font-family:'Spectral',serif; font-style:italic; font-size:16px; color:#f2ede2; line-height:1.45;">"International June. Green curry four times, officially your dish now. Same time next month?"</div>
+    </div>
+
+    <!-- share footer -->
+    <div style="padding:0 20px 22px; display:flex; gap:10px;">
+      <button style="flex:1; border:none; border-radius:12px; background:#c8492f; color:#fff; padding:13px; font-family:'Geist',sans-serif; font-size:14px; font-weight:600; cursor:pointer;">Share June</button>
+      <button style="flex-shrink:0; border:1px solid #4a4232; border-radius:12px; background:transparent; color:#f2ede2; padding:13px 16px; font-family:'Geist',sans-serif; font-size:14px; font-weight:600; cursor:pointer;">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- yearly + notification angle -->
+<div style="position:absolute; left:1030px; top:140px; width:330px;">
+  <div data-drags-parent="1" style="font-family:'Geist',sans-serif; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:#8a8073; font-weight:600; margin-bottom:12px;">Monthly → yearly · the loop</div>
+
+  <!-- notification -->
+  <div style="background:#fffdf8; border:1px solid #e6dcc8; border-radius:16px; box-shadow:0 4px 18px rgba(34,29,24,.1); padding:15px 17px; margin-bottom:18px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:9px;">
+      <div style="width:30px; height:30px; border-radius:8px; background:#1c1813; display:flex; align-items:center; justify-content:center; font-family:'Spectral',serif; font-weight:600; font-size:16px; color:#c8492f;">M</div>
+      <span style="font-family:'Geist',sans-serif; font-size:12px; font-weight:600; color:#221d18;">Meal Prep</span>
+      <span style="font-family:'Geist Mono',monospace; font-size:10px; color:#9a8f7e; margin-left:auto;">now</span>
+    </div>
+    <div style="font-family:'Geist',sans-serif; font-size:13.5px; color:#221d18; line-height:1.5;"><b>Your June Wrapped is ready.</b> 23 dishes, 6 cuisines, a 14-day streak. Mise has thoughts.</div>
+  </div>
+
+  <!-- cook-with-x nudge -->
+  <div style="background:#fffdf8; border:1px solid #e6dcc8; border-radius:16px; box-shadow:0 4px 18px rgba(34,29,24,.1); padding:15px 17px; margin-bottom:18px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:9px;">
+      <div style="width:30px; height:30px; border-radius:8px; background:#1c1813; display:flex; align-items:center; justify-content:center; font-family:'Spectral',serif; font-weight:600; font-size:16px; color:#c8492f;">M</div>
+      <span style="font-family:'Geist',sans-serif; font-size:12px; font-weight:600; color:#221d18;">Meal Prep</span>
+      <span style="font-family:'Geist Mono',monospace; font-size:10px; color:#9a8f7e; margin-left:auto;">5:30 pm</span>
+    </div>
+    <div style="font-family:'Geist',sans-serif; font-size:13.5px; color:#221d18; line-height:1.5;">That chicken's on day 3. Cook it tonight and keep the streak at 15?</div>
+  </div>
+
+  <div style="background:#fef4a8; padding:16px 18px; font-family:'Geist',sans-serif; font-size:12.5px; line-height:1.55; color:#5a5224; box-shadow:0 1px 3px rgba(0,0,0,.12); transform:rotate(-0.8deg);"><b>Yearly = the same card, scaled up.</b> Same system, bigger numbers, a "dish of the year." Build the monthly engine once; yearly is free. And every stat here is a <b>column you must log from dish #1</b> — cuisine, count, time, taste. That's why we design Wrapped before finalizing the loop.</div>
+</div>
+
+</x-dc>
+</body>
+</html>
