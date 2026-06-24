@@ -52,11 +52,14 @@ This is a **learning project first, product second.** Not trying to make money.
 - [x] **M5 — Auth + per-user pantry.** DONE + DEPLOYED. Supabase Auth (email/password). Each
       user has their own pantry. JWT verified on every API request. RLS enabled on `items` table.
       `supabase.ts` boundary + `login/page.tsx` + `SignOutButton` in layout. M3 open door closed.
-- [ ] **M5.5 — Tests.** IN PROGRESS. 26 tests across 4 files so far. Vitest.
-      ✅ API route tests (mock db+auth, test 3 zones: auth gate, input validation, happy path)
-      ✅ db.ts integration tests (real local Postgres via Supabase CLI, SQL correctness + user isolation)
-      ✅ helpers/fixtures.ts for shared fake data (Rule of Three)
-      ⬜ Frontend component tests (not started)
+- [x] **M5.5 — Tests.** DONE. 32 tests across 6 files. Vitest.
+      ✅ API route tests — pantry/recipes/chat, 3 zones each (auth gate, input validation, happy path)
+      ✅ db.ts integration tests — real local Postgres, SQL correctness + user isolation
+      ✅ auth.ts tests — 3 outcomes of getUserId (no token, valid token, token but no user)
+      ✅ middleware tests — 3 branches (public route, unauthenticated, authenticated)
+      ✅ helpers/fixtures.ts — shared fake data factories (Rule of Three)
+      ⬜ Frontend component tests — deliberately skipped (components too thin, redundant with route tests)
+      ⬜ E2E tests — deliberately skipped (app still evolving; add after M6)
 - [ ] **M6 — Voice mode.** Web Speech API (free, in-browser) first.
 - [ ] **M7 — Receipt scanning (OCR).** Evaluate if it's worth it by now.
 
@@ -154,6 +157,10 @@ This is a **learning project first, product second.** Not trying to make money.
 - **M5.5: db tests use real local Postgres via Supabase CLI** — `supabase start` boots local stack; `beforeAll` creates test users, `afterEach` wipes items, `afterAll` cleans users. No mocks at the db layer.
 - **M5.5: helpers/fixtures.ts for shared fake data** — extracted at Rule of Three (3 files reusing same Item shape). `vi.mock()` stays per-file (Vitest hoists it; can't be shared).
 - **M5.5: user isolation tested explicitly on updateItem + deleteItem** — write ops that take a row id can silently affect another user's data if `and user_id = $userId` is missing. Read ops and insert ops don't have this risk.
+- **M5.5: middleware tested by mocking `@supabase/ssr`** — same nested mock pattern as route tests; three branches: public route passthrough, unauthenticated redirect (with ?returnTo=), authenticated passthrough.
+- **M5.5: auth.ts mock defined before vi.mock() factory** — `getSupabase()` creates a fresh `createClient()` on every call; defining `mockGetUser` outside the factory and referencing it inside ensures all calls share the same mock function.
+- **M5.5: `npm test` = watch mode, `npm test -- --run` = run once** — watch mode for active development; --run for CI and one-off checks.
+- **M5.5: frontend + E2E deliberately skipped** — components are thin wrappers around API calls (redundant with route tests); E2E better after app stabilizes post-M6.
 - Unifying principle: *defer capability until the need is real; structure so adding it is cheap.*
 
 ## Current state
