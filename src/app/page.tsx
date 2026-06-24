@@ -5,6 +5,7 @@ export default function Home() {
     <ChatWindow
       title="Meal Prep Chat"
       apiRoute="/api/chat"
+      requiresAuth
       placeholder="What's in your fridge?"
       links={[
         { href: "/pantry", label: "My Pantry" },
