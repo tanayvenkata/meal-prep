@@ -66,16 +66,27 @@ This is a **learning project first, product second.** Not trying to make money.
       and sends manually (intentional — no accidental sends). Handles permission-denied,
       unsupported browsers, and WebKit start errors. No backend changes needed.
       `src/types/speech.d.ts` added for Web Speech API types.
+- [x] **M6.5 — Mise visual redesign.** DONE + DEPLOYED. Adopted Mise design system from
+      `design_handoff/` (generated via Claude Design). Warm color palette (Paper/Ink/Ember/Sand),
+      Spectral serif wordmark, ink user bubbles + surface assistant bubbles, pill input bar,
+      lucide icons (replaces emoji), sticky nav, loading skeleton on pantry, inline item editing
+      (replaces `prompt()`), auto-scroll to latest message, scrollbar hidden on chat.
+      `design_handoff/STATUS.md` tracks which of the 8 design screens are done vs deferred.
+      General chat dropped — `/api/recipes` (pantry-aware) is now the only chat and the landing page.
+      `updateItem` in `db.ts` extended to accept optional `name` so inline edit can rename ingredients.
+      Deferred: pantry as sheet over chat, history drawer, pantry pill strip, typing indicator
+      (all need nav model change or new backend — future milestones).
 - [ ] **M7 — Receipt scanning (OCR).** Evaluate if it's worth it by now.
 
 ## Architecture (current — the lightweight system design)
 
 ```
    BROWSER (frontend)          SERVER (backend)              ANTHROPIC
-   src/app/page.tsx            src/app/api/chat/route.ts     Claude
-   - text box                  - holds the SECRET api key    - the model
-   - message list              - calls the AI via ai.ts
-        |  POST /api/chat            |  stream                    |
+   src/app/page.tsx            src/app/api/recipes/route.ts  Claude
+   - ChatWindow component      - fetches pantry from DB      - the model
+   - message list              - builds system prompt
+   - pill input bar            - holds the SECRET api key
+        |  POST /api/recipes         |  stream                    |
         | ------------------------>  | -----------------------> |
         | <------ stream tokens ---- | <----- stream tokens ----|
 ```
@@ -166,7 +177,7 @@ This is a **learning project first, product second.** Not trying to make money.
 - **M5.5: auth.ts mock defined before vi.mock() factory** — `getSupabase()` creates a fresh `createClient()` on every call; defining `mockGetUser` outside the factory and referencing it inside ensures all calls share the same mock function.
 - **M5.5: `npm test` = watch mode, `npm test -- --run` = run once** — watch mode for active development; --run for CI and one-off checks.
 - **M5.5: frontend + E2E deliberately skipped** — components are thin wrappers around API calls (redundant with route tests); E2E better after app stabilizes post-M6.
-- **M5.5→M6: GitHub Actions CI** — `.github/workflows/ci.yml`; triggers on every push + PR to main. Runs lint → build → all 32 tests. Boots Supabase local stack in CI so db integration tests hit real Postgres. Ubuntu VM, Node 20, npm cache.
+- **M5.5→M6: GitHub Actions CI** — `.github/workflows/ci.yml`; triggers on every push + PR to main. Runs lint → build → all tests. Boots Supabase local stack in CI so db integration tests hit real Postgres. Ubuntu VM, Node 22, npm cache.
 - **M5.5→M6: Husky pre-commit + pre-push hooks** — pre-commit runs lint only (~3s, every commit); pre-push runs build + 26 unit tests (~30s, no Supabase needed). Defense in depth: catch errors on your machine before CI sees them.
 - **M5.5→M6: test:unit vs test:integration split** — `npm run test:unit` runs the 26 mock-based tests (no infrastructure); `npm run test:integration` runs the 6 db tests (needs `supabase start`). pre-push uses test:unit so it works without Supabase running locally.
 - **M5.5→M6: branch protection deferred** — requires GitHub Team plan for private repos. pre-push hook is the local gate; CI is the remote gate. Branch protection is the repo-level enforcement layer — add when repo goes public or plan upgrades.
@@ -174,18 +185,26 @@ This is a **learning project first, product second.** Not trying to make money.
 - **M6: `src/types/speech.d.ts` for Web Speech API types** — the Web Speech API isn't in TypeScript's default lib; a small `.d.ts` shim is the standard fix rather than casting to `any` everywhere.
 - **Post-M6: JSON error bodies on all routes** — `Response.json({ error: "..." }, { status })` instead of `new Response("text", { status })`. Frontend can always call `res.json()` without throwing; status codes remain correct for API consumers.
 - **Post-M6: frontend checks `res.status` before `res.json()`** — explicit status-code handling in `ChatWindow.tsx` means the user sees "Session expired — please sign in again" on a 401 instead of a raw parse error crashing silently.
+- **M6.5: Mise design system adopted from Claude Design handoff** — warm palette (Paper/Ink/Ember/Sand), Spectral serif wordmark, mobile-first visual language adapted for desktop column. Design files committed to `design_handoff/`; `STATUS.md` is the living tracker.
+- **M6.5: Mise visual style adapted to desktop, not pixel-faithful phone layout** — the handoff is phone mockups (390px); we adopted the visual language (colors, fonts, shapes) within the existing `max-w-2xl` centered column so it works on both laptop and mobile without a responsive rabbit hole.
+- **M6.5: `design_handoff/` committed to repo, excluded from ESLint** — design artifacts are documentation; they answer "why does it look like this?" for future sessions. `support.js` is a third-party Claude Design runtime, excluded via `eslint.config.mjs` globalIgnores.
+- **M6.5: color discipline — ember appears once per screen** — ember (`#c8492f`) is the primary action only (send button, Add button, CTA). User bubbles are ink (`#221d18`), not ember. Avoids visual noise; follows the spec's "one accent per screen" rule.
+- **M6.5: `scrollbar-hide` utility in globals.css** — hides the scrollbar track on the chat message div. Mobile browsers already hide scrollbars; desktop browsers show a permanent track by default. Two CSS rules (`scrollbar-width: none` for Firefox, `::-webkit-scrollbar { display: none }` for Chrome/Safari) handle both. Not a plugin — 2 lines of CSS.
+- **M6.5: `min-h-0` on the message list div** — flex children default to `min-height: auto`, meaning they grow to fit content and never scroll. `min-h-0` overrides this so the div can shrink below its content size and `overflow-y-auto` actually kicks in.
+- **M6.5: inline edit replaces `prompt()`** — `prompt()` is an unstyled browser dialog from the 90s; can't be styled, freezes the tab, off-brand. Inline edit row (controlled state: `editingId`, `editName`, `editQuantity`) is the standard pattern in real apps.
+- **M6.5: `updateItem` extended to accept optional `name`** — previously only updated quantity. Optional parameter is backwards-compatible; existing tests didn't change, new integration test added for the name-update branch.
+- **M6.5: lucide-react for icons, not emoji** — design spec says no emoji in product UI. `lucide-react` provides feather-style line icons at stroke ~2.2, matching the spec. `Mic` icon background color (ember vs pantry-strip) signals recording state — not the icon itself switching to `MicOff`.
 - Unifying principle: *defer capability until the need is real; structure so adding it is cheap.*
 
 ## Current state
 
-- **M1–M6 DONE & DEPLOYED.**
-- **Chat loop (M1/M2):** `src/lib/ai.ts` → `src/app/api/chat/route.ts` → `src/app/page.tsx`
-- **Pantry loop (M3):** `src/app/pantry/page.tsx` → `src/app/api/pantry/route.ts` → `src/lib/db.ts` → Supabase
-- **Recipe loop (M4):** `src/app/recipes/page.tsx` → `src/app/api/recipes/route.ts` → `db.ts` + `ai.ts`
-- **Auth (M5):** `src/lib/supabase.ts` → `login/page.tsx` + `SignOutButton` + JWT on all user-scoped routes
+- **M1–M6.5 DONE & DEPLOYED.**
+- **Chat loop:** `src/app/page.tsx` → `src/components/ChatWindow.tsx` → `src/app/api/recipes/route.ts` → `db.ts` + `ai.ts` → Claude (streamed back)
+- **Pantry loop:** `src/app/pantry/page.tsx` → `src/app/api/pantry/route.ts` → `src/lib/db.ts` → Supabase
+- **Auth:** `src/lib/auth.ts` `getUserId()` → JWT on all user-scoped routes; `middleware.ts` gates all routes except `/login`
+- **Design:** Mise design system; `design_handoff/STATUS.md` is the living tracker of what's built vs deferred
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
-- **Voice (M6):** mic button in `src/components/ChatWindow.tsx` via Web Speech API
-- **Next:** M7 receipt scanning (OCR) — evaluate whether it's worth it.
+- **Next:** M7 — evaluate receipt scanning (OCR) vs prioritising nav model (pantry sheet, history drawer).
 
 ## Known debt & gaps (things real apps have that we don't yet)
 
@@ -194,20 +213,20 @@ This is a **learning project first, product second.** Not trying to make money.
 - ⬜ **Input sanitization** — `name` is validated for existence but not length/content
 
 ### Reliability
-- ✅ **Error handling (API responses)** — `/api/chat` now returns `Response.json({ error: "..." }, { status: 401 })` instead of plain text. Consistent JSON bodies mean the frontend can always call `res.json()` safely.
+- ✅ **Error handling (API responses)** — all routes return `Response.json({ error: "..." }, { status })`. Consistent JSON bodies mean the frontend can always call `res.json()` safely.
 - ✅ **Error handling (frontend)** — `ChatWindow.tsx` checks `res.status === 401` explicitly and shows "Session expired — please sign in again" before attempting `res.json()`.
-- ⬜ **Loading states** — no spinner while pantry loads
-- ⬜ **Empty states** — pantry shows nothing with no message when empty
+- ✅ **Loading states** — pantry shows animated skeleton while fetching (no flash to empty state)
+- ✅ **Empty states** — pantry shows dashed circle prompt; chat shows M monogram + Spectral heading
 - ✅ **Auth redirect** — middleware gates all routes except `/login`; appends `?returnTo=` so users land where they were headed after login
-- ⬜ **Tests** — no unit or integration tests yet (highest value: API routes + db.ts functions)
+- ✅ **Tests** — 23 unit tests + 7 integration tests across routes, db, auth, middleware
 
 ### Observability
 - ⬜ **Error monitoring** — no Sentry or equivalent; silent failures in prod go unnoticed
 - ⬜ **Logging** — no structured server logs beyond what Vercel captures
 
 ### Developer experience
-- ✅ **Shared `auth.ts`** — `getUserId()` extracted to `src/lib/auth.ts`; all three API routes import from it
-- ⬜ **UI consistency** — pantry page uses inline `style={{}}`, chat/recipes use Tailwind `className`
+- ✅ **Shared `auth.ts`** — `getUserId()` extracted to `src/lib/auth.ts`; all API routes import from it
+- ✅ **UI consistency** — all pages on Tailwind, warm Mise tokens; no more inline `style={{}}`
 
 ### Future skills to learn (different domain, not urgent)
 - **Docker** — containerize the app so it runs the same everywhere; relevant when moving off Vercel
@@ -220,8 +239,8 @@ This is a **learning project first, product second.** Not trying to make money.
 - `npm run build` — production build
 - `npm run lint` — lint
 - `npm test` — run all tests in watch mode (requires local Supabase running for db.ts tests)
-- `npm run test:unit` — run 26 unit/mock tests only (no Supabase needed)
-- `npm run test:integration` — run 6 db integration tests only (requires Supabase running)
+- `npm run test:unit` — run 22 unit/mock tests only (no Supabase needed)
+- `npm run test:integration` — run 7 db integration tests only (requires Supabase running)
 - `npm test -- --run` — run all tests once and exit
 
 ### Before running db.ts tests (once per dev session)
