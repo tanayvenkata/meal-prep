@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import { Mic, ArrowUp } from "lucide-react";
+import { Mic, ArrowUp, Square } from "lucide-react";
 import type { ChatMessage } from "@/lib/ai";
 import { supabase } from "@/lib/supabase";
 
@@ -21,15 +21,25 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [reply, setReply] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, reply]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && isLoading) stopStreaming();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isLoading]);
 
   function toggleListening() {
     if (listening) {
@@ -74,8 +84,12 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
     }
   }
 
+  function stopStreaming() {
+    abortControllerRef.current?.abort();
+  }
+
   async function sendMessage() {
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
     if (listening) {
       recognitionRef.current?.stop();
       setListening(false);
@@ -89,6 +103,10 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
     setInput("");
     setReply("");
     setError(null);
+    setIsLoading(true);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (requiresAuth) {
@@ -96,13 +114,27 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
       if (token) headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(apiRoute, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ messages: newMessages }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(apiRoute, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ messages: newMessages }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if ((err as Error).name === "AbortError") {
+        setIsLoading(false);
+        setReply("");
+        return;
+      }
+      setError("Something went wrong");
+      setIsLoading(false);
+      return;
+    }
 
     if (!res.ok) {
+      setIsLoading(false);
       if (res.status === 401) {
         setError("Session expired — please sign out and sign in again");
         return;
@@ -133,11 +165,18 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
       }
       setMessages([...newMessages, { role: "assistant", content: full }]);
     } catch (err) {
-      console.error("stream error:", err);
-      setError("Response interrupted, please try again");
+      if ((err as Error).name !== "AbortError") {
+        console.error("stream error:", err);
+        setError("Response interrupted, please try again");
+      }
+      // AbortError: partial response stays in message list with a stopped indicator
+      if (full) {
+        setMessages([...newMessages, { role: "assistant", content: full + "\n\n*(stopped)*" }]);
+      }
     }
 
     setReply("");
+    setIsLoading(false);
   }
 
   const isEmpty = messages.length === 0 && !reply;
@@ -219,7 +258,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
           placeholder={placeholder}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onKeyDown={(e) => e.key === "Enter" && !isLoading && sendMessage()}
         />
         <button
           className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-colors ${
@@ -232,14 +271,24 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
         >
           <Mic size={16} strokeWidth={2.2} />
         </button>
-        <button
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-ember text-white hover:opacity-90 transition-opacity disabled:opacity-40"
-          onClick={sendMessage}
-          disabled={!input.trim()}
-          title="Send"
-        >
-          <ArrowUp size={18} strokeWidth={2.2} />
-        </button>
+        {isLoading ? (
+          <button
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-ember text-white hover:opacity-90 transition-opacity"
+            onClick={stopStreaming}
+            title="Stop"
+          >
+            <Square size={14} strokeWidth={2.2} fill="currentColor" />
+          </button>
+        ) : (
+          <button
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-ember text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+            onClick={sendMessage}
+            disabled={!input.trim()}
+            title="Send"
+          >
+            <ArrowUp size={18} strokeWidth={2.2} />
+          </button>
+        )}
       </div>
     </main>
   );
