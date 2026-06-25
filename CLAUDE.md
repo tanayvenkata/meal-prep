@@ -282,6 +282,13 @@ This is a **learning project first, product second.** Not trying to make money.
 - ✅ **Empty states** — pantry shows dashed circle prompt; chat shows M monogram + Spectral heading
 - ✅ **Auth redirect** — middleware gates all routes except `/login`; appends `?returnTo=` so users land where they were headed after login
 - ✅ **Tests** — 23 unit tests + 7 integration tests across routes, db, auth, middleware
+- ⬜ **Login UX gives no actionable feedback on failed/slow sign-in.** `src/app/login/page.tsx`
+  handler is logically correct, but: errors render in ember (easy to miss), there's no distinct
+  message for a rate-limited attempt (Supabase `sign_in_sign_ups = 30/5min/IP`), and a hung request
+  leaves `loading` stuck true with no timeout. Surfaced when a `user@gmail.com` account that had been
+  Supabase-rate-limited (from repeated `422` signup attempts on the prod-wired Preview) appeared to
+  "do nothing" on a single click. Not a bug — transient rate-limit — but the silence is the real gap.
+  Fix later: prominent error display + explicit 429/rate-limit message + a request timeout fallback.
 
 ### Observability
 - ⬜ **Error monitoring** — no Sentry or equivalent; silent failures in prod go unnoticed
