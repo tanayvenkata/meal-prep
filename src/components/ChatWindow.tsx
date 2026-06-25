@@ -107,6 +107,10 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
         setError("Session expired — please sign out and sign in again");
         return;
       }
+      if (res.status === 429) {
+        setError("Too many requests — please wait a moment before trying again");
+        return;
+      }
       try {
         const data = await res.json();
         setError(data.error ?? "Something went wrong");

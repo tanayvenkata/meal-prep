@@ -194,6 +194,7 @@ This is a **learning project first, product second.** Not trying to make money.
 - **M6.5: inline edit replaces `prompt()`** — `prompt()` is an unstyled browser dialog from the 90s; can't be styled, freezes the tab, off-brand. Inline edit row (controlled state: `editingId`, `editName`, `editQuantity`) is the standard pattern in real apps.
 - **M6.5: `updateItem` extended to accept optional `name`** — previously only updated quantity. Optional parameter is backwards-compatible; existing tests didn't change, new integration test added for the name-update branch.
 - **M6.5: lucide-react for icons, not emoji** — design spec says no emoji in product UI. `lucide-react` provides feather-style line icons at stroke ~2.2, matching the spec. `Mic` icon background color (ember vs pantry-strip) signals recording state — not the icon itself switching to `MicOff`.
+- **Pre-M7: Doppler as secrets manager** — crossed the ~4 secrets threshold predicted in the decision log. Doppler `dev` → local CLI, `prd` → Vercel sync integration. `.env.local` reduced to `TEST_DATABASE_URL` only (local Supabase, meaningless outside this machine). `.env.example` updated to document Doppler as source of truth. One paste to add any new secret; flows everywhere automatically.
 - Unifying principle: *defer capability until the need is real; structure so adding it is cheap.*
 
 ## Current state
@@ -235,13 +236,20 @@ This is a **learning project first, product second.** Not trying to make money.
 
 ## Commands
 
-- `npm run dev` — start local dev server (http://localhost:3000)
-- `npm run build` — production build
-- `npm run lint` — lint
+- `doppler run -- npm run dev` — start local dev server (secrets injected by Doppler)
+- `doppler run -- npm run build` — production build with Doppler secrets
+- `npm run lint` — lint (no secrets needed)
 - `npm test` — run all tests in watch mode (requires local Supabase running for db.ts tests)
-- `npm run test:unit` — run 22 unit/mock tests only (no Supabase needed)
-- `npm run test:integration` — run 7 db integration tests only (requires Supabase running)
+- `npm run test:unit` — run unit/mock tests only (no Supabase needed)
+- `npm run test:integration` — run db integration tests only (requires Supabase running)
 - `npm test -- --run` — run all tests once and exit
+
+### Secrets management (Doppler)
+- All secrets live in Doppler (dashboard.doppler.com → meal-prep project)
+- `dev` config → local machine via CLI; `prd` config → Vercel via sync integration
+- Adding a new secret: add it in Doppler once → flows to local + Vercel automatically
+- `.env.local` contains ONLY `TEST_DATABASE_URL` (local Supabase for integration tests)
+- `.env.example` documents what secrets exist and that Doppler is the source of truth
 
 ### Before running db.ts tests (once per dev session)
 1. Open OrbStack

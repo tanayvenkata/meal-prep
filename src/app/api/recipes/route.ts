@@ -1,10 +1,14 @@
 import { getItems } from "@/lib/db";
 import { streamChat } from "@/lib/ai";
 import { getUserId } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/ratelimit";
 
 export async function POST(req: Request) {
   const userId = await getUserId(req);
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+
+  const allowed = await checkRateLimit(userId);
+  if (!allowed) return Response.json({ error: "too many requests" }, { status: 429 });
 
   const { messages } = await req.json();
   if (!messages || messages.length === 0) {

@@ -14,13 +14,19 @@ vi.mock("@/lib/ai", () => ({
   streamChat: vi.fn(),
 }));
 
+vi.mock("@/lib/ratelimit", () => ({
+  checkRateLimit: vi.fn(),
+}));
+
 import { getUserId } from "@/lib/auth";
 import { getItems } from "@/lib/db";
 import { streamChat } from "@/lib/ai";
+import { checkRateLimit } from "@/lib/ratelimit";
 
 const mockGetUserId = vi.mocked(getUserId);
 const mockGetItems = vi.mocked(getItems);
 const mockStreamChat = vi.mocked(streamChat);
+const mockCheckRateLimit = vi.mocked(checkRateLimit);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -41,8 +47,24 @@ describe("POST /api/recipes", () => {
     expect(body.error).toBe("unauthorized");
   });
 
+  it("returns 429 when rate limit is exceeded", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+    mockCheckRateLimit.mockResolvedValue(false);
+
+    const request = new Request("http://localhost/api/recipes", {
+      method: "POST",
+      body: JSON.stringify({ messages: [fakeMessage({ content: "what can I make?" })] }),
+    });
+    const response = await POST(request);
+
+    expect(response.status).toBe(429);
+    const body = await response.json();
+    expect(body.error).toBe("too many requests");
+  });
+
   it("returns 400 when messages are missing", async () => {
     mockGetUserId.mockResolvedValue("user-123");
+    mockCheckRateLimit.mockResolvedValue(true);
 
     const request = new Request("http://localhost/api/recipes", {
       method: "POST",
@@ -57,6 +79,7 @@ describe("POST /api/recipes", () => {
 
   it("returns 400 when messages array is empty", async () => {
     mockGetUserId.mockResolvedValue("user-123");
+    mockCheckRateLimit.mockResolvedValue(true);
 
     const request = new Request("http://localhost/api/recipes", {
       method: "POST",
@@ -71,6 +94,7 @@ describe("POST /api/recipes", () => {
 
   it("returns a stream and calls streamChat with pantry in system prompt", async () => {
     mockGetUserId.mockResolvedValue("user-123");
+    mockCheckRateLimit.mockResolvedValue(true);
     mockGetItems.mockResolvedValue([
       fakeItem({ name: "eggs" }),
       fakeItem({ id: 2, name: "milk", quantity: "1L" }),
