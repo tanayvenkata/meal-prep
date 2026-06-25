@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mise — meal prep assistant
 
-## Getting Started
+Pantry-aware recipe chat powered by Claude. Built with Next.js 16, Supabase, and the Anthropic SDK.
 
-First, run the development server:
+Live: https://meal-prep-tawny-kappa.vercel.app
+
+## Getting started
+
+### Prerequisites
+
+- Node 22+
+- [Doppler CLI](https://docs.doppler.com/docs/install-cli) — secrets manager (`brew install dopplerhq/cli/doppler`)
+- [Supabase CLI](https://supabase.com/docs/guides/cli) — for integration tests only (`brew install supabase/tap/supabase`)
+- [OrbStack](https://orbstack.dev/) or Docker — required to run Supabase locally
+
+### Setup
 
 ```bash
+# 1. Install dependencies
+npm install
+
+# 2. Authenticate with Doppler and link to this project
+doppler login
+doppler setup   # select: meal-prep → dev
+
+# 3. Copy the local env file (only needed for integration tests)
+cp .env.example .env.local
+# Fill in TEST_DATABASE_URL — see .env.example for instructions
+
+# 4. Start the dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Commands
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start dev server (Doppler injects secrets) |
+| `npm run build` | Production build |
+| `npm run lint` | Lint |
+| `npm test` | All tests in watch mode |
+| `npm run test:unit` | Unit tests only (no Supabase needed) |
+| `npm run test:integration` | DB integration tests (requires `supabase start`) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Before running integration tests
 
-## Learn More
+```bash
+# Once per dev session
+orbstack          # or open Docker Desktop
+supabase start
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Architecture
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+Browser (Next.js)          Server (API routes)         External
+page.tsx                   /api/recipes/route.ts   →   Anthropic Claude
+ChatWindow.tsx      →      auth.ts + db.ts         →   Supabase Postgres
+                           ai.ts
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+All secrets live in [Doppler](https://dashboard.doppler.com) under the `meal-prep` project. `dev` config flows to local via CLI; `prd` config syncs to Vercel automatically.
