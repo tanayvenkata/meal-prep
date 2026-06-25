@@ -197,6 +197,14 @@ This is a **learning project first, product second.** Not trying to make money.
 - **Pre-M7: Doppler as secrets manager** — crossed the ~4 secrets threshold predicted in the decision log. Doppler `dev` → local CLI, `prd` → Vercel sync integration. `.env.local` reduced to `TEST_DATABASE_URL` only (local Supabase, meaningless outside this machine). `.env.example` updated to document Doppler as source of truth. One paste to add any new secret; flows everywhere automatically.
 - **Pre-M7: Upstash Redis rate limiting on `/api/recipes`** — sliding window 10 req/60s per user via `@upstash/ratelimit` + `@upstash/redis`. `src/lib/ratelimit.ts` is the boundary; route returns 429 on limit exceeded; `ChatWindow.tsx` shows a friendly message. Credentials (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) live in Doppler. Closes the rate-limiting security debt item.
 - **Pre-M7: stop button + Escape key to abort streaming** — `AbortController` passed to fetch; `stopStreaming()` calls `controller.abort()`; send button swaps to a square stop icon while streaming; Escape key aborts when loading; partial response committed to message list with `*(stopped)*` indicator. Enter blocked while streaming to prevent double-sends.
+- **Pre-M7 (identified, not yet fixed): dev app and prod share one DB — must split.** The Doppler
+  `dev` config injects the prod Supabase connection into the *running* dev app, so manual local dev
+  writes to live data. Decided fix: point `dev` at the local Supabase stack (already used by tests),
+  keep `prd` on prod. The *why*: prod data is sacred — you never develop against it, because there's
+  no undo on a careless delete. RLS already isolates *users* (different email = different rows, in any
+  environment); this is about isolating *environments* so experiments can't hit live rows. Two tiers
+  now (local + prod); a cloud "staging" project is the third tier, added when preview deploys exist.
+  Tracked as a MAJOR item under "Known debt & gaps → Environments." See that entry for the mechanism.
 - Unifying principle: *defer capability until the need is real; structure so adding it is cheap.*
 
 ## Current state
@@ -211,6 +219,50 @@ This is a **learning project first, product second.** Not trying to make money.
 - **Next:** M7 — evaluate receipt scanning (OCR) vs prioritising nav model (pantry sheet, history drawer).
 
 ## Known debt & gaps (things real apps have that we don't yet)
+
+### Environments (MAJOR — do before sharing the app or adding destructive features)
+- ✅ **FIXED (Step 1): local dev now hits LOCAL Supabase, not prod.** Doppler `dev` config's three
+  Supabase vars (`DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)
+  re-pointed at the local stack (`127.0.0.1:54321/54322`); `stg`/`prd` untouched (still prod).
+  Verified: a row written via the `dev` config lands in local (count 1) and is absent from prod
+  (count 0). `supabase/seed.sql` seeds local with a working login (`test@local.dev` / `password123`)
+  + sample pantry. **Dev-session ritual now: OrbStack → `supabase start` → `doppler run -- npm run dev`.**
+  Skipping `supabase start` gives `ECONNREFUSED 127.0.0.1:54322` (box has the address, but no DB
+  exists there until booted — address-in-box ≠ DB-exists).
+  *Original bug (now closed):* `doppler run -- npm run dev` injected the *prod* connection into the
+  running app, so local clicking wrote to live production data. Discovered when adding an item on
+  localhost made it appear in prod (same email → same `user_id` → same rows; the "mirror" was correct
+  behavior, not a bug).
+  **The risk is safety, not privacy:** RLS + `db.ts`'s `where user_id = $userId` already isolate
+  *users* correctly regardless of environment — a different email never sees another person's pantry.
+  But there's no sandbox, so a bad delete or a destructive migration tried locally hits prod rows.
+  **NOTE the distinction:** our *tests* are already isolated — `TEST_DATABASE_URL` (local Supabase,
+  127.0.0.1:54322) is used only by db.ts integration tests, never by the running app. The gap is
+  the *manual* dev loop, not the test loop.
+  **Fix (decided — local Supabase):** point Doppler's `dev` config's `DATABASE_URL` +
+  `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` at the *local* Supabase stack
+  (the one already booted with `supabase start` for tests), leaving `prd` on the prod project. Then
+  the running dev app and the tests both hit local; prod is only ever touched by the deployed Vercel
+  app. A third "staging" cloud project (for Vercel preview deploys / external QA) is the next tier up,
+  deferred until preview deploys or other people are testing. This MUST land before M7's OCR work
+  (which will write a lot of new pantry rows) and before any feature that bulk-deletes/mutates data.
+  **→ Full mental model + "who fills the box where" map + schema etiquette: `docs/environments.md`.**
+- ⬜ **No staging DATABASE (the rehearsal gap).** Vercel Preview deploys exist (auto, per-branch) =
+  a staging *app*, but Doppler `dev`/`stg`/`prd` ALL point at the same prod DB (`omwvoxemybeukmhnyrhb`,
+  verified). So the 3-config structure is real but the isolation is cosmetic — three doors into one
+  room. Consequence: a Preview deploy would read/write PROD data, and the current merge flow
+  (branch → CI check → merge to main → straight to prod) has no place to test the *running* app
+  before users see it. Fix (deferred, Step 3): create a separate cloud staging Supabase project,
+  point `stg` + Vercel Preview at it, adopt the PR-preview-review habit (the PR's own Preview URL is
+  the staging gate — no separate `staging` branch needed). Earns its place when preview deploys or
+  external QA actually happen. GitHub Environments (Preview/Production) are empty Vercel bookkeeping
+  (0 secrets, 0 rules) — NOT part of CI (`ci.yml` references no environment); nothing to fix there.
+- **CORRECTION to the M5 "RLS enabled" claim:** `items` has `enable row level security` but NO
+  policies and NO `force row level security`; `db.ts` connects as the table owner (pooler), which
+  BYPASSES RLS. So user isolation in the app's data path is ONE layer — the explicit
+  `where user_id = $userId` in every query (present + tested) — not the two layers implied earlier.
+  Adding real defense-in-depth = a migration with `force row level security` + a `create policy`
+  (test on local first; `force` subjects existing db.ts queries to the policy). Optional for 1 user.
 
 ### Security
 - ✅ **Rate limiting** — sliding window 10 req/60s per user via Upstash Redis; `src/lib/ratelimit.ts`; returns 429 with friendly frontend message
