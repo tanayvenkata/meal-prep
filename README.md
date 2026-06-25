@@ -10,6 +10,7 @@ Live: https://meal-prep-tawny-kappa.vercel.app
 
 - Node 22+
 - [Doppler CLI](https://docs.doppler.com/docs/install-cli) — secrets manager (`brew install dopplerhq/cli/doppler`)
+- [Vercel CLI](https://vercel.com/docs/cli) — deploy and manage Vercel from the terminal (`npm i -g vercel`)
 - [Supabase CLI](https://supabase.com/docs/guides/cli) — for integration tests only (`brew install supabase/tap/supabase`)
 - [OrbStack](https://orbstack.dev/) or Docker — required to run Supabase locally
 
