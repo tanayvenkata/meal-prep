@@ -195,14 +195,17 @@ This is a **learning project first, product second.** Not trying to make money.
 - **M6.5: `updateItem` extended to accept optional `name`** — previously only updated quantity. Optional parameter is backwards-compatible; existing tests didn't change, new integration test added for the name-update branch.
 - **M6.5: lucide-react for icons, not emoji** — design spec says no emoji in product UI. `lucide-react` provides feather-style line icons at stroke ~2.2, matching the spec. `Mic` icon background color (ember vs pantry-strip) signals recording state — not the icon itself switching to `MicOff`.
 - **Pre-M7: Doppler as secrets manager** — crossed the ~4 secrets threshold predicted in the decision log. Doppler `dev` → local CLI, `prd` → Vercel sync integration. `.env.local` reduced to `TEST_DATABASE_URL` only (local Supabase, meaningless outside this machine). `.env.example` updated to document Doppler as source of truth. One paste to add any new secret; flows everywhere automatically.
+- **Pre-M7: Upstash Redis rate limiting on `/api/recipes`** — sliding window 10 req/60s per user via `@upstash/ratelimit` + `@upstash/redis`. `src/lib/ratelimit.ts` is the boundary; route returns 429 on limit exceeded; `ChatWindow.tsx` shows a friendly message. Credentials (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) live in Doppler. Closes the rate-limiting security debt item.
+- **Pre-M7: stop button + Escape key to abort streaming** — `AbortController` passed to fetch; `stopStreaming()` calls `controller.abort()`; send button swaps to a square stop icon while streaming; Escape key aborts when loading; partial response committed to message list with `*(stopped)*` indicator. Enter blocked while streaming to prevent double-sends.
 - Unifying principle: *defer capability until the need is real; structure so adding it is cheap.*
 
 ## Current state
 
-- **M1–M6.5 DONE & DEPLOYED.**
-- **Chat loop:** `src/app/page.tsx` → `src/components/ChatWindow.tsx` → `src/app/api/recipes/route.ts` → `db.ts` + `ai.ts` → Claude (streamed back)
+- **M1–M6.5 DONE & DEPLOYED. Pre-M7 features: rate limiting + stop button also shipped.**
+- **Chat loop:** `src/app/page.tsx` → `src/components/ChatWindow.tsx` → `src/app/api/recipes/route.ts` → `ratelimit.ts` → `db.ts` + `ai.ts` → Claude (streamed back; abortable)
 - **Pantry loop:** `src/app/pantry/page.tsx` → `src/app/api/pantry/route.ts` → `src/lib/db.ts` → Supabase
 - **Auth:** `src/lib/auth.ts` `getUserId()` → JWT on all user-scoped routes; `middleware.ts` gates all routes except `/login`
+- **Rate limiting:** `src/lib/ratelimit.ts` → Upstash Redis; 10 req/60s per user on `/api/recipes`
 - **Design:** Mise design system; `design_handoff/STATUS.md` is the living tracker of what's built vs deferred
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
 - **Next:** M7 — evaluate receipt scanning (OCR) vs prioritising nav model (pantry sheet, history drawer).
@@ -210,7 +213,7 @@ This is a **learning project first, product second.** Not trying to make money.
 ## Known debt & gaps (things real apps have that we don't yet)
 
 ### Security
-- ⬜ **Rate limiting** — `/api/recipes` is unprotected from spam; someone could rack up Anthropic bill
+- ✅ **Rate limiting** — sliding window 10 req/60s per user via Upstash Redis; `src/lib/ratelimit.ts`; returns 429 with friendly frontend message
 - ⬜ **Input sanitization** — `name` is validated for existence but not length/content
 
 ### Reliability
