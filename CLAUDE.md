@@ -257,6 +257,12 @@ This is a **learning project first, product second.** Not trying to make money.
   the staging gate — no separate `staging` branch needed). Earns its place when preview deploys or
   external QA actually happen. GitHub Environments (Preview/Production) are empty Vercel bookkeeping
   (0 secrets, 0 rules) — NOT part of CI (`ci.yml` references no environment); nothing to fix there.
+  **→ Full build plan in `docs/environments.md` ("Staging" section):** staging DB must be its own
+  CLOUD instance (local can't serve a cloud deploy; prod defeats the purpose). Three ways — (1) free
+  2nd Supabase project + point `stg`/Preview at it; (2) persistent branch; (3) Supabase Branching 2.0
+  which auto-creates a per-PR DB and auto-injects creds into Vercel Preview (recommended to evaluate
+  first; confirm Hobby-plan availability). Seeds = repo files selected per-env (local small,
+  staging richer, prod none). Vercel Preview is a FULL curl-able app; only its secrets/DB differ.
 - **CORRECTION to the M5 "RLS enabled" claim:** `items` has `enable row level security` but NO
   policies and NO `force row level security`; `db.ts` connects as the table owner (pooler), which
   BYPASSES RLS. So user isolation in the app's data path is ONE layer — the explicit

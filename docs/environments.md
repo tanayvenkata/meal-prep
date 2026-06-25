@@ -215,3 +215,55 @@ create policy "users see own items" on items
 Without `force`, the policy appears to "do nothing" on the app's path — a confusing non-result.
 Test on LOCAL first (`force` will suddenly subject existing db.ts queries to the policy — verify they
 still pass before `db push`). This is exactly why dev-first exists.
+
+---
+
+# Staging — how to build it when the need is real (Step 3, deferred)
+
+Researched 2026-06-25 (via Supabase docs). Captured for when preview deploys / external QA actually happen.
+
+## Why staging's DB must be its OWN cloud DB (not local, not prod)
+- **Not local (`127.0.0.1`):** Vercel Preview runs on Vercel's SERVERS, not your laptop. `127.0.0.1`
+  there = Vercel's own machine, where no Supabase exists. A cloud-deployed app physically cannot reach
+  your local stack. **Rule: runs-on-your-laptop → local DB; runs-in-the-cloud → a cloud DB.**
+- **Not prod:** then the "rehearsal" writes to live data — defeats the purpose.
+- So staging needs a SEPARATE CLOUD Supabase instance: a cloud DB that isn't prod.
+
+## Three ways to get that staging DB (simplest → most automatic)
+1. **A second Supabase project** — Supabase gives 2 free DBs. Create one, point Doppler `stg` + Vercel
+   Preview at it. You manage its migrations/seed by hand. Dead simple, free.
+2. **A persistent branch** — mark a long-lived git branch (e.g. `develop`) as staging with its own DB.
+3. **Branching 2.0 / Preview Branches (recommended to evaluate first)** — Supabase auto-creates a
+   fresh, isolated DB *per PR* (a copy of the schema, NO data), and its Vercel integration
+   AUTO-INJECTS that branch's unique credentials into the matching Vercel Preview deploy. This is the
+   "no manual stg config, no split-brain" path — purpose-built for exactly our gap. Caveat: more
+   involved setup and historically some branching features are paid-plan-gated — CONFIRM on the Hobby
+   plan before relying on it; fall back to option 1 (free second project) if gated.
+
+## Seeding across environments (the model)
+- **Seed scripts are FILES IN THE REPO** (`supabase/seed.sql`, could add `supabase/seeds/staging.sql`),
+  version-controlled. Each ENVIRONMENT's config picks which file(s) to run:
+  ```toml
+  [db.seed]                    sql_paths = ["./seed.sql"]            # local: small, click-around data
+  [remotes.staging.db.seed]    sql_paths = ["./seeds/staging.sql"]  # staging: bigger/realer for depth
+  ```
+- **Seeds run at DB creation/reset, NOT per deploy.** A branching preview DB seeds once at branch
+  creation, persists for the PR's life, destroyed when the PR closes (ephemeral per-PR, persistent
+  within it — right for review).
+- **Local** → small seed (persistent click-around). **CI** → no seed needed (tests make+wipe their own
+  rows; it *could* seed, but doesn't need to). **Staging** → same file as local, or a richer dedicated
+  one. **Prod** → NO seed, only real user data.
+
+## Vercel Preview is a FULL app, not "light UI testing"
+Same `next build`/`next start`, same API routes, same capabilities as prod — curl-able, streamable,
+full auth/CRUD/rate-limit. The ONLY difference between Preview and Production is the **env/secrets**
+(chiefly its own Supabase instance = its own DB+auth+storage), NOT the code. So "the difference is the
+data" is the headline, but precisely: *same code, different secrets; the DB+auth travel together as one
+Supabase instance.* (Caveat: Vercel deployment-protection may put a login wall in front of Preview URLs
+— may need a bypass token to raw-curl. The app is fully capable; that's just Vercel's gate.)
+
+## The merge flow staging unlocks (the rehearsal step we lack today)
+Today: branch → CI check → merge to main → straight to prod (no rehearsal of the running app).
+With staging: branch → PR → CI check + Preview deploy (its own DB) → review/test the RUNNING app on the
+Preview URL → merge to main only after it looks good. The PR's Preview URL IS the staging gate — no
+separate long-lived `staging` branch required.
