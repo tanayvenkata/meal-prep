@@ -5,6 +5,39 @@ Update this file as each screen is implemented. "Visual only" means colors/fonts
 
 ---
 
+## Deferred backlog (features designed but held off — consolidated from the ⬜ rows below)
+
+Surfaced here so they don't get lost in the per-screen tables. Grouped by what unblocks them.
+
+### Visual-only (no backend — can do anytime, good warm-up tasks)
+- **Typing indicator** (three-dot "MISE IS THINKING" bubble) — Screen 1 & 7. Tagged for M7.
+- **"Today" date divider** between messages — Screen 1.
+- **Ember focus ring** on pantry name input (currently ink border) — Screen 6.
+- **Input disabled on 401** + conversation dimmed behind error banner — Screen 8.
+- **Mobile verification** — test column layout + font sizes in DevTools mobile view (built, never verified).
+
+### Needs a navigation-model change (the "sheets over chat" model from design CLAUDE.md)
+- **Pantry as dismissible sheet over chat** (not the current standalone `/pantry` route) — Screen 2.
+- **Grabber handle / swipe-down dismiss** for the sheet — Screen 2.
+- **Edit item as a sheet** (chevron › opens it) — Screen 4. Currently inline edit row; was `prompt()`.
+- **Pantry pill strip** on the chat screen (needs client-side pantry fetch) — Screen 1 & 5.
+- **"PANTRY EMPTY" pill variant** + dimmed send when pantry empty — Screen 5.
+
+### Needs new backend tables (bigger milestones)
+- **Chat history + history drawer** — Screen 3. Needs `conversations` + `messages` tables. Tagged **M8**.
+  Save each turn; auto-title from the first user message. (Hamburger nav, streak chip, avatar all hang off this.)
+- **Dish log** — powers all gamification. Logs name/cuisine/time/taste/tools per cooked dish. Design says
+  "log from dish #1," so this is the foundational data table for the north-star features below.
+- **Cooking Wrapped + cuisine passport + profile/stats** — north-star (designed, build later). Read from the
+  dish log. Monthly engine first, yearly is the same card scaled. Stay concept-level until scheduled.
+
+### Not yet designed at all
+- **Desktop pass** (mirror house style to a real desktop layout) — we adapted visually within `max-w-2xl`,
+  but a true desktop design doesn't exist yet.
+- **Onboarding / signup flow** and **settings / account** screens.
+
+---
+
 ## Color tokens & typography
 | Token | Status | Notes |
 |---|---|---|

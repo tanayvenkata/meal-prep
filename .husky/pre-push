@@ -1,1 +1,11 @@
+# Guard: never push directly to main. Go through a PR (our "preview"/review gate).
+# Local-only safety net (bypassable with --no-verify); the habit is the point.
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$branch" = "main" ]; then
+  echo "✗ Refusing to push directly to 'main'."
+  echo "  Branch first, push that, open a PR:  git checkout -b my-change"
+  echo "  (To override deliberately: git push --no-verify)"
+  exit 1
+fi
+
 doppler run -- npm run build && npm run test:unit
