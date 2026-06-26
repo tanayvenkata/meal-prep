@@ -6,10 +6,11 @@
 @AGENTS.md
 
 
-> **Before creating any issue or PR, follow `CONTRIBUTING.md`** — the label taxonomy
-> (`type:` + priority), the three-part issue body (Context / What to do / Done when), and
-> `Closes #N` on PRs. The backlog lives in **GitHub Issues**, not in this file. (Pointer,
-> not an `@`-import, so it stays cheap to load every session.)
+> **Before creating any issue or PR, follow `CONTRIBUTING.md`** — `type:` labels on the
+> issue, **priority as a board *field*** on the Mise Board (not a label), the three-part
+> issue body (Context / What to do / Done when), and `Closes #N` on PRs. The backlog lives
+> in **GitHub Issues + the Mise Board**, not in this file. (Pointer, not an `@`-import, so
+> it stays cheap to load every session.)
 
 
 > This file is the memory of the project. It is read at the start of every session.
