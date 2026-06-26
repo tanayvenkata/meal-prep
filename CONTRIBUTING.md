@@ -41,7 +41,11 @@ Healthy work spends across all of these over time, so nothing rots.
 | `type: polish` | Cosmetic / design finish |
 
 ### priority — where on the value/effort grid
-| Label | Meaning | When |
+**Priority is a board *field* on the Mise Board, NOT a label.** (One fact, one home — a
+label + a field would drift. The board groups cleanly by a single-select field; it can't
+group cleanly by labels, which are "pick-many.") Set it on the card, group the board by it.
+
+| Priority | Meaning | When |
 |---|---|---|
 | `jump-queue` | Broken / unsafe / blocking | Do before anything else |
 | `do-now` | High value, low effort | Quick wins — grab these |
@@ -49,6 +53,9 @@ Healthy work spends across all of these over time, so nothing rots.
 | `fill-in` | Low value, low effort | When bored or blocked |
 
 > Low value + high effort = **don't** (drop it, or it sits in `schedule` indefinitely).
+>
+> `type:` stays a **label** (lives on the issue, shows everywhere). Priority is a **field**
+> (lives on the board, drives the columns). Different homes, on purpose.
 
 ### workflow labels (GitHub defaults we kept)
 `documentation`, `duplicate`, `invalid`, `question`, `wontfix` — these tag the *state of
