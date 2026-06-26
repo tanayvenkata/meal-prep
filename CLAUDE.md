@@ -6,6 +6,12 @@
 @AGENTS.md
 
 
+> **Before creating any issue or PR, follow `CONTRIBUTING.md`** — the label taxonomy
+> (`type:` + priority), the three-part issue body (Context / What to do / Done when), and
+> `Closes #N` on PRs. The backlog lives in **GitHub Issues**, not in this file. (Pointer,
+> not an `@`-import, so it stays cheap to load every session.)
+
+
 > This file is the memory of the project. It is read at the start of every session.
 > It captures **what we're building, where we are, and — most importantly — WHY each
 > decision was made.** The "why" is the point: this is a learning project, and the goal
