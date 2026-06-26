@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import { getItems, addItem, updateItem, deleteItem } from "@/lib/db";
 import postgres from "postgres";
 
@@ -22,6 +22,13 @@ afterAll(async () => {
   await sql.end();
 });
 
+// Clean BOTH before and after each test: beforeEach guarantees even the first test
+// starts from a known-empty slate (so seed data / leftovers can't pollute it);
+// afterEach leaves the DB clean for whatever runs after the suite. Belt and suspenders.
+beforeEach(async () => {
+  await sql`delete from items where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
+});
+
 afterEach(async () => {
   await sql`delete from items where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
 });
@@ -33,9 +40,13 @@ describe("getItems", () => {
 
     const items = await getItems(TEST_USER_A);
 
-    expect(items).toHaveLength(1);
-    expect(items[0].name).toBe("eggs");
-    expect(items[0].user_id).toBe(TEST_USER_A);
+    // Localized asserts: describe facts about OUR data, not the whole table.
+    // True whether the DB has 0 or 400 other rows — so it can't be ambushed by
+    // seed data or parallel tests. The real point here is user isolation.
+    const names = items.map((i) => i.name);
+    expect(names).toContain("eggs"); // A's own item came back
+    expect(names).not.toContain("milk"); // B's item did NOT leak in
+    expect(items.every((i) => i.user_id === TEST_USER_A)).toBe(true); // no foreign rows
   });
 });
 
