@@ -33,10 +33,13 @@ export default function PantryPage() {
       const res = await fetch('/api/pantry', {
         headers: { Authorization: `Bearer ${token}` },
       })
+      if (!res.ok) throw new Error(`pantry load failed (${res.status})`)
       const data = await res.json()
       setItems(data)
+      setError(null)
     } catch (err) {
       console.error('failed to load pantry:', err)
+      setError('Could not load your pantry. Try refreshing.')
     }
   }
 
@@ -49,10 +52,12 @@ export default function PantryPage() {
         const res = await fetch('/api/pantry', {
           headers: { Authorization: `Bearer ${token}` },
         })
+        if (!res.ok) throw new Error(`pantry load failed (${res.status})`)
         const data = await res.json()
         if (!ignore) setItems(data)
       } catch (err) {
         console.error('failed to load pantry:', err)
+        if (!ignore) setError('Could not load your pantry. Try refreshing.')
       } finally {
         if (!ignore) setLoading(false)
       }
