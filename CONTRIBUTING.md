@@ -17,7 +17,8 @@ work competes in the same funnel on two questions:
 2. If not → **how much value for how much effort?** → it lands on the value/effort grid.
 
 The *category* of work (feature vs bug vs polish) is **not** its priority. They're
-independent. An issue has BOTH a `type:` label (what kind) AND a priority label (how urgent).
+independent. An issue has BOTH a `type:` label (what kind) AND a priority (how urgent) — the
+`type:` is a label on the issue, the priority is a field on the board. Different homes (below).
 
 **"Value" for this project** = does it push the app toward its real vision AND teach a
 transferable skill I don't already have. (This is a learning project — see CLAUDE.md.
@@ -57,6 +58,29 @@ group cleanly by labels, which are "pick-many.") Set it on the card, group the b
 > `type:` stays a **label** (lives on the issue, shows everywhere). Priority is a **field**
 > (lives on the board, drives the columns). Different homes, on purpose.
 
+**How the four values relate to the matrix (the part that confuses everyone):** they aren't
+four equal boxes. `jump-queue` is a **gate** that sits *in front of* the value/effort grid;
+the other three **are** the grid. Read it as a sequence, not a single 2×2:
+
+```
+Is it broken / unsafe / blocking?
+   ├─ YES → jump-queue        (skip the grid — "on fire" outranks "worth it")
+   └─ NO  → place on value/effort grid:
+              high value + low  effort → do-now
+              high value + high effort → schedule
+              low  value + low  effort → fill-in
+              low  value + high effort → (no card — drop it)
+```
+
+So the 2×2 has four boxes but only **three** become board values — the fourth box
+("low value, high effort") is the silent *don't*. And `jump-queue` is the **fourth board
+value** because it answers a different question (is it on fire?) than the grid does (value
+vs. effort). Four values = one gate + three grid boxes. That's why the count feels off by one.
+
+This is independent from the iron triangle below: `type:` asks *what kind* of work; priority
+asks *what's next*. A `type: bug` is often `jump-queue` but not always (a cosmetic bug can be
+`fill-in`); a `type: feature` can be `do-now` or `schedule`. Two questions, two homes.
+
 ### workflow labels (GitHub defaults we kept)
 `documentation`, `duplicate`, `invalid`, `question`, `wontfix` — these tag the *state of
 the conversation* on an issue, not the work. Use as needed.
@@ -76,16 +100,40 @@ what makes a ticket a real ticket instead of a vague sticky note.
 
 `Done when` is the part people skip and pros never do — it kills "wait, is this done?"
 
-Add both a `type:` and a priority label. CLI example:
+Add a `type:` label on the issue. (Priority is **not** a label — it's a board field; set it
+after the issue exists, see "Setting priority from the CLI" below.) CLI example:
 
 ```bash
 gh issue create \
   --title "Short, action-shaped title" \
-  --label "type: tech-debt" --label "do-now" \
+  --label "type: tech-debt" \
   --body "**Context:** ...
 **What to do:** ...
 **Done when:** ..."
 ```
+
+The repo issue auto-adds to the Mise Board on creation — you don't run `item-add`. It lands
+with **no priority**; set that next.
+
+## Setting priority from the CLI
+
+Priority is a single-select **field** on the board, so you set it on the *card*, not the issue.
+It takes three IDs: the project, the card's item, and the chosen option. Find the option IDs
+once, then set the value (IDs are environment-specific — look them up, don't memorize them):
+
+```bash
+# 1. find the Priority field's option IDs (do-now / schedule / fill-in / jump-queue)
+gh project field-list <project-number> --owner <you> --format json
+
+# 2. find the card's item ID for your issue (item id != issue number)
+gh project item-list <project-number> --owner <you> --format json
+
+# 3. set the field
+gh project item-edit --project-id <PVT_…> --id <PVTI_…> \
+  --field-id <PVTSSF_…> --single-select-option-id <option-id>
+```
+
+(In the web UI this is one dropdown on the card; the CLI just makes the same edit scriptable.)
 
 ---
 
@@ -115,7 +163,10 @@ sort the work → pick the highest value-for-effort thing that isn't blocked
 - A *dropped* issue: close it with a one-line "why we dropped it" comment (decision memory),
   don't just delete silently.
 
-"What do I work on?" is a query: `gh issue list --label "do-now"`.
+"What do I work on?" = sort the board by the Priority field and grab the top non-blocked card.
+(Priority is a board field, not a label, so it's a board view — not a `gh issue list --label`
+query. From the CLI: `gh project item-list <n> --owner <you> --format json` and filter on
+`priority`.)
 
 ---
 
