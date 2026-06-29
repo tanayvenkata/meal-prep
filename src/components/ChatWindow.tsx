@@ -23,6 +23,9 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
   const [reply, setReply] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // status of the failed request (e.g. 401), or null. authExpired is DERIVED from this —
+  // we never store a separate "locked out" flag that could drift out of sync with error.
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [listening, setListening] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
@@ -103,6 +106,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
     setInput("");
     setReply("");
     setError(null);
+    setErrorStatus(null);
     setIsLoading(true);
 
     const controller = new AbortController();
@@ -137,6 +141,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
       setIsLoading(false);
       if (res.status === 401) {
         setError("Session expired — please sign out and sign in again");
+        setErrorStatus(401);
         return;
       }
       if (res.status === 429) {
@@ -180,11 +185,17 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
   }
 
   const isEmpty = messages.length === 0 && !reply;
+  // computed, not stored — single source of truth is errorStatus
+  const authExpired = errorStatus === 401;
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-hidden px-4 py-4">
       {/* message list — min-h-0 lets this flex child shrink below content size so it actually scrolls */}
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto space-y-3 pb-2">
+      <div
+        className={`scrollbar-hide min-h-0 flex-1 overflow-y-auto space-y-3 pb-2 transition-opacity ${
+          authExpired ? "opacity-40" : ""
+        }`}
+      >
         {isEmpty ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center py-16">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-ink">
@@ -254,19 +265,21 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
         style={{ boxShadow: "0 2px 12px rgba(34,29,24,.08)" }}
       >
         <input
-          className="flex-1 bg-transparent px-2 py-1 text-sm text-ink placeholder:text-muted outline-none"
+          className="flex-1 bg-transparent px-2 py-1 text-sm text-ink placeholder:text-muted outline-none disabled:opacity-40"
           placeholder={placeholder}
           value={input}
+          disabled={authExpired}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !isLoading && sendMessage()}
         />
         <button
-          className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-colors ${
+          className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40 ${
             listening
               ? "bg-ember text-white"
               : "bg-pantry-strip text-ink hover:bg-sand"
           }`}
           onClick={toggleListening}
+          disabled={authExpired}
           title={listening ? "Stop listening" : "Voice input"}
         >
           <Mic size={16} strokeWidth={2.2} />
@@ -283,7 +296,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
           <button
             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-ember text-white hover:opacity-90 transition-opacity disabled:opacity-40"
             onClick={sendMessage}
-            disabled={!input.trim()}
+            disabled={!input.trim() || authExpired}
             title="Send"
           >
             <ArrowUp size={18} strokeWidth={2.2} />
