@@ -14,7 +14,7 @@ Surfaced here so they don't get lost in the per-screen tables. Grouped by what u
 - **"Today" date divider** between messages — Screen 1.
 - **Ember focus ring** on pantry name input (currently ink border) — Screen 6.
 - **Input disabled on 401** + conversation dimmed behind error banner — Screen 8.
-- **Mobile verification** — test column layout + font sizes in DevTools mobile view (built, never verified).
+- ~~**Mobile verification** — test column layout + font sizes in DevTools mobile view (built, never verified).~~ ✅ Done (#9): verified at 375/390px; chat layout clean. Found two defects → #45 (pantry Add button clipped) and #44 (iOS Safari input zoom).
 
 ### Needs a navigation-model change (the "sheets over chat" model from design CLAUDE.md)
 - **Pantry as dismissible sheet over chat** (not the current standalone `/pantry` route) — Screen 2.
@@ -150,5 +150,5 @@ Surfaced here so they don't get lost in the per-screen tables. Grouped by what u
 | Item | Status | Notes |
 |---|---|---|
 | Column layout works on mobile | ✅ Done | `max-w-2xl` centered column, no horizontal overflow |
-| Verified on real mobile / DevTools | ⬜ Not verified | Test in browser DevTools mobile view |
-| Font sizes appropriate on small screens | ⬜ Not verified | |
+| Verified on real mobile / DevTools | ✅ Verified (#9) | Driven via Playwright at 375px (iPhone SE) + 390px (iPhone 14), chat & pantry. Chat clean: no overflow, input bar in view, scrolls. **Defects found:** pantry "Add" button clipped off-screen at 375px (#45); iOS Safari zooms on input focus, font <16px (#44, real-device only — emulator can't reproduce). |
+| Font sizes appropriate on small screens | ✅ Verified (#9) | Headings/body legible at 375–390px (h1 24px). Caveat: inputs are 14px (`text-sm`) → trips iOS Safari focus-zoom, tracked in #44. |
