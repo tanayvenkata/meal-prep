@@ -17,17 +17,26 @@ declare
 begin
   -- Create the auth user if it doesn't already exist.
   if not exists (select 1 from auth.users where id = uid) then
+    -- The token columns below must be '' (empty string), not NULL: Supabase's auth
+    -- service (gotrue) scans them into Go strings on login and errors on NULL
+    -- ("converting NULL to string is unsupported" → 500). Some have a '' default and
+    -- some don't, so we set all of them explicitly — not relying on column defaults
+    -- that can change across Supabase versions.
     insert into auth.users (
       instance_id, id, aud, role, email,
       encrypted_password, email_confirmed_at,
       created_at, updated_at,
-      raw_app_meta_data, raw_user_meta_data
+      raw_app_meta_data, raw_user_meta_data,
+      confirmation_token, recovery_token,
+      email_change, email_change_token_new, email_change_token_current,
+      phone_change, phone_change_token, reauthentication_token
     ) values (
       '00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated',
       'test@local.dev',
       crypt('password123', gen_salt('bf')),
       now(), now(), now(),
-      '{"provider":"email","providers":["email"]}', '{}'
+      '{"provider":"email","providers":["email"]}', '{}',
+      '', '', '', '', '', '', '', ''
     );
 
     -- Matching identity row — required for email/password sign-in to resolve.
