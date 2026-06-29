@@ -135,6 +135,26 @@ gh project item-edit --project-id <PVT_…> --id <PVTI_…> \
 
 (In the web UI this is one dropdown on the card; the CLI just makes the same edit scriptable.)
 
+**Resolved IDs for *this* repo** (re-verify with the commands above if the board is rebuilt) —
+so step 3 is copy-paste; only the `--id` (the card) and the option change:
+
+```bash
+# project: PVT_kwHOBompac4Bbx8Z   priority field: PVTSSF_lAHOBompac4Bbx8ZzhWgCwk
+# options: jump-queue b30f224d | do-now 88b8d060 | schedule 14ad4357 | fill-in 08850e93
+
+# get the card id for issue #N:
+gh project item-list 3 --owner tanayvenkata --format json --limit 100 \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(next(i['id'] for i in d['items'] if i.get('content',{}).get('number')==N))"
+
+# set it (e.g. schedule):
+gh project item-edit --project-id PVT_kwHOBompac4Bbx8Z --id <PVTI_…> \
+  --field-id PVTSSF_lAHOBompac4Bbx8ZzhWgCwk --single-select-option-id 14ad4357
+```
+
+> **Filing an issue is NOT done until its priority is set on the board.** `gh issue create`
+> leaves it blank; the board can't be sorted until every card has a priority. Treat the
+> two as one operation.
+
 ---
 
 ## Dependencies between issues
