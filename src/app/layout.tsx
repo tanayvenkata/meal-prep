@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Spectral } from "next/font/google";
-import Link from "next/link";
 import "./globals.css";
-import NavLinks from "@/components/NavLinks";
+import NavBar from "@/components/NavBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,15 +35,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${spectral.variable} h-full antialiased`}
     >
       <body className="flex h-full flex-col overflow-hidden bg-paper text-ink">
-        <nav className="sticky top-0 z-10 flex items-center justify-between border-b border-sand bg-surface px-6 py-3">
-          <Link
-            href="/"
-            className="font-serif text-xl font-semibold tracking-tight text-ink hover:text-ember transition-colors"
-          >
-            Mise
-          </Link>
-          <NavLinks />
-        </nav>
+        <NavBar />
         {children}
       </body>
     </html>
