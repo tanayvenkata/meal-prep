@@ -10,6 +10,8 @@ type Props = {
   apiRoute: string;
   placeholder: string;
   requiresAuth?: boolean;
+  conversationId?: string;
+  initialMessages?: ChatMessage[];
 };
 
 async function getToken(): Promise<string | null> {
@@ -17,9 +19,9 @@ async function getToken(): Promise<string | null> {
   return data.session?.access_token ?? null;
 }
 
-export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Props) {
+export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conversationId: _conversationId, initialMessages }: Props) {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages ?? []);
   const [reply, setReply] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
