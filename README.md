@@ -89,6 +89,20 @@ orbstack          # or open Docker Desktop
 supabase start
 ```
 
+## Working in git worktrees
+
+Worktrees are separate directories for feature branches (created via `git worktree add`). Two things need re-linking when you `cd` into one:
+
+```bash
+# 1. Link Doppler — the config is scoped to the main repo path, not the worktree
+doppler setup --project meal-prep --config dev
+
+# 2. Install node_modules — worktrees don't share them
+npm install
+```
+
+After that, `npm run dev` works normally.
+
 ## Architecture
 
 ```
