@@ -94,6 +94,18 @@ describe("getConversation", () => {
   });
 });
 
+describe("createConversation → addMessage seam", () => {
+  it("message inserted with the same id produces consistent DB state", async () => {
+    const newId = id();
+    await createConversation(TEST_USER_A, "eggs chat", newId);
+    const msg = await addMessage(newId, "user", "what can I make?");
+
+    expect(msg.conversation_id).toBe(newId);
+    const messages = await getMessages(newId);
+    expect(messages).toHaveLength(1);
+  });
+});
+
 describe("addMessage + getMessages", () => {
   it("inserts a message and returns it with correct values", async () => {
     const convo = await createConversation(TEST_USER_A, "eggs chat", id());
