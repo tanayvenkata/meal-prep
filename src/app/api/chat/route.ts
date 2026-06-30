@@ -57,7 +57,7 @@ export async function POST(req: Request) {
   try {
     if (messages.length === 1) {
       const title = lastUserMessage.content.slice(0, 50);
-      await createConversation(userId, title);
+      await createConversation(userId, title, conversationId);
     }
     await addMessage(conversationId, "user", lastUserMessage.content);
   } catch (err) {

@@ -7,6 +7,8 @@ const sql = postgres(process.env.DATABASE_URL!);
 const TEST_USER_A = "00000000-0000-0000-0000-000000000003";
 const TEST_USER_B = "00000000-0000-0000-0000-000000000004";
 
+const id = () => crypto.randomUUID();
+
 beforeAll(async () => {
   await sql`
     insert into auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
@@ -32,19 +34,20 @@ afterEach(async () => {
 
 describe("createConversation", () => {
   it("inserts a conversation and returns it with the correct values", async () => {
-    const convo = await createConversation(TEST_USER_A, "what can I make with eggs");
+    const newId = id();
+    const convo = await createConversation(TEST_USER_A, "what can I make with eggs", newId);
 
+    expect(convo.id).toBe(newId);
     expect(convo.title).toBe("what can I make with eggs");
     expect(convo.user_id).toBe(TEST_USER_A);
-    expect(convo.id).toBeDefined();
     expect(convo.created_at).toBeDefined();
   });
 });
 
 describe("listConversations", () => {
   it("returns only conversations belonging to the given user", async () => {
-    await createConversation(TEST_USER_A, "eggs chat");
-    await createConversation(TEST_USER_B, "milk chat");
+    await createConversation(TEST_USER_A, "eggs chat", id());
+    await createConversation(TEST_USER_B, "milk chat", id());
 
     const convos = await listConversations(TEST_USER_A);
 
@@ -55,8 +58,8 @@ describe("listConversations", () => {
   });
 
   it("returns conversations newest first", async () => {
-    await createConversation(TEST_USER_A, "first chat");
-    await createConversation(TEST_USER_A, "second chat");
+    await createConversation(TEST_USER_A, "first chat", id());
+    await createConversation(TEST_USER_A, "second chat", id());
 
     const convos = await listConversations(TEST_USER_A);
 
@@ -67,7 +70,7 @@ describe("listConversations", () => {
 
 describe("getConversation", () => {
   it("returns the conversation for the correct user", async () => {
-    const created = await createConversation(TEST_USER_A, "eggs chat");
+    const created = await createConversation(TEST_USER_A, "eggs chat", id());
 
     const found = await getConversation(TEST_USER_A, created.id);
 
@@ -77,7 +80,7 @@ describe("getConversation", () => {
   });
 
   it("returns null if the conversation belongs to a different user", async () => {
-    const created = await createConversation(TEST_USER_B, "milk chat");
+    const created = await createConversation(TEST_USER_B, "milk chat", id());
 
     const found = await getConversation(TEST_USER_A, created.id);
 
@@ -93,7 +96,7 @@ describe("getConversation", () => {
 
 describe("addMessage + getMessages", () => {
   it("inserts a message and returns it with correct values", async () => {
-    const convo = await createConversation(TEST_USER_A, "eggs chat");
+    const convo = await createConversation(TEST_USER_A, "eggs chat", id());
 
     const msg = await addMessage(convo.id, "user", "what can I make with eggs?");
 
@@ -104,7 +107,7 @@ describe("addMessage + getMessages", () => {
   });
 
   it("getMessages returns messages in chronological order", async () => {
-    const convo = await createConversation(TEST_USER_A, "eggs chat");
+    const convo = await createConversation(TEST_USER_A, "eggs chat", id());
     await addMessage(convo.id, "user", "what can I make with eggs?");
     await addMessage(convo.id, "assistant", "frittata, easy.");
 
@@ -116,7 +119,7 @@ describe("addMessage + getMessages", () => {
   });
 
   it("messages are deleted when their conversation is deleted (cascade)", async () => {
-    const convo = await createConversation(TEST_USER_A, "eggs chat");
+    const convo = await createConversation(TEST_USER_A, "eggs chat", id());
     await addMessage(convo.id, "user", "what can I make with eggs?");
 
     await sql`delete from conversations where id = ${convo.id}`;

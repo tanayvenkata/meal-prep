@@ -125,7 +125,7 @@ describe("POST /api/chat", () => {
     });
     await POST(request);
 
-    expect(mockCreateConversation).toHaveBeenCalledWith("user-123", "what can I make?");
+    expect(mockCreateConversation).toHaveBeenCalledWith("user-123", "what can I make?", "conv-1");
   });
 
   it("truncates long first messages to 50 chars for the title", async () => {

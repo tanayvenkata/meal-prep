@@ -62,10 +62,10 @@ export type Message = {
   created_at: string;
 };
 
-export async function createConversation(userId: string, title: string): Promise<Conversation> {
+export async function createConversation(userId: string, title: string, id: string): Promise<Conversation> {
   const [conversation] = await sql<Conversation[]>`
-    insert into conversations (user_id, title)
-    values (${userId}, ${title})
+    insert into conversations (id, user_id, title)
+    values (${id}, ${userId}, ${title})
     returning *
   `;
   return conversation;
