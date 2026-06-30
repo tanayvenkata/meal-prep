@@ -19,9 +19,11 @@ async function getToken(): Promise<string | null> {
   return data.session?.access_token ?? null;
 }
 
-export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conversationId: _conversationId, initialMessages }: Props) {
+export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conversationId, initialMessages }: Props) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages ?? []);
+  const generatedId = useRef(crypto.randomUUID());
+  const activeConversationId = conversationId ?? generatedId.current;
   const [reply, setReply] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +127,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
       res = await fetch(apiRoute, {
         method: "POST",
         headers,
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: newMessages, conversationId: activeConversationId }),
         signal: controller.signal,
       });
     } catch (err) {
@@ -171,6 +173,12 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
         setReply(full);
       }
       setMessages([...newMessages, { role: "assistant", content: full }]);
+      const token = await getToken();
+      await fetch(`/api/conversations/${activeConversationId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ role: "assistant", content: full }),
+      });
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         console.error("stream error:", err);
