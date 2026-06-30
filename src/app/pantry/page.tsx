@@ -126,14 +126,14 @@ export default function PantryPage() {
       {/* add row */}
       <div className="mb-6 flex gap-2">
         <input
-          className="flex-1 rounded-xl border border-sand bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted outline-none focus:border-ink transition-colors"
+          className="flex-1 rounded-xl border border-sand bg-surface px-3 py-2 text-base text-ink placeholder:text-muted outline-none focus:border-ink transition-colors"
           placeholder="Ingredient (e.g. chicken thighs)"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addItem()}
         />
         <input
-          className="w-20 sm:w-36 rounded-xl border border-sand bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted outline-none focus:border-ink transition-colors"
+          className="w-20 sm:w-36 rounded-xl border border-sand bg-surface px-3 py-2 text-base text-ink placeholder:text-muted outline-none focus:border-ink transition-colors"
           placeholder="Qty (e.g. 2 lbs)"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
@@ -181,7 +181,7 @@ export default function PantryPage() {
                   <div className="flex items-center gap-2">
                     <input
                       ref={editNameRef}
-                      className="flex-1 rounded-lg border border-sand bg-paper px-2 py-1 text-sm text-ink outline-none focus:border-ember transition-colors"
+                      className="flex-1 rounded-lg border border-sand bg-paper px-2 py-1 text-base text-ink outline-none focus:border-ember transition-colors"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       onKeyDown={(e) => {
@@ -191,7 +191,7 @@ export default function PantryPage() {
                       placeholder="Name"
                     />
                     <input
-                      className="w-24 rounded-lg border border-sand bg-paper px-2 py-1 text-sm text-ink outline-none focus:border-ember transition-colors"
+                      className="w-24 rounded-lg border border-sand bg-paper px-2 py-1 text-base text-ink outline-none focus:border-ember transition-colors"
                       value={editQuantity}
                       onChange={(e) => setEditQuantity(e.target.value)}
                       onKeyDown={(e) => {
