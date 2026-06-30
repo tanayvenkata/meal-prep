@@ -78,7 +78,8 @@ Cross-cutting: `auth.ts` `getUserId()` puts a JWT check on every user-scoped rou
 - **AI: native Anthropic SDK**, behind `src/lib/ai.ts`.
 - **DB: Postgres via Supabase**, behind `src/lib/db.ts` (raw SQL via `postgres` driver).
 - **Auth: Supabase Auth** (`@supabase/ssr`, cookie sessions). **Secrets: Doppler.**
-  **Rate limiting: Upstash Redis.** Node 26, npm 11.
+  **Rate limiting: Upstash Redis.** Dev runs Node 26 / npm 11; supported floor is
+  Node 22+ (README) — Next.js 16 itself needs ≥20.9.
 
 ## Principles (the transferable "why" — these guide every decision)
 

@@ -8,10 +8,10 @@ Live: https://meal-prep-tawny-kappa.vercel.app
 
 ### Prerequisites
 
-- Node 22+
+- Node 22+ (Next.js 16 needs ≥20.9; we develop on 26)
 - [Doppler CLI](https://docs.doppler.com/docs/install-cli) — secrets manager (`brew install dopplerhq/cli/doppler`)
 - [Vercel CLI](https://vercel.com/docs/cli) — deploy and manage Vercel from the terminal (`npm i -g vercel`)
-- [Supabase CLI](https://supabase.com/docs/guides/cli) — for integration tests only (`brew install supabase/tap/supabase`)
+- [Supabase CLI](https://supabase.com/docs/guides/cli) — runs the local DB/auth stack the dev app logs into, and the integration tests (`brew install supabase/tap/supabase`)
 - [OrbStack](https://orbstack.dev/) or Docker — required to run Supabase locally
 
 ### Setup
@@ -28,9 +28,42 @@ doppler setup   # select: meal-prep → dev
 cp .env.example .env.local
 # Fill in TEST_DATABASE_URL — see .env.example for instructions
 
-# 4. Start the dev server
+# 4. Start the local Supabase stack (the dev app logs in against it)
+orbstack          # or open Docker Desktop
+supabase start    # first run seeds the test user — see "Logging in locally" below
+
+# 5. Start the dev server
 npm run dev
 ```
+
+The dev app authenticates against your **local** Supabase stack (the Doppler `dev`
+config points it at `127.0.0.1`), so `supabase start` must be running before you can
+log in — see [Logging in locally](#logging-in-locally).
+
+### Logging in locally
+
+The dev app signs in against the **local** Supabase stack (not prod — the Doppler `dev`
+config points it at `127.0.0.1`). A test user is seeded so the running app is usable
+immediately:
+
+| Email | Password |
+|---|---|
+| `test@local.dev` | `password123` |
+
+The user (and a few sample pantry items) come from [`supabase/seed.sql`](supabase/seed.sql),
+which runs automatically when the local stack **first initializes** — so a fresh
+`supabase start` already has it. You don't need to read `seed.sql` to log in.
+
+**If login fails with `invalid_credentials`** even though `supabase start` is running,
+your stack predates the current seed (the seed only runs on a *fresh* init, not on every
+`start`). Re-seed by resetting the local DB:
+
+```bash
+supabase db reset   # re-runs migrations + seed.sql against the local stack
+```
+
+Then log in again — the test user is recreated with a matching password hash. Once logged
+in, send a message in the chat to get a recipe reply.
 
 ## Commands
 
