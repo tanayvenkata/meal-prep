@@ -8,6 +8,11 @@ with Playwright/curl headlessly, use the **Protection Bypass for Automation** to
 - **⚠️ Previews hit the PROD DB** (staging DB is #21, deferred). Treat the token like a
   prod credential: never commit it, never put it in a PR. Rotate in Vercel
   (Settings → Deployment Protection → Protection Bypass for Automation) if it leaks.
+- **Test account for UI checks:** there is an isolated throwaway login (`user@gmail.com`)
+  whose pantry/chat data is disposable — you may freely sign in as it and add/send/delete
+  while testing layout or flows. Its rows are user-scoped (`where user_id = ...`), so it
+  can't touch any other user's data. Don't put its password in a committed file. The
+  "hands off prod data" caution above is about *other* users' rows, not this account.
 
 ## Get past the gate
 
