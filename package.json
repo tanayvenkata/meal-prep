@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "doppler run -- next dev",
     "build": "next build",
+    "build:local": "doppler run -- next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",

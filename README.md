@@ -37,11 +37,16 @@ npm run dev
 | Command | What it does |
 |---|---|
 | `npm run dev` | Start dev server (Doppler injects secrets) |
-| `npm run build` | Production build |
+| `npm run build` | Production build (bare — no secrets; Vercel/CI inject their own) |
+| `npm run build:local` | Production build on your laptop (Doppler injects secrets) |
 | `npm run lint` | Lint |
 | `npm test` | All tests in watch mode |
 | `npm run test:unit` | Unit tests only (no Supabase needed) |
 | `npm run test:integration` | DB integration tests (requires `supabase start`) |
+
+> **Why two build commands?** `build` is intentionally bare so it works where the Doppler
+> CLI doesn't exist — Vercel and CI inject the same secrets their own way. On your laptop,
+> use `build:local`, which wraps `next build` in `doppler run` to supply those secrets.
 
 ### Before running integration tests
 
