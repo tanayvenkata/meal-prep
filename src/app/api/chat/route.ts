@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   try {
     items = await getItems(userId);
   } catch (err) {
-    console.error("POST /api/recipes failed (db):", err);
+    console.error("POST /api/chat failed (db):", err);
     return Response.json({ error: "failed to load pantry" }, { status: 500 });
   }
 
@@ -64,7 +64,7 @@ The user's pantry has: ${pantryList}. Use it when they want ideas.`;
         }
         controller.close();
       } catch (err) {
-        console.error("POST /api/recipes failed (stream):", err);
+        console.error("POST /api/chat failed (stream):", err);
         controller.error(err);
       }
     },

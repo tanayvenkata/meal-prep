@@ -53,7 +53,7 @@ export default function ChatPage() {
 
   return (
     <ChatWindow
-      apiRoute="/api/recipes"
+      apiRoute="/api/chat"
       placeholder="What are you in the mood for?"
       requiresAuth
       conversationId={id}

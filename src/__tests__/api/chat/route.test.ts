@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { POST } from "@/app/api/recipes/route";
+import { POST } from "@/app/api/chat/route";
 import { fakeItem, fakeMessage } from "@/__tests__/helpers/fixtures";
 
 vi.mock("@/lib/auth", () => ({
@@ -32,11 +32,11 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("POST /api/recipes", () => {
+describe("POST /api/chat", () => {
   it("returns 401 when not authenticated", async () => {
     mockGetUserId.mockResolvedValue(null);
 
-    const request = new Request("http://localhost/api/recipes", {
+    const request = new Request("http://localhost/api/chat", {
       method: "POST",
       body: JSON.stringify({ messages: [fakeMessage({ content: "what can I make?" })] }),
     });
@@ -51,7 +51,7 @@ describe("POST /api/recipes", () => {
     mockGetUserId.mockResolvedValue("user-123");
     mockCheckRateLimit.mockResolvedValue(false);
 
-    const request = new Request("http://localhost/api/recipes", {
+    const request = new Request("http://localhost/api/chat", {
       method: "POST",
       body: JSON.stringify({ messages: [fakeMessage({ content: "what can I make?" })] }),
     });
@@ -66,7 +66,7 @@ describe("POST /api/recipes", () => {
     mockGetUserId.mockResolvedValue("user-123");
     mockCheckRateLimit.mockResolvedValue(true);
 
-    const request = new Request("http://localhost/api/recipes", {
+    const request = new Request("http://localhost/api/chat", {
       method: "POST",
       body: JSON.stringify({}),
     });
@@ -81,7 +81,7 @@ describe("POST /api/recipes", () => {
     mockGetUserId.mockResolvedValue("user-123");
     mockCheckRateLimit.mockResolvedValue(true);
 
-    const request = new Request("http://localhost/api/recipes", {
+    const request = new Request("http://localhost/api/chat", {
       method: "POST",
       body: JSON.stringify({ messages: [] }),
     });
@@ -104,7 +104,7 @@ describe("POST /api/recipes", () => {
     );
 
     const msg = fakeMessage({ content: "what can I make?" });
-    const request = new Request("http://localhost/api/recipes", {
+    const request = new Request("http://localhost/api/chat", {
       method: "POST",
       body: JSON.stringify({ messages: [msg] }),
     });
