@@ -8,7 +8,7 @@ Live: https://meal-prep-tawny-kappa.vercel.app
 
 ### Prerequisites
 
-- Node 22+
+- Node 22+ (Next.js 16 needs ≥20.9; we develop on 26)
 - [Doppler CLI](https://docs.doppler.com/docs/install-cli) — secrets manager (`brew install dopplerhq/cli/doppler`)
 - [Vercel CLI](https://vercel.com/docs/cli) — deploy and manage Vercel from the terminal (`npm i -g vercel`)
 - [Supabase CLI](https://supabase.com/docs/guides/cli) — runs the local DB/auth stack the dev app logs into, and the integration tests (`brew install supabase/tap/supabase`)
