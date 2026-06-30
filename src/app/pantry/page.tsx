@@ -133,7 +133,7 @@ export default function PantryPage() {
           onKeyDown={(e) => e.key === 'Enter' && addItem()}
         />
         <input
-          className="w-36 rounded-xl border border-sand bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted outline-none focus:border-ink transition-colors"
+          className="w-20 sm:w-36 rounded-xl border border-sand bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted outline-none focus:border-ink transition-colors"
           placeholder="Qty (e.g. 2 lbs)"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}

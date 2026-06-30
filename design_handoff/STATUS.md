@@ -14,7 +14,7 @@ Surfaced here so they don't get lost in the per-screen tables. Grouped by what u
 - **"Today" date divider** between messages — Screen 1.
 - **Ember focus ring** on pantry name input (currently ink border) — Screen 6.
 - **Input disabled on 401** + conversation dimmed behind error banner — Screen 8.
-- ~~**Mobile verification** — test column layout + font sizes in DevTools mobile view.~~ ✅ Verified at 393px (#9); login/chat/fonts clean. Left one defect: pantry add-item row overflows on narrow screens.
+- ~~**Mobile verification** — test column layout + font sizes in DevTools mobile view.~~ ✅ Verified at 393px (#9); login/chat/fonts clean. ~~Left one defect: pantry add-item row overflows on narrow screens.~~ ✅ Fixed (#45) — qty input is `w-20 sm:w-36`; Add button right edge 366 ≤ 375 at iPhone SE width.
 
 ### Needs a navigation-model change (the "sheets over chat" model from design CLAUDE.md)
 - **Pantry as dismissible sheet over chat** (not the current standalone `/pantry` route) — Screen 2.
@@ -149,6 +149,6 @@ Surfaced here so they don't get lost in the per-screen tables. Grouped by what u
 ## Mobile responsiveness
 | Item | Status | Notes |
 |---|---|---|
-| Column layout works on mobile | ✅ Done | `max-w-2xl` centered column. Verified 393px (#9): chat + login no overflow. **Defect:** pantry add-item row overflows — see below. |
-| Verified on real mobile / DevTools | ✅ Verified | Verified #9 — prod app at iPhone 14 Pro (393×852) via Playwright. Login, chat (incl. send + streamed reply), pantry list all OK. One defect filed: pantry add form. |
+| Column layout works on mobile | ✅ Done | `max-w-2xl` centered column. Verified 393px (#9): chat + login no overflow. ~~**Defect:** pantry add-item row overflows.~~ ✅ Fixed #45. |
+| Verified on real mobile / DevTools | ✅ Verified | Verified #9 — prod app at iPhone 14 Pro (393×852) via Playwright. Login, chat (incl. send + streamed reply), pantry list all OK. ~~One defect filed: pantry add form.~~ Add-row defect fixed + verified at 375px (iPhone SE) via Playwright (#45). |
 | Font sizes appropriate on small screens | ✅ Verified | Body 16px, headings 24px, inputs/buttons 14px — readable at 393px. |
