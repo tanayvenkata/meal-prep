@@ -103,6 +103,14 @@ npm install
 
 Supabase does NOT need to be restarted — it's one Docker container shared across all worktrees. Just make sure it's running (`supabase start` from any directory if not already up).
 
+If the worktree branch has new migrations, apply them to the local DB:
+
+```bash
+supabase db push --local
+# if the test user is missing after a migration, re-seed:
+supabase db reset
+```
+
 After setup, `npm run dev` works normally.
 
 ## Architecture
