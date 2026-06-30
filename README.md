@@ -91,17 +91,19 @@ supabase start
 
 ## Working in git worktrees
 
-Worktrees are separate directories for feature branches (created via `git worktree add`). Two things need re-linking when you `cd` into one:
+Worktrees are separate directories for feature branches (created via `git worktree add`). Two things need re-linking when you first `cd` into one:
 
 ```bash
-# 1. Link Doppler — the config is scoped to the main repo path, not the worktree
+# 1. Link Doppler — scoped to the main repo path, not inherited by worktrees
 doppler setup --project meal-prep --config dev
 
-# 2. Install node_modules — worktrees don't share them
+# 2. Install node_modules — not shared between worktrees
 npm install
 ```
 
-After that, `npm run dev` works normally.
+Supabase does NOT need to be restarted — it's one Docker container shared across all worktrees. Just make sure it's running (`supabase start` from any directory if not already up).
+
+After setup, `npm run dev` works normally.
 
 ## Architecture
 
