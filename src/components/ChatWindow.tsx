@@ -265,7 +265,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth }: Prop
         style={{ boxShadow: "0 2px 12px rgba(34,29,24,.08)" }}
       >
         <input
-          className="flex-1 bg-transparent px-2 py-1 text-sm text-ink placeholder:text-muted outline-none disabled:opacity-40"
+          className="flex-1 bg-transparent px-2 py-1 text-base text-ink placeholder:text-muted outline-none disabled:opacity-40"
           placeholder={placeholder}
           value={input}
           disabled={authExpired}
