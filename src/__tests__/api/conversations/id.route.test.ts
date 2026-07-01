@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GET } from "@/app/api/conversations/[id]/route";
+import { GET, DELETE } from "@/app/api/conversations/[id]/route";
 import { fakeConversation, fakeDbMessage } from "@/__tests__/helpers/fixtures";
 
 vi.mock("@/lib/auth", () => ({
@@ -9,14 +9,16 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/db", () => ({
   getConversation: vi.fn(),
   getMessages: vi.fn(),
+  deleteConversation: vi.fn(),
 }));
 
 import { getUserId } from "@/lib/auth";
-import { getConversation, getMessages } from "@/lib/db";
+import { getConversation, getMessages, deleteConversation } from "@/lib/db";
 
 const mockGetUserId = vi.mocked(getUserId);
 const mockGetConversation = vi.mocked(getConversation);
 const mockGetMessages = vi.mocked(getMessages);
+const mockDeleteConversation = vi.mocked(deleteConversation);
 
 const fakeParams = (id: string) => ({ params: Promise.resolve({ id }) });
 
@@ -77,5 +79,52 @@ describe("GET /api/conversations/[id]", () => {
     expect(body.conversation.title).toBe("what can I make with eggs");
     expect(body.messages).toHaveLength(1);
     expect(body.messages[0].role).toBe("user");
+  });
+});
+
+describe("DELETE /api/conversations/[id]", () => {
+  const del = (id: string) =>
+    DELETE(
+      new Request(`http://localhost/api/conversations/${id}`, { method: "DELETE" }),
+      fakeParams(id)
+    );
+
+  it("returns 401 when not authenticated", async () => {
+    mockGetUserId.mockResolvedValue(null);
+
+    const response = await del("abc");
+
+    expect(response.status).toBe(401);
+    expect((await response.json()).error).toBe("unauthorized");
+    expect(mockDeleteConversation).not.toHaveBeenCalled();
+  });
+
+  it("scopes the delete to the authenticated user", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+    mockDeleteConversation.mockResolvedValue();
+
+    const response = await del("conv-abc");
+
+    expect(response.status).toBe(204);
+    expect(mockDeleteConversation).toHaveBeenCalledWith("user-123", "conv-abc");
+  });
+
+  it("returns 204 on success", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+    mockDeleteConversation.mockResolvedValue();
+
+    const response = await del("conv-abc");
+
+    expect(response.status).toBe(204);
+  });
+
+  it("returns 500 when the delete fails", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+    mockDeleteConversation.mockRejectedValue(new Error("db down"));
+
+    const response = await del("conv-abc");
+
+    expect(response.status).toBe(500);
+    expect((await response.json()).error).toBe("failed to delete conversation");
   });
 });

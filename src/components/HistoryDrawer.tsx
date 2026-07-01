@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { X, Plus } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { useRouter, usePathname } from "next/navigation";
+import { X, Plus, Trash2 } from "lucide-react";
+import { getToken } from "@/lib/supabase";
 import type { Conversation } from "@/lib/db";
 import IconButton from "@/components/IconButton";
 
@@ -44,9 +44,11 @@ function groupByDay(conversations: Conversation[]): { label: string; items: Conv
 
 export default function HistoryDrawer({ open, onClose }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -55,8 +57,7 @@ export default function HistoryDrawer({ open, onClose }: Props) {
       setLoading(true);
       setError(null);
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData.session?.access_token;
+        const token = await getToken();
         if (!token) return;
         const res = await fetch("/api/conversations", {
           headers: { Authorization: `Bearer ${token}` },
@@ -86,6 +87,28 @@ export default function HistoryDrawer({ open, onClose }: Props) {
   function openConversation(id: string) {
     onClose();
     router.push(`/chat/${id}`);
+  }
+
+  async function deleteConversation(id: string) {
+    setDeletingId(id);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const res = await fetch(`/api/conversations/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`delete failed (${res.status})`);
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      // If we just deleted the conversation currently open in the chat pane,
+      // the URL points at a now-dead id — drop into a fresh chat so the UI isn't stranded.
+      if (pathname === `/chat/${id}`) newConversation();
+    } catch (err) {
+      console.error("failed to delete conversation:", err);
+      setError("Could not delete conversation. Try again.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   const groups = groupByDay(conversations);
@@ -146,14 +169,27 @@ export default function HistoryDrawer({ open, onClose }: Props) {
                 </p>
                 <div className="flex flex-col gap-1">
                   {items.map((c) => (
-                    <button
+                    <div
                       key={c.id}
-                      onClick={() => openConversation(c.id)}
-                      className="w-full rounded-xl bg-surface-sunken px-4 py-3 text-left hover:bg-surface-hover transition-colors"
+                      className="group flex items-center gap-1 rounded-xl bg-surface-sunken pr-2 hover:bg-surface-hover transition-colors"
                       style={{ boxShadow: "0 1px 4px var(--shadow-color-sm)" }}
                     >
-                      <p className="truncate text-sm font-medium text-text-primary">{c.title}</p>
-                    </button>
+                      <button
+                        onClick={() => openConversation(c.id)}
+                        className="min-w-0 flex-1 px-4 py-3 text-left"
+                      >
+                        <p className="truncate text-sm font-medium text-text-primary">{c.title}</p>
+                      </button>
+                      <button
+                        onClick={() => deleteConversation(c.id)}
+                        disabled={deletingId === c.id}
+                        aria-label="Delete conversation"
+                        title="Delete conversation"
+                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-text-secondary opacity-0 hover:bg-danger/10 hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 transition-opacity disabled:opacity-40"
+                      >
+                        <Trash2 size={15} strokeWidth={2.2} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>

@@ -111,6 +111,14 @@ export async function getConversation(userId: string, id: string): Promise<Conve
   return conversation ?? null;
 }
 
+export async function deleteConversation(userId: string, id: string): Promise<void> {
+  // messages rows cascade via the ON DELETE CASCADE FK on messages.conversation_id.
+  await sql`
+    delete from conversations
+    where id = ${id} and user_id = ${userId}
+  `;
+}
+
 export async function getMessages(conversationId: string): Promise<Message[]> {
   return sql<Message[]>`
     select * from messages
