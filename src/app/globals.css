@@ -20,6 +20,16 @@
   --light-sand: #e6dcc8;
   --light-muted: #8a8073;
   --light-error-border: #e6c4ba;
+  /* Bare ember TEXT on a light surface (not a fill). Darker/more saturated
+     than --light-ember: text-on-surface must clear WCAG AA 4.5:1, which the
+     button-tuned --light-ember only reaches on --light-surface (4.64), not on
+     --light-paper (4.19). Split from --light-ember so the fill and bare-text
+     roles can't drift back together (#77). */
+  --light-ember-text: #b8391f;
+  /* UI-component border/divider hue. A dedicated primitive (NOT --light-sand,
+     which stays a fill for --surface-muted) so it can clear WCAG 1.4.11's 3:1
+     non-text minimum — --light-sand as a border only reached 1.34:1 (#78). */
+  --light-border: #948a6a;
 
   --dark-paper: #1b1712;
   --dark-surface: #262019;
@@ -34,6 +44,15 @@
   --dark-sand: #4a4030;
   --dark-muted: #a89e8e;
   --dark-error-border: #6b4038;
+  /* Dark-mode counterpart of --light-ember-text. Lightened well past
+     --dark-ember (which is button-tuned dark and only reaches 3.38:1 as bare
+     text on --dark-surface) to clear 4.5:1 on every dark surface it lands on
+     (5.54 paper / 5.01 surface / 4.52 pantry-strip) (#77). */
+  --dark-ember-text: #e56b48;
+  /* Dark-mode border hue. Lightened from --dark-sand (1.59:1 as a border) to
+     clear 3:1 on the dark surfaces borders sit on (3.61 paper / 3.26
+     surface) (#78). */
+  --dark-border: #7a6f5b;
 
   /* --light-olive/--dark-olive are reserved (design_handoff/CLAUDE.md calls
      it out as the "secondary" brand color) but nothing in the UI uses it
@@ -70,6 +89,13 @@
   --fill-inverse: var(--light-ink);
 
   --accent: var(--light-ember);
+  /* Bare ember TEXT roles (delete/nav-hover links, error text) — a separate
+     role from --accent/--danger because a *fill* (white on ember) and *text*
+     (ember on surface) impose opposite contrast demands on one hue, so a
+     single value can't satisfy both. Points at --light-ember-text, which is
+     tuned for the text side (#77). */
+  --text-accent: var(--light-ember-text);
+  --text-danger: var(--light-ember-text);
   /* Tint of --accent toward white, not an independent hex — stays in sync
      with --accent automatically in dark mode without its own override. */
   --accent-soft: color-mix(in srgb, var(--accent) 40%, white);
@@ -82,7 +108,7 @@
   --danger: var(--light-ember);
   --danger-outline: var(--light-error-border);
 
-  --outline: var(--light-sand);
+  --outline: var(--light-border);
   /* Focus/hover emphasis border — shares ink's value with text-primary
      today, same reasoning as fill-inverse above. */
   --outline-strong: var(--light-ink);
@@ -119,10 +145,12 @@
   --fill-inverse: var(--dark-ink);
 
   --accent: var(--dark-ember);
+  --text-accent: var(--dark-ember-text);
+  --text-danger: var(--dark-ember-text);
   --danger: var(--dark-ember);
   --danger-outline: var(--dark-error-border);
 
-  --outline: var(--dark-sand);
+  --outline: var(--dark-border);
   --outline-strong: var(--dark-ink);
 
   /* Shadows barely read on a dark surface — elevation comes from the
@@ -144,6 +172,8 @@
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-inverse: var(--text-inverse);
+  --color-text-accent: var(--text-accent);
+  --color-text-danger: var(--text-danger);
   --color-fill-inverse: var(--fill-inverse);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
@@ -200,11 +230,13 @@ body {
     --text-primary: var(--light-ink);
     --text-secondary: var(--light-muted);
     --text-inverse: var(--light-paper);
+    --text-accent: var(--light-ember-text);
+    --text-danger: var(--light-ember-text);
     --fill-inverse: var(--light-ink);
     --accent: var(--light-ember);
     --danger: var(--light-ember);
     --danger-outline: var(--light-error-border);
-    --outline: var(--light-sand);
+    --outline: var(--light-border);
     --outline-strong: var(--light-ink);
     color-scheme: light;
   }

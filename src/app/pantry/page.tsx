@@ -148,7 +148,7 @@ export default function PantryPage() {
       </div>
 
       {error && (
-        <p className="mb-4 text-sm text-danger">{error}</p>
+        <p className="mb-4 text-sm text-text-danger">{error}</p>
       )}
 
       {/* item list */}
@@ -232,7 +232,7 @@ export default function PantryPage() {
                         Edit
                       </button>
                       <button
-                        className="rounded-lg px-3 py-1 text-xs text-accent hover:opacity-70 transition-opacity"
+                        className="rounded-lg px-3 py-1 text-xs text-text-accent hover:opacity-70 transition-opacity"
                         onClick={() => deleteItem(item.id)}
                       >
                         Delete
