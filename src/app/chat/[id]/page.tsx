@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import ChatWindow from "@/components/ChatWindow";
-import type { ChatMessage } from "@/lib/ai";
+import ChatWindow, { type UiMessage } from "@/components/ChatWindow";
 import { supabase } from "@/lib/supabase";
 
 export default function ChatPage() {
   const { id } = useParams<{ id: string }>();
-  const [initialMessages, setInitialMessages] = useState<ChatMessage[] | null>(null);
+  const [initialMessages, setInitialMessages] = useState<UiMessage[] | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -25,10 +24,13 @@ export default function ChatPage() {
       if (!res.ok) { setError(true); return; }
 
       const body = await res.json();
-      const messages: ChatMessage[] = body.messages.map((m: { role: "user" | "assistant"; content: string }) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      const messages: UiMessage[] = body.messages.map(
+        (m: { role: "user" | "assistant"; content: string; created_at: string }) => ({
+          role: m.role,
+          content: m.content,
+          createdAt: m.created_at,
+        }),
+      );
       setInitialMessages(messages);
     }
 

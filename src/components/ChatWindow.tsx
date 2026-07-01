@@ -6,13 +6,32 @@ import { Mic, ArrowUp, Square } from "lucide-react";
 import type { ChatMessage } from "@/lib/ai";
 import { supabase } from "@/lib/supabase";
 
+// UI-level message: ChatMessage plus a timestamp for the date dividers. createdAt is
+// optional because it's presentation-only — it never travels to the API (the chat route
+// forwards messages straight to the Anthropic SDK, which rejects extra fields).
+export type UiMessage = ChatMessage & { createdAt?: string };
+
 type Props = {
   apiRoute: string;
   placeholder: string;
   requiresAuth?: boolean;
   conversationId?: string;
-  initialMessages?: ChatMessage[];
+  initialMessages?: UiMessage[];
 };
+
+// "Today" / "Yesterday" / "Jun 12" — same labelling scheme as HistoryDrawer's groups.
+function dayLabel(iso: string): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const d = new Date(iso);
+  d.setHours(0, 0, 0, 0);
+  if (d.getTime() === today.getTime()) return "Today";
+  if (d.getTime() === yesterday.getTime()) return "Yesterday";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 const TYPING_DOTS: { className: string; delayMs: number }[] = [
   { className: "bg-accent", delayMs: 0 },
@@ -27,7 +46,7 @@ async function getToken(): Promise<string | null> {
 
 export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conversationId, initialMessages }: Props) {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages ?? []);
+  const [messages, setMessages] = useState<UiMessage[]>(initialMessages ?? []);
   const generatedId = useRef(crypto.randomUUID());
   const activeConversationId = conversationId ?? generatedId.current;
   const [reply, setReply] = useState("");
@@ -108,9 +127,9 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
       setListening(false);
     }
 
-    const newMessages: ChatMessage[] = [
+    const newMessages: UiMessage[] = [
       ...messages,
-      { role: "user", content: input },
+      { role: "user", content: input, createdAt: new Date().toISOString() },
     ];
     setMessages(newMessages);
     setInput("");
@@ -133,7 +152,11 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
       res = await fetch(apiRoute, {
         method: "POST",
         headers,
-        body: JSON.stringify({ messages: newMessages, conversationId: activeConversationId }),
+        // strip createdAt — the route hands messages straight to the Anthropic SDK
+        body: JSON.stringify({
+          messages: newMessages.map(({ role, content }) => ({ role, content })),
+          conversationId: activeConversationId,
+        }),
         signal: controller.signal,
       });
     } catch (err) {
@@ -179,7 +202,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
         setReply(full);
       }
       setReply("");
-      setMessages([...newMessages, { role: "assistant", content: full }]);
+      setMessages([...newMessages, { role: "assistant", content: full, createdAt: new Date().toISOString() }]);
       const token = await getToken();
       await fetch(`/api/conversations/${activeConversationId}/messages`, {
         method: "POST",
@@ -194,7 +217,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
       // AbortError: partial response stays in message list with a stopped indicator
       if (full) {
         setReply("");
-        setMessages([...newMessages, { role: "assistant", content: full + "\n\n*(stopped)*" }]);
+        setMessages([...newMessages, { role: "assistant", content: full + "\n\n*(stopped)*", createdAt: new Date().toISOString() }]);
       }
     }
 
@@ -225,9 +248,24 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
           </div>
         ) : (
           <>
-            {messages.map((m, i) => (
+            {messages.map((m, i) => {
+              // divider when this message starts a new day. Messages without a timestamp
+              // (e.g. rows saved before timestamps were surfaced) inherit the previous
+              // group rather than forcing a divider.
+              const label = m.createdAt ? dayLabel(m.createdAt) : null;
+              const prevWithDate = messages.slice(0, i).reverse().find((p) => p.createdAt);
+              const prevLabel = prevWithDate?.createdAt ? dayLabel(prevWithDate.createdAt) : null;
+              const showDivider = label !== null && label !== prevLabel;
+              return (
+              <div key={i}>
+                {showDivider && (
+                  <div className="flex justify-center pt-2 pb-3">
+                    <span className="font-mono text-[10.5px] uppercase tracking-wider text-text-secondary">
+                      {label}
+                    </span>
+                  </div>
+                )}
               <div
-                key={i}
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
@@ -245,7 +283,9 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
                   <ReactMarkdown>{m.content}</ReactMarkdown>
                 </div>
               </div>
-            ))}
+              </div>
+              );
+            })}
 
             {isLoading && !reply && (
               <div className="flex flex-col items-start gap-1.5">
