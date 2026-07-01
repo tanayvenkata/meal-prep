@@ -30,6 +30,13 @@
      stay dark/saturated enough for contrast; lightening it for the dark
      background (as tried initially) dropped white-on-ember below WCAG AA. */
   --dark-ember: #c14e33;
+  /* Bare ember TEXT on a dark surface, distinct from --dark-ember above.
+     --dark-ember stays dark/saturated so white sits on it at AA (4.77:1) as a
+     button fill; that same value as bare text on --dark-surface is only 3.38:1,
+     below AA's 4.5 for normal text (#77). This lighter tint clears 4.5 as text
+     (5.29:1 on surface, 5.86 on paper) and is used ONLY for the text role — no
+     light sibling because it's a dark-surface tint, not a new brand hue. */
+  --dark-ember-text: #d97a5f;
   --dark-olive: #7c8c5c;
   --dark-sand: #4a4030;
   --dark-muted: #a89e8e;
@@ -70,6 +77,12 @@
   --fill-inverse: var(--light-ink);
 
   --accent: var(--light-ember);
+  /* Bare-text ember roles, split from --accent/--danger (which stay dark for
+     white-on-fill). Light mode keeps the same ember, so light rendering is
+     byte-identical; only .dark overrides these to the lighter text tint (#77).
+     Kept as two names, not one, to preserve the accent-vs-danger role split. */
+  --text-accent: var(--light-ember);
+  --text-danger: var(--light-ember);
   /* Tint of --accent toward white, not an independent hex — stays in sync
      with --accent automatically in dark mode without its own override. */
   --accent-soft: color-mix(in srgb, var(--accent) 40%, white);
@@ -120,6 +133,10 @@
 
   --accent: var(--dark-ember);
   --danger: var(--dark-ember);
+  /* Lighter than --accent/--danger so bare ember text clears AA on dark
+     surfaces (#77); the fills above stay dark for white-on-ember. */
+  --text-accent: var(--dark-ember-text);
+  --text-danger: var(--dark-ember-text);
   --danger-outline: var(--dark-error-border);
 
   --outline: var(--dark-sand);
@@ -147,6 +164,8 @@
   --color-fill-inverse: var(--fill-inverse);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
+  --color-text-accent: var(--text-accent);
+  --color-text-danger: var(--text-danger);
   --color-danger: var(--danger);
   --color-danger-outline: var(--danger-outline);
   --color-outline: var(--outline);
@@ -203,6 +222,8 @@ body {
     --fill-inverse: var(--light-ink);
     --accent: var(--light-ember);
     --danger: var(--light-ember);
+    --text-accent: var(--light-ember);
+    --text-danger: var(--light-ember);
     --danger-outline: var(--light-error-border);
     --outline: var(--light-sand);
     --outline-strong: var(--light-ink);
