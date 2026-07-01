@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { Geist, Geist_Mono, Spectral } from "next/font/google";
 import "./globals.css";
 import NavBar from "@/components/NavBar";
-import { isThemeMode, type ThemeMode } from "@/lib/theme";
+import { isThemeMode, themeColorEntries, type ThemeMode } from "@/lib/theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,12 +26,16 @@ export const metadata: Metadata = {
   description: "Your pantry-aware sous-chef",
 };
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f1e7" },
-    { media: "(prefers-color-scheme: dark)", color: "#1b1712" },
-  ],
-};
+// A function (not a static object) because the resolved color depends on
+// the theme-mode cookie — same data RootLayout below reads for the .dark
+// class, so an explicit override is correct from the very first paint
+// instead of only after ThemeToggle's client-side sync runs.
+export async function generateViewport(): Promise<Viewport> {
+  const cookieStore = await cookies();
+  const rawMode = cookieStore.get("theme-mode")?.value;
+  const themeMode: ThemeMode = isThemeMode(rawMode) ? rawMode : "system";
+  return { themeColor: themeColorEntries(themeMode) };
+}
 
 // Only runs for the "system"/no-cookie case — an explicit theme-mode cookie
 // is already rendered correctly server-side before any script runs, so this

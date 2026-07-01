@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import IconButton from "@/components/IconButton";
-import { THEME_MODES, type ThemeMode } from "@/lib/theme";
+import { THEME_MODES, themeColorEntries, type ThemeMode } from "@/lib/theme";
 
 const ICONS = { system: Monitor, light: Sun, dark: Moon };
 
@@ -13,8 +13,21 @@ function resolveDark(mode: ThemeMode): boolean {
   return matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
+// layout.tsx's generateViewport() renders these correctly on first paint,
+// but a click can't trigger a server re-render without a reload — so the
+// live toggle needs this client-side patch, using the same media/color
+// pairing generateViewport used, just applied via the DOM instead of SSR.
+function syncThemeColorMeta(mode: ThemeMode) {
+  const entries = themeColorEntries(mode);
+  document.querySelectorAll('meta[name="theme-color"]').forEach((tag) => {
+    const entry = entries.find((e) => e.media === tag.getAttribute("media")) ?? entries[0];
+    tag.setAttribute("content", entry.color);
+  });
+}
+
 function applyMode(mode: ThemeMode) {
   document.documentElement.classList.toggle("dark", resolveDark(mode));
+  syncThemeColorMeta(mode);
   const secure = location.protocol === "https:" ? "; Secure" : "";
   document.cookie = `theme-mode=${mode}; path=/; max-age=31536000; SameSite=Lax${secure}`;
 }
