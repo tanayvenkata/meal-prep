@@ -16,7 +16,7 @@ export async function* streamChat(
   system?: string,
 ): AsyncGenerator<string> {
   const stream = client.messages.stream({
-    model: "claude-haiku-4-5-20251001",
+    model: "claude-sonnet-5",
     max_tokens: 4096,
     messages,
     ...(system ? { system } : {}),
