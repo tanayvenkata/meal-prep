@@ -1,16 +1,82 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Class-based dark mode: JS toggles `.dark` on <html>. See layout.tsx for
+   the cookie-driven server render + the system-preference fallback script. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --paper: #f6f1e7;
-  --surface: #fffdf8;
-  --pantry-strip: #f1ead9;
-  --ink: #221d18;
-  --ember: #c8492f;
-  --olive: #5c6b3f;
-  --sand: #e6dcc8;
-  --muted: #8a8073;
-  --error-border: #e6c4ba;
+  /* Canonical light values — the single source of truth for the light
+     palette. :root's own tokens below reference these, and so does the
+     @media print override at the bottom of this file, so the light hex
+     values only ever live in one place. */
+  --light-paper: #f6f1e7;
+  --light-surface: #fffdf8;
+  --light-pantry-strip: #f1ead9;
+  --light-ink: #221d18;
+  --light-ember: #c8492f;
+  --light-olive: #5c6b3f;
+  --light-sand: #e6dcc8;
+  --light-muted: #8a8073;
+  --light-error-border: #e6c4ba;
+
+  --paper: var(--light-paper);
+  --surface: var(--light-surface);
+  --pantry-strip: var(--light-pantry-strip);
+  /* Dual role: body text color AND the user chat-bubble background
+     (bg-ink in ChatWindow.tsx). Check both when changing this. */
+  --ink: var(--light-ink);
+  --ember: var(--light-ember);
+  --olive: var(--light-olive);
+  --sand: var(--light-sand);
+  --muted: var(--light-muted);
+  --error-border: var(--light-error-border);
+
+  /* Tint of --ember toward white, not an independent hex — stays in sync
+     with --ember automatically in dark mode without its own override. */
+  --ember-soft: color-mix(in srgb, var(--ember) 40%, white);
+
+  /* Intentionally not redefined under .dark — a modal backdrop should
+     always darken regardless of theme, unlike --ink which flips polarity
+     (see above), which is why HistoryDrawer's overlay uses this instead. */
+  --scrim: #000000;
+
+  /* Shadow COLOR, split from shape (kept at each call site) so shadows can
+     be redefined per theme without touching components. Named --shadow-color-*
+     rather than --shadow-* because Tailwind v4 itself reserves --shadow-sm/
+     md/lg for its own full box-shadow value scale (loaded above via
+     @import "tailwindcss") — reusing those names would silently redefine
+     what var(--shadow-sm) means anywhere it's referenced. */
+  --shadow-color-sm: color-mix(in srgb, var(--ink) 7%, transparent);
+  --shadow-color-md: color-mix(in srgb, var(--ink) 8%, transparent);
+  --shadow-color-lg: color-mix(in srgb, var(--ink) 12%, transparent);
+
+  color-scheme: light;
+}
+
+.dark {
+  --paper: #1b1712;
+  --surface: #262019;
+  --pantry-strip: #2f2820;
+  --ink: #f0e9dc;
+  /* Kept close to the light-mode value rather than lightened like the
+     other accents — white button text (Sign in, send, mic) needs this to
+     stay dark/saturated enough for contrast; lightening it for the dark
+     background (as tried initially) dropped white-on-ember below WCAG AA. */
+  --ember: #c14e33;
+  --olive: #7c8c5c;
+  --sand: #4a4030;
+  --muted: #a89e8e;
+  --error-border: #6b4038;
+
+  /* Shadows barely read on a dark surface — elevation comes from the
+     lighter surface/pantry-strip tones above instead, so these fade out
+     rather than getting darker. */
+  --shadow-color-sm: color-mix(in srgb, black 15%, transparent);
+  --shadow-color-md: color-mix(in srgb, black 18%, transparent);
+  --shadow-color-lg: color-mix(in srgb, black 25%, transparent);
+
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -19,10 +85,12 @@
   --color-pantry-strip: var(--pantry-strip);
   --color-ink: var(--ink);
   --color-ember: var(--ember);
+  --color-ember-soft: var(--ember-soft);
   --color-olive: var(--olive);
   --color-sand: var(--sand);
   --color-muted: var(--muted);
   --color-error-border: var(--error-border);
+  --color-scrim: var(--scrim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-serif: var(--font-spectral);
@@ -56,4 +124,22 @@ body {
 
 .animate-typing-dot {
   animation: typing-dot 1.2s ease-in-out infinite;
+}
+
+/* Recipes get printed; a dark background wastes ink and looks broken on
+   paper. Only .dark needs resetting — :root already holds the light values
+   above, referenced from the same --light-* canonical set, not restated. */
+@media print {
+  .dark {
+    --paper: var(--light-paper);
+    --surface: var(--light-surface);
+    --pantry-strip: var(--light-pantry-strip);
+    --ink: var(--light-ink);
+    --ember: var(--light-ember);
+    --olive: var(--light-olive);
+    --sand: var(--light-sand);
+    --muted: var(--light-muted);
+    --error-border: var(--light-error-border);
+    color-scheme: light;
+  }
 }

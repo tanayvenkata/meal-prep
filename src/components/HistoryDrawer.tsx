@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { X, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Conversation } from "@/lib/db";
+import IconButton from "@/components/IconButton";
 
 type Props = {
   open: boolean;
@@ -77,7 +78,7 @@ export default function HistoryDrawer({ open, onClose }: Props) {
       {/* backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-20 bg-ink/30"
+          className="fixed inset-0 z-20 bg-scrim/30"
           onClick={onClose}
         />
       )}
@@ -87,17 +88,14 @@ export default function HistoryDrawer({ open, onClose }: Props) {
         className={`fixed inset-y-0 left-0 z-30 flex w-80 flex-col bg-surface transition-transform duration-300 ease-in-out ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
-        style={{ boxShadow: "4px 0 24px rgba(34,29,24,.12)" }}
+        style={{ boxShadow: "4px 0 24px var(--shadow-color-lg)" }}
       >
         {/* header */}
         <div className="flex items-center justify-between border-b border-sand px-5 py-4">
           <h2 className="font-serif text-xl font-semibold text-ink">Conversations</h2>
-          <button
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-pantry-strip hover:text-ink transition-colors"
-          >
+          <IconButton onClick={onClose}>
             <X size={16} strokeWidth={2.2} />
-          </button>
+          </IconButton>
         </div>
 
         {/* new conversation */}
@@ -127,7 +125,7 @@ export default function HistoryDrawer({ open, onClose }: Props) {
                       key={c.id}
                       onClick={() => openConversation(c.id)}
                       className="w-full rounded-xl bg-paper px-4 py-3 text-left hover:bg-pantry-strip transition-colors"
-                      style={{ boxShadow: "0 1px 4px rgba(34,29,24,.07)" }}
+                      style={{ boxShadow: "0 1px 4px var(--shadow-color-sm)" }}
                     >
                       <p className="truncate text-sm font-medium text-ink">{c.title}</p>
                     </button>

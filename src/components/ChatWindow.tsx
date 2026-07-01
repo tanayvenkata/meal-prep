@@ -14,9 +14,9 @@ type Props = {
   initialMessages?: ChatMessage[];
 };
 
-const TYPING_DOTS: { className: string; style?: { backgroundColor: string }; delayMs: number }[] = [
+const TYPING_DOTS: { className: string; delayMs: number }[] = [
   { className: "bg-ember", delayMs: 0 },
-  { className: "", style: { backgroundColor: "#d8b5ab" }, delayMs: 400 },
+  { className: "bg-ember-soft", delayMs: 400 },
   { className: "bg-sand", delayMs: 800 },
 ];
 
@@ -231,14 +231,14 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`prose prose-sm max-w-[82%] px-4 py-2.5 text-sm leading-relaxed ${
+                  className={`prose-sm max-w-[82%] px-4 py-2.5 text-sm leading-relaxed ${
                     m.role === "user"
-                      ? "bg-ink text-paper prose-invert rounded-2xl rounded-br-md"
-                      : "bg-surface text-ink rounded-2xl rounded-bl-md"
+                      ? "prose-invert dark:prose bg-ink text-paper rounded-2xl rounded-br-md"
+                      : "prose dark:prose-invert bg-surface text-ink rounded-2xl rounded-bl-md"
                   }`}
                   style={
                     m.role === "assistant"
-                      ? { boxShadow: "0 1px 4px rgba(34,29,24,.07)" }
+                      ? { boxShadow: "0 1px 4px var(--shadow-color-sm)" }
                       : undefined
                   }
                 >
@@ -251,13 +251,13 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
               <div className="flex flex-col items-start gap-1.5">
                 <div
                   className="flex items-center gap-1 rounded-full bg-surface px-4 py-3"
-                  style={{ boxShadow: "0 1px 4px rgba(34,29,24,.07)" }}
+                  style={{ boxShadow: "0 1px 4px var(--shadow-color-sm)" }}
                 >
-                  {TYPING_DOTS.map(({ className, style, delayMs }) => (
+                  {TYPING_DOTS.map(({ className, delayMs }) => (
                     <span
                       key={delayMs}
                       className={`h-1.5 w-1.5 animate-typing-dot rounded-full ${className}`}
-                      style={{ ...style, animationDelay: `${delayMs}ms` }}
+                      style={{ animationDelay: `${delayMs}ms` }}
                     />
                   ))}
                 </div>
@@ -270,8 +270,8 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
             {reply && (
               <div className="flex justify-start">
                 <div
-                  className="prose prose-sm max-w-[82%] rounded-2xl rounded-bl-md bg-surface px-4 py-2.5 text-sm leading-relaxed text-ink"
-                  style={{ boxShadow: "0 1px 4px rgba(34,29,24,.07)" }}
+                  className="prose dark:prose-invert prose-sm max-w-[82%] rounded-2xl rounded-bl-md bg-surface px-4 py-2.5 text-sm leading-relaxed text-ink"
+                  style={{ boxShadow: "0 1px 4px var(--shadow-color-sm)" }}
                 >
                   <ReactMarkdown>{reply}</ReactMarkdown>
                 </div>
@@ -285,11 +285,8 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
       {/* error banner */}
       {error && (
         <div
-          className="mb-3 rounded-xl border bg-surface px-4 py-3 text-sm text-ink"
-          style={{
-            borderColor: "#e6c4ba",
-            boxShadow: "0 1px 4px rgba(34,29,24,.07)",
-          }}
+          className="mb-3 rounded-xl border border-error-border bg-surface px-4 py-3 text-sm text-ink"
+          style={{ boxShadow: "0 1px 4px var(--shadow-color-sm)" }}
         >
           <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-ember text-xs font-bold text-white">!</span>
           {error}
@@ -299,7 +296,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
       {/* input bar */}
       <div
         className="flex items-center gap-2 rounded-full bg-surface px-3 py-2"
-        style={{ boxShadow: "0 2px 12px rgba(34,29,24,.08)" }}
+        style={{ boxShadow: "0 2px 12px var(--shadow-color-md)" }}
       >
         <input
           className="flex-1 bg-transparent px-2 py-1 text-base text-ink placeholder:text-muted outline-none disabled:opacity-40"
