@@ -135,7 +135,7 @@ export default function HistoryDrawer({ open, onClose }: Props) {
               ))}
             </div>
           ) : error ? (
-            <p className="mt-6 text-center text-sm text-danger">{error}</p>
+            <p className="mt-6 text-center text-sm text-text-danger">{error}</p>
           ) : conversations.length === 0 ? (
             <p className="mt-6 text-center text-sm text-text-secondary">No conversations yet</p>
           ) : (
