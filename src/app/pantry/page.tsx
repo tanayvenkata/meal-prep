@@ -117,8 +117,8 @@ export default function PantryPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-4 py-6">
       <div className="mb-6">
-        <h1 className="font-serif text-2xl font-semibold text-ink">My Pantry</h1>
-        <p className="mt-0.5 font-mono text-xs uppercase tracking-widest text-muted">
+        <h1 className="font-serif text-2xl font-semibold text-text-primary">My Pantry</h1>
+        <p className="mt-0.5 font-mono text-xs uppercase tracking-widest text-text-secondary">
           {loading ? ' ' : `${items.length} ${items.length === 1 ? 'item' : 'items'}`}
         </p>
       </div>
@@ -126,21 +126,21 @@ export default function PantryPage() {
       {/* add row */}
       <div className="mb-6 flex gap-2">
         <input
-          className="flex-1 rounded-xl border border-sand bg-surface px-3 py-2 text-base text-ink placeholder:text-muted outline-none focus:border-ink transition-colors"
+          className="flex-1 rounded-xl border border-outline bg-surface-raised px-3 py-2 text-base text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
           placeholder="Ingredient (e.g. chicken thighs)"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addItem()}
         />
         <input
-          className="w-20 sm:w-36 rounded-xl border border-sand bg-surface px-3 py-2 text-base text-ink placeholder:text-muted outline-none focus:border-ink transition-colors"
+          className="w-20 sm:w-36 rounded-xl border border-outline bg-surface-raised px-3 py-2 text-base text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
           placeholder="Qty (e.g. 2 lbs)"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addItem()}
         />
         <button
-          className="rounded-xl bg-ember px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+          className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
           onClick={addItem}
         >
           Add
@@ -148,32 +148,32 @@ export default function PantryPage() {
       </div>
 
       {error && (
-        <p className="mb-4 text-sm text-ember">{error}</p>
+        <p className="mb-4 text-sm text-danger">{error}</p>
       )}
 
       {/* item list */}
       <div
-        className="rounded-2xl bg-surface overflow-hidden"
+        className="rounded-2xl bg-surface-raised overflow-hidden"
         style={{ boxShadow: '0 1px 4px var(--shadow-color-sm)' }}
       >
         {loading ? (
           <div className="space-y-px">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center justify-between px-4 py-3">
-                <div className="h-4 w-32 rounded bg-sand animate-pulse" />
-                <div className="h-4 w-16 rounded bg-sand animate-pulse" />
+                <div className="h-4 w-32 rounded bg-surface-muted animate-pulse" />
+                <div className="h-4 w-16 rounded bg-surface-muted animate-pulse" />
               </div>
             ))}
           </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-sand text-muted text-xl">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-outline text-text-secondary text-xl">
               +
             </div>
-            <p className="text-sm text-muted">Nothing here yet — add something above.</p>
+            <p className="text-sm text-text-secondary">Nothing here yet — add something above.</p>
           </div>
         ) : (
-          <ul className="divide-y divide-sand">
+          <ul className="divide-y divide-outline">
             {items.map((item) => (
               <li key={item.id} className="px-4 py-3">
                 {editingId === item.id ? (
@@ -181,7 +181,7 @@ export default function PantryPage() {
                   <div className="flex items-center gap-2">
                     <input
                       ref={editNameRef}
-                      className="flex-1 rounded-lg border border-sand bg-paper px-2 py-1 text-base text-ink outline-none focus:border-ember transition-colors"
+                      className="flex-1 rounded-lg border border-outline bg-surface-sunken px-2 py-1 text-base text-text-primary outline-none focus:border-accent transition-colors"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       onKeyDown={(e) => {
@@ -191,7 +191,7 @@ export default function PantryPage() {
                       placeholder="Name"
                     />
                     <input
-                      className="w-24 rounded-lg border border-sand bg-paper px-2 py-1 text-base text-ink outline-none focus:border-ember transition-colors"
+                      className="w-24 rounded-lg border border-outline bg-surface-sunken px-2 py-1 text-base text-text-primary outline-none focus:border-accent transition-colors"
                       value={editQuantity}
                       onChange={(e) => setEditQuantity(e.target.value)}
                       onKeyDown={(e) => {
@@ -201,14 +201,14 @@ export default function PantryPage() {
                       placeholder="Qty"
                     />
                     <button
-                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-ember text-white hover:opacity-90 transition-opacity"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white hover:opacity-90 transition-opacity"
                       onClick={() => saveEdit(item.id)}
                       title="Save"
                     >
                       <Check size={14} strokeWidth={2.2} />
                     </button>
                     <button
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-sand text-muted hover:border-ink hover:text-ink transition-colors"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-outline text-text-secondary hover:border-outline-strong hover:text-text-primary transition-colors"
                       onClick={cancelEdit}
                       title="Cancel"
                     >
@@ -219,20 +219,20 @@ export default function PantryPage() {
                   /* normal row */
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-sm font-medium text-ink">{item.name}</span>
+                      <span className="text-sm font-medium text-text-primary">{item.name}</span>
                       {item.quantity && (
-                        <span className="ml-2 font-mono text-xs text-muted">{item.quantity}</span>
+                        <span className="ml-2 font-mono text-xs text-text-secondary">{item.quantity}</span>
                       )}
                     </div>
                     <div className="flex gap-2">
                       <button
-                        className="rounded-lg border border-sand px-3 py-1 text-xs text-muted hover:border-ink hover:text-ink transition-colors"
+                        className="rounded-lg border border-outline px-3 py-1 text-xs text-text-secondary hover:border-outline-strong hover:text-text-primary transition-colors"
                         onClick={() => startEdit(item)}
                       >
                         Edit
                       </button>
                       <button
-                        className="rounded-lg px-3 py-1 text-xs text-ember hover:opacity-70 transition-opacity"
+                        className="rounded-lg px-3 py-1 text-xs text-accent hover:opacity-70 transition-opacity"
                         onClick={() => deleteItem(item.id)}
                       >
                         Delete

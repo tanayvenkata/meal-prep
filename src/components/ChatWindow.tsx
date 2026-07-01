@@ -15,9 +15,9 @@ type Props = {
 };
 
 const TYPING_DOTS: { className: string; delayMs: number }[] = [
-  { className: "bg-ember", delayMs: 0 },
-  { className: "bg-ember-soft", delayMs: 400 },
-  { className: "bg-sand", delayMs: 800 },
+  { className: "bg-accent", delayMs: 0 },
+  { className: "bg-accent-soft", delayMs: 400 },
+  { className: "bg-surface-muted", delayMs: 800 },
 ];
 
 async function getToken(): Promise<string | null> {
@@ -215,11 +215,11 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
       >
         {isEmpty ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-ink">
-              <span className="font-serif text-2xl font-semibold text-paper">M</span>
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-fill-inverse">
+              <span className="font-serif text-2xl font-semibold text-text-inverse">M</span>
             </div>
-            <h2 className="font-serif text-2xl font-semibold text-ink">What are we making?</h2>
-            <p className="text-sm text-muted max-w-xs">
+            <h2 className="font-serif text-2xl font-semibold text-text-primary">What are we making?</h2>
+            <p className="text-sm text-text-secondary max-w-xs">
               Tell me what you&apos;re in the mood for and I&apos;ll work with what&apos;s in your pantry.
             </p>
           </div>
@@ -233,8 +233,8 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
                 <div
                   className={`prose-sm max-w-[82%] px-4 py-2.5 text-sm leading-relaxed ${
                     m.role === "user"
-                      ? "prose-invert dark:prose bg-ink text-paper rounded-2xl rounded-br-md"
-                      : "prose dark:prose-invert bg-surface text-ink rounded-2xl rounded-bl-md"
+                      ? "prose-invert dark:prose bg-fill-inverse text-text-inverse rounded-2xl rounded-br-md"
+                      : "prose dark:prose-invert bg-surface-raised text-text-primary rounded-2xl rounded-bl-md"
                   }`}
                   style={
                     m.role === "assistant"
@@ -250,7 +250,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
             {isLoading && !reply && (
               <div className="flex flex-col items-start gap-1.5">
                 <div
-                  className="flex items-center gap-1 rounded-full bg-surface px-4 py-3"
+                  className="flex items-center gap-1 rounded-full bg-surface-raised px-4 py-3"
                   style={{ boxShadow: "0 1px 4px var(--shadow-color-sm)" }}
                 >
                   {TYPING_DOTS.map(({ className, delayMs }) => (
@@ -261,7 +261,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
                     />
                   ))}
                 </div>
-                <span className="pl-2 font-mono text-[10.5px] uppercase tracking-wider text-muted">
+                <span className="pl-2 font-mono text-[10.5px] uppercase tracking-wider text-text-secondary">
                   Mise is thinking
                 </span>
               </div>
@@ -270,7 +270,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
             {reply && (
               <div className="flex justify-start">
                 <div
-                  className="prose dark:prose-invert prose-sm max-w-[82%] rounded-2xl rounded-bl-md bg-surface px-4 py-2.5 text-sm leading-relaxed text-ink"
+                  className="prose dark:prose-invert prose-sm max-w-[82%] rounded-2xl rounded-bl-md bg-surface-raised px-4 py-2.5 text-sm leading-relaxed text-text-primary"
                   style={{ boxShadow: "0 1px 4px var(--shadow-color-sm)" }}
                 >
                   <ReactMarkdown>{reply}</ReactMarkdown>
@@ -285,21 +285,21 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
       {/* error banner */}
       {error && (
         <div
-          className="mb-3 rounded-xl border border-error-border bg-surface px-4 py-3 text-sm text-ink"
+          className="mb-3 rounded-xl border border-danger-outline bg-surface-raised px-4 py-3 text-sm text-text-primary"
           style={{ boxShadow: "0 1px 4px var(--shadow-color-sm)" }}
         >
-          <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-ember text-xs font-bold text-white">!</span>
+          <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-danger text-xs font-bold text-white">!</span>
           {error}
         </div>
       )}
 
       {/* input bar */}
       <div
-        className="flex items-center gap-2 rounded-full bg-surface px-3 py-2"
+        className="flex items-center gap-2 rounded-full bg-surface-raised px-3 py-2"
         style={{ boxShadow: "0 2px 12px var(--shadow-color-md)" }}
       >
         <input
-          className="flex-1 bg-transparent px-2 py-1 text-base text-ink placeholder:text-muted outline-none disabled:opacity-40"
+          className="flex-1 bg-transparent px-2 py-1 text-base text-text-primary placeholder:text-text-secondary outline-none disabled:opacity-40"
           placeholder={placeholder}
           value={input}
           disabled={authExpired}
@@ -309,8 +309,8 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
         <button
           className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40 ${
             listening
-              ? "bg-ember text-white"
-              : "bg-pantry-strip text-ink hover:bg-sand"
+              ? "bg-accent text-white"
+              : "bg-surface-hover text-text-primary hover:bg-surface-muted"
           }`}
           onClick={toggleListening}
           disabled={authExpired}
@@ -320,7 +320,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
         </button>
         {isLoading ? (
           <button
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-ember text-white hover:opacity-90 transition-opacity"
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent text-white hover:opacity-90 transition-opacity"
             onClick={stopStreaming}
             title="Stop"
           >
@@ -328,7 +328,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
           </button>
         ) : (
           <button
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-ember text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-40"
             onClick={sendMessage}
             disabled={!input.trim() || authExpired}
             title="Send"

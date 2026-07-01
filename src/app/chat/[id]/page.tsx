@@ -37,7 +37,7 @@ export default function ChatPage() {
 
   if (error) {
     return (
-      <main className="flex flex-1 items-center justify-center text-sm text-muted">
+      <main className="flex flex-1 items-center justify-center text-sm text-text-secondary">
         Could not load conversation.
       </main>
     );
@@ -45,7 +45,7 @@ export default function ChatPage() {
 
   if (initialMessages === null) {
     return (
-      <main className="flex flex-1 items-center justify-center text-sm text-muted">
+      <main className="flex flex-1 items-center justify-center text-sm text-text-secondary">
         Loading…
       </main>
     );

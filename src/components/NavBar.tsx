@@ -17,7 +17,7 @@ export default function NavBar({ initialThemeMode }: { initialThemeMode: ThemeMo
 
   return (
     <>
-      <nav className="sticky top-0 z-10 flex items-center justify-between border-b border-sand bg-surface px-6 py-3">
+      <nav className="sticky top-0 z-10 flex items-center justify-between border-b border-outline bg-surface-raised px-6 py-3">
         <div className="flex items-center gap-3">
           {!isLogin && (
             <IconButton
@@ -29,7 +29,7 @@ export default function NavBar({ initialThemeMode }: { initialThemeMode: ThemeMo
           )}
           <Link
             href="/"
-            className="font-serif text-xl font-semibold tracking-tight text-ink hover:text-ember transition-colors"
+            className="font-serif text-xl font-semibold tracking-tight text-text-primary hover:text-accent transition-colors"
           >
             Mise
           </Link>
@@ -40,7 +40,7 @@ export default function NavBar({ initialThemeMode }: { initialThemeMode: ThemeMo
             <>
               <Link
                 href="/pantry"
-                className="text-sm text-muted hover:text-ink transition-colors"
+                className="text-sm text-text-secondary hover:text-text-primary transition-colors"
               >
                 Pantry
               </Link>
