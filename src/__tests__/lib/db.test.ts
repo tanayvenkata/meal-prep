@@ -95,6 +95,28 @@ describe("updateItem", () => {
   });
 });
 
+describe("RLS enforcement", () => {
+  it("blocks a cross-user unfiltered query when impersonating via authenticated role, but not on the raw connection", async () => {
+    await sql`insert into items (user_id, name, quantity) values (${TEST_USER_B}, 'milk', '1L')`;
+
+    // Control: the raw `postgres`-role connection bypasses RLS entirely, so it
+    // sees B's row even with a query that has no impersonation at all -- this
+    // is the exposure the policy exists to close.
+    const viaOwner = await sql`select * from items where user_id = ${TEST_USER_B}`;
+    expect(viaOwner).toHaveLength(1);
+
+    // Same query, but run as `authenticated` while impersonating a different
+    // user (A) -- RLS should hide B's row, proving the role switch itself is
+    // what enforces isolation, not app-level filtering.
+    const viaImpersonatedA = await sql.begin(async (tx) => {
+      await tx`select set_config('request.jwt.claim.sub', ${TEST_USER_A}, true)`;
+      await tx`set local role authenticated`;
+      return tx`select * from items where user_id = ${TEST_USER_B}`;
+    });
+    expect(viaImpersonatedA).toHaveLength(0);
+  });
+});
+
 describe("deleteItem", () => {
   it("deletes the given item", async () => {
     const [inserted] = await sql`

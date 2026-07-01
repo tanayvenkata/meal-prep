@@ -13,38 +13,62 @@ export type Item = {
   user_id: string;
 };
 
+// db.ts connects as the `postgres` role, which owns `items` and bypasses RLS.
+// Impersonating `authenticated` (a role `postgres` is a member of, with no
+// bypass) inside a transaction makes the `items_user_isolation` policy
+// actually apply, so RLS is a real second layer under the where-clause below,
+// not just schema decoration.
+async function withUserContext<T>(
+  userId: string,
+  fn: (tx: postgres.TransactionSql) => Promise<T>,
+): Promise<T> {
+  return sql.begin(async (tx) => {
+    await tx`select set_config('request.jwt.claim.sub', ${userId}, true)`;
+    await tx`set local role authenticated`;
+    return fn(tx);
+  }) as Promise<T>;
+}
+
 export async function getItems(userId: string): Promise<Item[]> {
-  return sql<Item[]>`
-    select * from items
-    where user_id = ${userId}
-    order by created_at desc
-  `;
+  return withUserContext(userId, (tx) =>
+    tx<Item[]>`
+      select * from items
+      where user_id = ${userId}
+      order by created_at desc
+    `,
+  );
 }
 
 export async function addItem(userId: string, name: string, quantity: string): Promise<Item> {
-  const [item] = await sql<Item[]>`
-    insert into items (user_id, name, quantity)
-    values (${userId}, ${name}, ${quantity})
-    returning *
-  `;
-  return item;
+  return withUserContext(userId, async (tx) => {
+    const [item] = await tx<Item[]>`
+      insert into items (user_id, name, quantity)
+      values (${userId}, ${name}, ${quantity})
+      returning *
+    `;
+    return item;
+  });
 }
 
 export async function updateItem(userId: string, id: number, quantity: string, name?: string): Promise<Item> {
-  const [item] = await sql<Item[]>`
-    update items
-    set quantity = ${quantity}${name !== undefined ? sql`, name = ${name}` : sql``}
-    where id = ${id} and user_id = ${userId}
-    returning *
-  `;
-  return item;
+  return withUserContext(userId, async (tx) => {
+    const [item] = await tx<Item[]>`
+      update items
+      set quantity = ${quantity}${name !== undefined ? tx`, name = ${name}` : tx``}
+      where id = ${id} and user_id = ${userId}
+      returning *
+    `;
+    return item;
+  });
 }
 
 export async function deleteItem(userId: string, id: number): Promise<void> {
-  await sql`
-    delete from items
-    where id = ${id} and user_id = ${userId}
-  `;
+  await withUserContext(userId, (tx) =>
+    tx`
+      delete from items
+      where id = ${id} and user_id = ${userId}
+    `,
+  );
 }
 
 export type Conversation = {
