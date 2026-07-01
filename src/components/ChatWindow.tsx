@@ -14,6 +14,12 @@ type Props = {
   initialMessages?: ChatMessage[];
 };
 
+const TYPING_DOTS: { className: string; style?: { backgroundColor: string }; delayMs: number }[] = [
+  { className: "bg-ember", delayMs: 0 },
+  { className: "", style: { backgroundColor: "#d8b5ab" }, delayMs: 400 },
+  { className: "bg-sand", delayMs: 800 },
+];
+
 async function getToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
@@ -240,6 +246,26 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
                 </div>
               </div>
             ))}
+
+            {isLoading && !reply && (
+              <div className="flex flex-col items-start gap-1.5">
+                <div
+                  className="flex items-center gap-1 rounded-full bg-surface px-4 py-3"
+                  style={{ boxShadow: "0 1px 4px rgba(34,29,24,.07)" }}
+                >
+                  {TYPING_DOTS.map(({ className, style, delayMs }) => (
+                    <span
+                      key={delayMs}
+                      className={`h-1.5 w-1.5 animate-typing-dot rounded-full ${className}`}
+                      style={{ ...style, animationDelay: `${delayMs}ms` }}
+                    />
+                  ))}
+                </div>
+                <span className="pl-2 font-mono text-[10.5px] uppercase tracking-wider text-muted">
+                  Mise is thinking
+                </span>
+              </div>
+            )}
 
             {reply && (
               <div className="flex justify-start">
