@@ -1,6 +1,21 @@
 import { getItems, addItem, updateItem, deleteItem } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 
+const MAX_NAME_LENGTH = 100;
+
+// Returns the cleaned name, or an error message. The route is the trust
+// boundary: never rely on the browser form having validated anything.
+function validateName(name: unknown): { name: string } | { error: string } {
+  if (typeof name !== "string" || name.trim() === "") {
+    return { error: "name is required" };
+  }
+  const trimmed = name.trim();
+  if (trimmed.length > MAX_NAME_LENGTH) {
+    return { error: `name must be ${MAX_NAME_LENGTH} characters or fewer` };
+  }
+  return { name: trimmed };
+}
+
 export async function GET(request: Request) {
   const userId = await getUserId(request);
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -19,12 +34,13 @@ export async function POST(request: Request) {
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   const { name, quantity } = await request.json();
-  if (!name || name.trim() === "") {
-    return Response.json({ error: "name is required" }, { status: 400 });
+  const validated = validateName(name);
+  if ("error" in validated) {
+    return Response.json({ error: validated.error }, { status: 400 });
   }
 
   try {
-    const item = await addItem(userId, name.trim(), (quantity ?? "").trim());
+    const item = await addItem(userId, validated.name, (quantity ?? "").trim());
     return Response.json(item, { status: 201 });
   } catch (err) {
     console.error("POST /api/pantry failed:", err);
@@ -39,8 +55,18 @@ export async function PUT(request: Request) {
   const { id, quantity, name } = await request.json();
   if (!id) return Response.json({ error: "id is required" }, { status: 400 });
 
+  // name is optional on update — but if the client sends one, it must be valid.
+  let validatedName: string | undefined;
+  if (name !== undefined && name !== null) {
+    const validated = validateName(name);
+    if ("error" in validated) {
+      return Response.json({ error: validated.error }, { status: 400 });
+    }
+    validatedName = validated.name;
+  }
+
   try {
-    const item = await updateItem(userId, id, (quantity ?? "").trim(), name?.trim());
+    const item = await updateItem(userId, id, (quantity ?? "").trim(), validatedName);
     return Response.json(item);
   } catch (err) {
     console.error("PUT /api/pantry failed:", err);
