@@ -6,8 +6,11 @@ import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import SignOutButton from "@/components/SignOutButton";
 import HistoryDrawer from "@/components/HistoryDrawer";
+import ThemeToggle from "@/components/ThemeToggle";
+import IconButton from "@/components/IconButton";
+import type { ThemeMode } from "@/lib/theme";
 
-export default function NavBar() {
+export default function NavBar({ initialThemeMode }: { initialThemeMode: ThemeMode }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isLogin = pathname === "/login";
@@ -17,13 +20,12 @@ export default function NavBar() {
       <nav className="sticky top-0 z-10 flex items-center justify-between border-b border-sand bg-surface px-6 py-3">
         <div className="flex items-center gap-3">
           {!isLogin && (
-            <button
+            <IconButton
               onClick={() => setDrawerOpen(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-pantry-strip hover:text-ink transition-colors"
               aria-label="Open conversation history"
             >
               <Menu size={18} strokeWidth={2.2} />
-            </button>
+            </IconButton>
           )}
           <Link
             href="/"
@@ -33,17 +35,20 @@ export default function NavBar() {
           </Link>
         </div>
 
-        {!isLogin && (
-          <div className="flex items-center gap-6">
-            <Link
-              href="/pantry"
-              className="text-sm text-muted hover:text-ink transition-colors"
-            >
-              Pantry
-            </Link>
-            <SignOutButton />
-          </div>
-        )}
+        <div className="flex items-center gap-6">
+          {!isLogin && (
+            <>
+              <Link
+                href="/pantry"
+                className="text-sm text-muted hover:text-ink transition-colors"
+              >
+                Pantry
+              </Link>
+              <SignOutButton />
+            </>
+          )}
+          <ThemeToggle initialMode={initialThemeMode} />
+        </div>
       </nav>
 
       <HistoryDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />

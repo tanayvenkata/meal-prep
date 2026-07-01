@@ -154,7 +154,7 @@ export default function PantryPage() {
       {/* item list */}
       <div
         className="rounded-2xl bg-surface overflow-hidden"
-        style={{ boxShadow: '0 1px 4px rgba(34,29,24,.07)' }}
+        style={{ boxShadow: '0 1px 4px var(--shadow-color-sm)' }}
       >
         {loading ? (
           <div className="space-y-px">
