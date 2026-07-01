@@ -45,19 +45,36 @@ function groupByDay(conversations: Conversation[]): { label: string; items: Conv
 export default function HistoryDrawer({ open, onClose }: Props) {
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    let ignore = false;
     async function load() {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) return;
-      const res = await fetch("/api/conversations", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) setConversations(await res.json());
+      setLoading(true);
+      setError(null);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) return;
+        const res = await fetch("/api/conversations", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(`conversations load failed (${res.status})`);
+        const conversations = await res.json();
+        if (!ignore) setConversations(conversations);
+      } catch (err) {
+        console.error("failed to load conversations:", err);
+        if (!ignore) setError("Could not load conversations. Try refreshing.");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
     }
     load();
+    return () => {
+      ignore = true;
+    };
   }, [open]);
 
   function newConversation() {
@@ -111,7 +128,15 @@ export default function HistoryDrawer({ open, onClose }: Props) {
 
         {/* conversation list */}
         <div className="flex-1 overflow-y-auto px-4 pb-4">
-          {conversations.length === 0 ? (
+          {loading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-11 rounded-xl bg-surface-sunken animate-pulse" />
+              ))}
+            </div>
+          ) : error ? (
+            <p className="mt-6 text-center text-sm text-danger">{error}</p>
+          ) : conversations.length === 0 ? (
             <p className="mt-6 text-center text-sm text-text-secondary">No conversations yet</p>
           ) : (
             groups.map(({ label, items }) => (
