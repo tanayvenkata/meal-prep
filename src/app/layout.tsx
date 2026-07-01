@@ -58,7 +58,7 @@ export default async function RootLayout({
           <script dangerouslySetInnerHTML={{ __html: NO_FOUC_SCRIPT }} />
         )}
       </head>
-      <body className="flex h-full flex-col overflow-hidden bg-paper text-ink">
+      <body className="flex h-full flex-col overflow-hidden bg-surface-base text-text-primary">
         <NavBar initialThemeMode={themeMode} />
         {children}
       </body>

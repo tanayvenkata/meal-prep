@@ -71,22 +71,22 @@ function LoginForm() {
   return (
     <main className="mx-auto flex h-screen max-w-sm flex-col justify-center px-4">
       <div className="mb-8 text-center">
-        <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-ink">
-          <span className="font-serif text-2xl font-semibold text-paper">M</span>
+        <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-fill-inverse">
+          <span className="font-serif text-2xl font-semibold text-text-inverse">M</span>
         </div>
-        <h1 className="font-serif text-2xl font-semibold text-ink">Welcome to Mise</h1>
-        <p className="mt-1 text-sm text-muted">Your pantry-aware sous-chef</p>
+        <h1 className="font-serif text-2xl font-semibold text-text-primary">Welcome to Mise</h1>
+        <p className="mt-1 text-sm text-text-secondary">Your pantry-aware sous-chef</p>
       </div>
 
       <input
-        className="mb-3 rounded-xl border border-sand bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted outline-none focus:border-ink transition-colors"
+        className="mb-3 rounded-xl border border-outline bg-surface-raised px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
         type="email"
         placeholder="Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
       <input
-        className="mb-4 rounded-xl border border-sand bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted outline-none focus:border-ink transition-colors"
+        className="mb-4 rounded-xl border border-outline bg-surface-raised px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
         type="password"
         placeholder="Password"
         value={password}
@@ -97,7 +97,7 @@ function LoginForm() {
       {error && (
         <p
           role="alert"
-          className="mb-3 rounded-xl border border-ember/30 bg-ember/10 px-3 py-2.5 text-sm font-medium text-ember"
+          className="mb-3 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm font-medium text-danger"
         >
           {error}
         </p>
@@ -105,14 +105,14 @@ function LoginForm() {
 
       <div className="flex gap-2">
         <button
-          className="flex-1 rounded-xl bg-ember px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+          className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
           onClick={handleSignIn}
           disabled={loading}
         >
           {loading ? "Signing in…" : "Sign in"}
         </button>
         <button
-          className="flex-1 rounded-xl border border-sand bg-surface px-4 py-2.5 text-sm text-ink disabled:opacity-50 hover:border-ink transition-colors"
+          className="flex-1 rounded-xl border border-outline bg-surface-raised px-4 py-2.5 text-sm text-text-primary disabled:opacity-50 hover:border-outline-strong transition-colors"
           onClick={handleSignUp}
           disabled={loading}
         >

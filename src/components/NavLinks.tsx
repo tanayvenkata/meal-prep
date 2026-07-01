@@ -12,7 +12,7 @@ export default function NavLinks() {
     <div className="flex items-center gap-6">
       <Link
         href="/pantry"
-        className="text-sm text-muted hover:text-ink transition-colors"
+        className="text-sm text-text-secondary hover:text-text-primary transition-colors"
       >
         Pantry
       </Link>

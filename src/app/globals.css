@@ -6,10 +6,11 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* Canonical light values — the single source of truth for the light
-     palette. :root's own tokens below reference these, and so does the
-     @media print override at the bottom of this file, so the light hex
-     values only ever live in one place. */
+  /* ---- Primitive layer -------------------------------------------------
+     Raw brand hues, per theme, role-free. Every hue has a light AND a dark
+     named value here — the single source of truth for both palettes. The
+     semantic layer below (and the @media print reset) only ever reference
+     these names, never inline hex, so a hue only ever lives in one place. */
   --light-paper: #f6f1e7;
   --light-surface: #fffdf8;
   --light-pantry-strip: #f1ead9;
@@ -20,26 +21,76 @@
   --light-muted: #8a8073;
   --light-error-border: #e6c4ba;
 
-  --paper: var(--light-paper);
-  --surface: var(--light-surface);
-  --pantry-strip: var(--light-pantry-strip);
-  /* Dual role: body text color AND the user chat-bubble background
-     (bg-ink in ChatWindow.tsx). Check both when changing this. */
-  --ink: var(--light-ink);
-  --ember: var(--light-ember);
-  --olive: var(--light-olive);
-  --sand: var(--light-sand);
-  --muted: var(--light-muted);
-  --error-border: var(--light-error-border);
+  --dark-paper: #1b1712;
+  --dark-surface: #262019;
+  --dark-pantry-strip: #2f2820;
+  --dark-ink: #f0e9dc;
+  /* Kept close to the light-mode value rather than lightened like the
+     other accents — white button text (Sign in, send, mic) needs this to
+     stay dark/saturated enough for contrast; lightening it for the dark
+     background (as tried initially) dropped white-on-ember below WCAG AA. */
+  --dark-ember: #c14e33;
+  --dark-olive: #7c8c5c;
+  --dark-sand: #4a4030;
+  --dark-muted: #a89e8e;
+  --dark-error-border: #6b4038;
 
-  /* Tint of --ember toward white, not an independent hex — stays in sync
-     with --ember automatically in dark mode without its own override. */
-  --ember-soft: color-mix(in srgb, var(--ember) 40%, white);
+  /* --light-olive/--dark-olive are reserved (design_handoff/CLAUDE.md calls
+     it out as the "secondary" brand color) but nothing in the UI uses it
+     yet. No semantic alias below until a component actually needs it. */
+
+  /* ---- Semantic layer ----------------------------------------------------
+     Role-based names components reference. Several of these intentionally
+     share a primitive with a sibling today (surface-sunken with surface-base,
+     fill-inverse and outline-strong with text-primary, danger with accent) —
+     that's the point of the primitive/semantic split: each role gets its own
+     name now, so a future redesign can diverge just one of them without an
+     app-wide rename. Don't fold "identical today" pairs back into one name.
+
+     Elevation ladder, low to high: surface-base (page canvas) -> surface-sunken
+     (recessed fields inside a card, same tone as base) -> surface-raised
+     (cards/panels/nav/bubbles, soft shadow, no border per the house-style doc)
+     -> surface-hover (interactive tint, not a true elevation step). */
+  --surface-base: var(--light-paper);
+  --surface-sunken: var(--light-paper);
+  --surface-raised: var(--light-surface);
+  --surface-hover: var(--light-pantry-strip);
+  --surface-muted: var(--light-sand);
+
+  --text-primary: var(--light-ink);
+  --text-secondary: var(--light-muted);
+  /* Text on top of a dark fill (fill-inverse/accent) — shares paper's value
+     so it flips polarity with the fill it sits on automatically. */
+  --text-inverse: var(--light-paper);
+
+  /* Solid dark button/bubble background (user chat bubble, login submit) —
+     shares ink's value with text-primary today; kept as its own role since a
+     "fill" and a "text color" are different UI concerns even when they
+     currently render the same hue. */
+  --fill-inverse: var(--light-ink);
+
+  --accent: var(--light-ember);
+  /* Tint of --accent toward white, not an independent hex — stays in sync
+     with --accent automatically in dark mode without its own override. */
+  --accent-soft: color-mix(in srgb, var(--accent) 40%, white);
+
+  /* --danger and --danger-outline are deliberately two different primitives
+     despite the shared prefix: --danger reuses the accent/ember hue (no
+     dedicated danger hex exists) for error text/bg/border built from ember
+     today; --danger-outline is the genuinely distinct pale hue used only for
+     ChatWindow's dedicated error-card border. Don't merge them. */
+  --danger: var(--light-ember);
+  --danger-outline: var(--light-error-border);
+
+  --outline: var(--light-sand);
+  /* Focus/hover emphasis border — shares ink's value with text-primary
+     today, same reasoning as fill-inverse above. */
+  --outline-strong: var(--light-ink);
 
   /* Intentionally not redefined under .dark — a modal backdrop should
-     always darken regardless of theme, unlike --ink which flips polarity
-     (see above), which is why HistoryDrawer's overlay uses this instead. */
-  --scrim: #000000;
+     always darken regardless of theme, unlike text/fill tokens which flip
+     polarity, which is why HistoryDrawer's overlay uses this instead. */
+  --overlay-scrim: #000000;
 
   /* Shadow COLOR, split from shape (kept at each call site) so shadows can
      be redefined per theme without touching components. Named --shadow-color-*
@@ -47,27 +98,32 @@
      md/lg for its own full box-shadow value scale (loaded above via
      @import "tailwindcss") — reusing those names would silently redefine
      what var(--shadow-sm) means anywhere it's referenced. */
-  --shadow-color-sm: color-mix(in srgb, var(--ink) 7%, transparent);
-  --shadow-color-md: color-mix(in srgb, var(--ink) 8%, transparent);
-  --shadow-color-lg: color-mix(in srgb, var(--ink) 12%, transparent);
+  --shadow-color-sm: color-mix(in srgb, var(--text-primary) 7%, transparent);
+  --shadow-color-md: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  --shadow-color-lg: color-mix(in srgb, var(--text-primary) 12%, transparent);
 
   color-scheme: light;
 }
 
 .dark {
-  --paper: #1b1712;
-  --surface: #262019;
-  --pantry-strip: #2f2820;
-  --ink: #f0e9dc;
-  /* Kept close to the light-mode value rather than lightened like the
-     other accents — white button text (Sign in, send, mic) needs this to
-     stay dark/saturated enough for contrast; lightening it for the dark
-     background (as tried initially) dropped white-on-ember below WCAG AA. */
-  --ember: #c14e33;
-  --olive: #7c8c5c;
-  --sand: #4a4030;
-  --muted: #a89e8e;
-  --error-border: #6b4038;
+  --surface-base: var(--dark-paper);
+  --surface-sunken: var(--dark-paper);
+  --surface-raised: var(--dark-surface);
+  --surface-hover: var(--dark-pantry-strip);
+  --surface-muted: var(--dark-sand);
+
+  --text-primary: var(--dark-ink);
+  --text-secondary: var(--dark-muted);
+  --text-inverse: var(--dark-paper);
+
+  --fill-inverse: var(--dark-ink);
+
+  --accent: var(--dark-ember);
+  --danger: var(--dark-ember);
+  --danger-outline: var(--dark-error-border);
+
+  --outline: var(--dark-sand);
+  --outline-strong: var(--dark-ink);
 
   /* Shadows barely read on a dark surface — elevation comes from the
      lighter surface/pantry-strip tones above instead, so these fade out
@@ -80,25 +136,30 @@
 }
 
 @theme inline {
-  --color-paper: var(--paper);
-  --color-surface: var(--surface);
-  --color-pantry-strip: var(--pantry-strip);
-  --color-ink: var(--ink);
-  --color-ember: var(--ember);
-  --color-ember-soft: var(--ember-soft);
-  --color-olive: var(--olive);
-  --color-sand: var(--sand);
-  --color-muted: var(--muted);
-  --color-error-border: var(--error-border);
-  --color-scrim: var(--scrim);
+  --color-surface-base: var(--surface-base);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-muted: var(--surface-muted);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-inverse: var(--text-inverse);
+  --color-fill-inverse: var(--fill-inverse);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-outline: var(--danger-outline);
+  --color-outline: var(--outline);
+  --color-outline-strong: var(--outline-strong);
+  --color-overlay-scrim: var(--overlay-scrim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-serif: var(--font-spectral);
 }
 
 body {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--surface-base);
+  color: var(--text-primary);
   font-family: var(--font-sans);
 }
 
@@ -131,15 +192,20 @@ body {
    above, referenced from the same --light-* canonical set, not restated. */
 @media print {
   .dark {
-    --paper: var(--light-paper);
-    --surface: var(--light-surface);
-    --pantry-strip: var(--light-pantry-strip);
-    --ink: var(--light-ink);
-    --ember: var(--light-ember);
-    --olive: var(--light-olive);
-    --sand: var(--light-sand);
-    --muted: var(--light-muted);
-    --error-border: var(--light-error-border);
+    --surface-base: var(--light-paper);
+    --surface-sunken: var(--light-paper);
+    --surface-raised: var(--light-surface);
+    --surface-hover: var(--light-pantry-strip);
+    --surface-muted: var(--light-sand);
+    --text-primary: var(--light-ink);
+    --text-secondary: var(--light-muted);
+    --text-inverse: var(--light-paper);
+    --fill-inverse: var(--light-ink);
+    --accent: var(--light-ember);
+    --danger: var(--light-ember);
+    --danger-outline: var(--light-error-border);
+    --outline: var(--light-sand);
+    --outline-strong: var(--light-ink);
     color-scheme: light;
   }
 }
