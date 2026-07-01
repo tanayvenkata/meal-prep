@@ -1,4 +1,4 @@
-import { getItems } from "@/lib/db";
+import { getItems, createConversation, addMessage } from "@/lib/db";
 import { streamChat } from "@/lib/ai";
 import { getUserId } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/ratelimit";
@@ -37,17 +37,32 @@ export async function POST(req: Request) {
   const allowed = await checkRateLimit(userId);
   if (!allowed) return Response.json({ error: "too many requests" }, { status: 429 });
 
-  const { messages } = await req.json();
+  const { messages, conversationId } = await req.json();
   if (!messages || messages.length === 0) {
     return Response.json({ error: "messages are required" }, { status: 400 });
+  }
+  if (!conversationId) {
+    return Response.json({ error: "conversationId is required" }, { status: 400 });
   }
 
   let items;
   try {
     items = await getItems(userId);
   } catch (err) {
-    console.error("POST /api/recipes failed (db):", err);
+    console.error("POST /api/chat failed (db):", err);
     return Response.json({ error: "failed to load pantry" }, { status: 500 });
+  }
+
+  const lastUserMessage = messages[messages.length - 1];
+  try {
+    if (messages.length === 1) {
+      const title = lastUserMessage.content.slice(0, 50);
+      await createConversation(userId, title, conversationId);
+    }
+    await addMessage(conversationId, "user", lastUserMessage.content);
+  } catch (err) {
+    console.error("POST /api/chat failed (persist):", err);
+    return Response.json({ error: "failed to save message" }, { status: 500 });
   }
 
   const pantryList = items.map((i) => i.name).join(", ");
@@ -64,7 +79,7 @@ The user's pantry has: ${pantryList}. Use it when they want ideas.`;
         }
         controller.close();
       } catch (err) {
-        console.error("POST /api/recipes failed (stream):", err);
+        console.error("POST /api/chat failed (stream):", err);
         controller.error(err);
       }
     },
