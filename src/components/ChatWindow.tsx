@@ -172,6 +172,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
         full += decoder.decode(value);
         setReply(full);
       }
+      setReply("");
       setMessages([...newMessages, { role: "assistant", content: full }]);
       const token = await getToken();
       await fetch(`/api/conversations/${activeConversationId}/messages`, {
@@ -186,11 +187,11 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
       }
       // AbortError: partial response stays in message list with a stopped indicator
       if (full) {
+        setReply("");
         setMessages([...newMessages, { role: "assistant", content: full + "\n\n*(stopped)*" }]);
       }
     }
 
-    setReply("");
     setIsLoading(false);
   }
 
