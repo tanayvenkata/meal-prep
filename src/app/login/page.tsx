@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
@@ -18,6 +18,18 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // After a successful sign-in we leave via window.location.assign while loading is
+  // true, so the browser's bfcache can snapshot the page frozen on "Signing in…".
+  // Hitting Back restores that DOM without re-running React. pageshow with
+  // e.persisted fires exactly on a bfcache restore — reset the transient state.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setLoading(false); // restored from bfcache → un-freeze
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
 
   // Both buttons run the same loading / timeout / error dance and differ only in
   // WHICH Supabase call they make — so the tricky parts (timeout, error mapping)
