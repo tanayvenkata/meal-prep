@@ -81,6 +81,7 @@ function LoginForm() {
       <input
         className="mb-3 rounded-xl border border-outline bg-surface-raised px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
         type="email"
+        aria-label="Email"
         placeholder="Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -88,6 +89,7 @@ function LoginForm() {
       <input
         className="mb-4 rounded-xl border border-outline bg-surface-raised px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
         type="password"
+        aria-label="Password"
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}

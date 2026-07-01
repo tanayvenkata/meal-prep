@@ -295,11 +295,12 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
 
       {/* input bar */}
       <div
-        className="flex items-center gap-2 rounded-full bg-surface-raised px-3 py-2"
+        className="flex items-center gap-2 rounded-full bg-surface-raised px-3 py-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent"
         style={{ boxShadow: "0 2px 12px var(--shadow-color-md)" }}
       >
         <input
           className="flex-1 bg-transparent px-2 py-1 text-base text-text-primary placeholder:text-text-secondary outline-none disabled:opacity-40"
+          aria-label={placeholder}
           placeholder={placeholder}
           value={input}
           disabled={authExpired}
