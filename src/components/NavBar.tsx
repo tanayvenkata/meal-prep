@@ -29,7 +29,7 @@ export default function NavBar({ initialThemeMode }: { initialThemeMode: ThemeMo
           )}
           <Link
             href="/"
-            className="font-serif text-xl font-semibold tracking-tight text-text-primary hover:text-accent transition-colors"
+            className="font-serif text-xl font-semibold tracking-tight text-text-primary hover:text-text-accent transition-colors"
           >
             Mise
           </Link>

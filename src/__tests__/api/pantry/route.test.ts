@@ -94,6 +94,35 @@ describe("POST /api/pantry", () => {
     expect(body.error).toBe("name is required");
   });
 
+  it("returns 400 when name is not a string", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+
+    const request = new Request("http://localhost/api/pantry", {
+      method: "POST",
+      body: JSON.stringify({ name: 42 }),
+    });
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe("name is required");
+  });
+
+  it("returns 400 when name exceeds 100 characters", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+
+    const request = new Request("http://localhost/api/pantry", {
+      method: "POST",
+      body: JSON.stringify({ name: "a".repeat(101) }),
+    });
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe("name must be 100 characters or fewer");
+    expect(mockAddItem).not.toHaveBeenCalled();
+  });
+
   it("returns 201 with the new item", async () => {
     mockGetUserId.mockResolvedValue("user-123");
     mockAddItem.mockResolvedValue(fakeItem());
@@ -138,6 +167,50 @@ describe("PUT /api/pantry", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toBe("id is required");
+  });
+
+  it("returns 400 when name is provided but whitespace-only", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+
+    const request = new Request("http://localhost/api/pantry", {
+      method: "PUT",
+      body: JSON.stringify({ id: 1, name: "   " }),
+    });
+    const response = await PUT(request);
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe("name is required");
+    expect(mockUpdateItem).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when name exceeds 100 characters", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+
+    const request = new Request("http://localhost/api/pantry", {
+      method: "PUT",
+      body: JSON.stringify({ id: 1, name: "a".repeat(101) }),
+    });
+    const response = await PUT(request);
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe("name must be 100 characters or fewer");
+    expect(mockUpdateItem).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 when name is omitted (quantity-only update)", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+    mockUpdateItem.mockResolvedValue(fakeItem({ quantity: "6" }));
+
+    const request = new Request("http://localhost/api/pantry", {
+      method: "PUT",
+      body: JSON.stringify({ id: 1, quantity: "6" }),
+    });
+    const response = await PUT(request);
+
+    expect(response.status).toBe(200);
+    expect(mockUpdateItem).toHaveBeenCalledWith("user-123", 1, "6", undefined);
   });
 
   it("returns 200 with the updated item", async () => {

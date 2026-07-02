@@ -126,7 +126,7 @@ export default function PantryPage() {
       {/* add row */}
       <div className="mb-6 flex gap-2">
         <input
-          className="flex-1 rounded-xl border border-outline bg-surface-raised px-3 py-2 text-base text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
+          className="flex-1 rounded-xl border border-outline bg-surface-raised px-3 py-2 text-base text-text-primary placeholder:text-text-secondary outline-none focus:border-accent focus:ring-[0.5px] focus:ring-accent transition-colors"
           aria-label="Ingredient name"
           placeholder="Ingredient (e.g. chicken thighs)"
           value={name}
@@ -150,7 +150,7 @@ export default function PantryPage() {
       </div>
 
       {error && (
-        <p className="mb-4 text-sm text-danger">{error}</p>
+        <p className="mb-4 text-sm text-text-danger">{error}</p>
       )}
 
       {/* item list */}
@@ -236,7 +236,7 @@ export default function PantryPage() {
                         Edit
                       </button>
                       <button
-                        className="rounded-lg px-3 py-1 text-xs text-accent hover:opacity-70 transition-opacity"
+                        className="rounded-lg px-3 py-1 text-xs text-text-accent hover:opacity-70 transition-opacity"
                         onClick={() => deleteItem(item.id)}
                       >
                         Delete
