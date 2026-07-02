@@ -8,4 +8,18 @@ if [ "$branch" = "main" ]; then
   exit 1
 fi
 
+# Skip the build/test when every pushed ref is a DELETION — there's no new code to
+# validate, and running it needlessly blocked `git push --delete` (#99). Git feeds ref
+# updates on stdin as `<local_ref> <local_oid> <remote_ref> <remote_oid>`; a deletion has
+# an all-zeros local_oid. `zero` is derived (not hard-coded) so it's hash-algo-agnostic.
+zero="$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')"
+has_update=0
+while read -r _local_ref local_oid _remote_ref _remote_oid; do
+  [ "$local_oid" != "$zero" ] && has_update=1
+done
+if [ "$has_update" -eq 0 ]; then
+  echo "✓ Deletion-only push — skipping build/tests."
+  exit 0
+fi
+
 doppler run -- npm run build && npm run test:unit
