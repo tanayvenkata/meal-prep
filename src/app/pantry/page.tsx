@@ -127,6 +127,7 @@ export default function PantryPage() {
       <div className="mb-6 flex gap-2">
         <input
           className="flex-1 rounded-xl border border-outline bg-surface-raised px-3 py-2 text-base text-text-primary placeholder:text-text-secondary outline-none focus:border-accent focus:ring-[0.5px] focus:ring-accent transition-colors"
+          aria-label="Ingredient name"
           placeholder="Ingredient (e.g. chicken thighs)"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -134,6 +135,7 @@ export default function PantryPage() {
         />
         <input
           className="w-20 sm:w-36 rounded-xl border border-outline bg-surface-raised px-3 py-2 text-base text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
+          aria-label="Quantity"
           placeholder="Qty (e.g. 2 lbs)"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
@@ -182,6 +184,7 @@ export default function PantryPage() {
                     <input
                       ref={editNameRef}
                       className="flex-1 rounded-lg border border-outline bg-surface-sunken px-2 py-1 text-base text-text-primary outline-none focus:border-accent transition-colors"
+                      aria-label="Edit ingredient name"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       onKeyDown={(e) => {
@@ -192,6 +195,7 @@ export default function PantryPage() {
                     />
                     <input
                       className="w-24 rounded-lg border border-outline bg-surface-sunken px-2 py-1 text-base text-text-primary outline-none focus:border-accent transition-colors"
+                      aria-label="Edit quantity"
                       value={editQuantity}
                       onChange={(e) => setEditQuantity(e.target.value)}
                       onKeyDown={(e) => {
