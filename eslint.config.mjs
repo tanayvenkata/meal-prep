@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Claude Design runtime — third-party file, not our code
     "design_handoff/**",
+    // Claude Code local tooling (worktrees, session state) — not our code
+    ".claude/**",
   ]),
   {
     files: ["src/__tests__/**/*.ts"],
