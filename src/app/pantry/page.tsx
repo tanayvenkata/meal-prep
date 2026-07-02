@@ -126,7 +126,7 @@ export default function PantryPage() {
       {/* add row */}
       <div className="mb-6 flex gap-2">
         <input
-          className="flex-1 rounded-xl border border-outline bg-surface-raised px-3 py-2 text-base text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
+          className="flex-1 rounded-xl border border-outline bg-surface-raised px-3 py-2 text-base text-text-primary placeholder:text-text-secondary outline-none focus:border-accent focus:ring-[0.5px] focus:ring-accent transition-colors"
           placeholder="Ingredient (e.g. chicken thighs)"
           value={name}
           onChange={(e) => setName(e.target.value)}
