@@ -44,6 +44,29 @@ describe("createConversation", () => {
   });
 });
 
+describe("conversations schema", () => {
+  it("uses an auth-user UUID foreign key for ownership", async () => {
+    const [column] = await sql<[{ data_type: string }]>`
+      select data_type
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'conversations'
+        and column_name = 'user_id'
+    `;
+    const [foreignKey] = await sql<[{ count: string }]>`
+      select count(*)
+      from information_schema.table_constraints
+      where table_schema = 'public'
+        and table_name = 'conversations'
+        and constraint_name = 'conversations_user_id_fkey'
+        and constraint_type = 'FOREIGN KEY'
+    `;
+
+    expect(column.data_type).toBe("uuid");
+    expect(Number(foreignKey.count)).toBe(1);
+  });
+});
+
 describe("listConversations", () => {
   it("returns only conversations belonging to the given user", async () => {
     await createConversation(TEST_USER_A, "eggs chat", id());
