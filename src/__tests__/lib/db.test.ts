@@ -8,6 +8,9 @@ const TEST_USER_A = "00000000-0000-0000-0000-000000000001";
 const TEST_USER_B = "00000000-0000-0000-0000-000000000002";
 
 beforeAll(async () => {
+  // Conversations now reference auth.users as well. Clear any rows left by a
+  // prior interrupted test run before recreating these fixed test identities.
+  await sql`delete from conversations where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
   await sql`
     insert into auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
     values
@@ -18,6 +21,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await sql`delete from conversations where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
   await sql`delete from auth.users where id in (${TEST_USER_A}, ${TEST_USER_B})`;
   await sql.end();
 });
