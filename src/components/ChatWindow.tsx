@@ -268,20 +268,15 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
               <div
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                <div
-                  className={`prose-sm max-w-[82%] px-4 py-2.5 text-sm leading-relaxed ${
-                    m.role === "user"
-                      ? "prose-invert dark:prose bg-fill-inverse text-text-inverse rounded-2xl rounded-br-md"
-                      : "prose dark:prose-invert bg-surface-raised text-text-primary rounded-2xl rounded-bl-md"
-                  }`}
-                  style={
-                    m.role === "assistant"
-                      ? { boxShadow: "0 1px 4px var(--shadow-color-sm)" }
-                      : undefined
-                  }
-                >
-                  <ReactMarkdown>{m.content}</ReactMarkdown>
-                </div>
+                {m.role === "user" ? (
+                  <p className="max-w-[82%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-fill-inverse px-4 py-2.5 text-sm leading-relaxed text-text-inverse">
+                    {m.content}
+                  </p>
+                ) : (
+                  <div className="prose prose-sm w-full max-w-none text-sm leading-relaxed text-text-primary dark:prose-invert">
+                    <ReactMarkdown>{m.content}</ReactMarkdown>
+                  </div>
+                )}
               </div>
               </div>
               );
@@ -310,8 +305,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
             {reply && (
               <div className="flex justify-start">
                 <div
-                  className="prose dark:prose-invert prose-sm max-w-[82%] rounded-2xl rounded-bl-md bg-surface-raised px-4 py-2.5 text-sm leading-relaxed text-text-primary"
-                  style={{ boxShadow: "0 1px 4px var(--shadow-color-sm)" }}
+                  className="prose prose-sm w-full max-w-none text-sm leading-relaxed text-text-primary dark:prose-invert"
                 >
                   <ReactMarkdown>{reply}</ReactMarkdown>
                 </div>
