@@ -54,7 +54,7 @@
      surface) (#78). */
   --dark-border: #7a6f5b;
 
-  /* --light-olive/--dark-olive are reserved (design_handoff/CLAUDE.md calls
+  /* --light-olive/--dark-olive are reserved (design_handoff/DESIGN.md calls
      it out as the "secondary" brand color) but nothing in the UI uses it
      yet. No semantic alias below until a component actually needs it. */
 

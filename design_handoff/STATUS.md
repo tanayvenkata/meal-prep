@@ -16,7 +16,7 @@ Surfaced here so they don't get lost in the per-screen tables. Grouped by what u
 - **Input disabled on 401** + conversation dimmed behind error banner — Screen 8.
 - ~~**Mobile verification** — test column layout + font sizes in DevTools mobile view.~~ ✅ Verified at 393px (#9); login/chat/fonts clean. ~~Left one defect: pantry add-item row overflows on narrow screens.~~ ✅ Fixed (#45) — qty input is `w-20 sm:w-36`; Add button right edge 366 ≤ 375 at iPhone SE width.
 
-### Needs a navigation-model change (the "sheets over chat" model from design CLAUDE.md)
+### Needs a navigation-model change (the "sheets over chat" model from `DESIGN.md`)
 - **Pantry as dismissible sheet over chat** (not the current standalone `/pantry` route) — Screen 2.
 - **Grabber handle / swipe-down dismiss** for the sheet — Screen 2.
 - **Edit item as a sheet** (chevron › opens it) — Screen 4. Currently inline edit row; was `prompt()`.

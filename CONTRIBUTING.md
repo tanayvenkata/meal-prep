@@ -2,7 +2,7 @@
 
 > This file is **how we work** (process). It's different from:
 > - `README.md` — *what* the app is + how to run it
-> - `CLAUDE.md` — the project's *why* (decision log + current state)
+> - `docs/PROJECT.md` — the project's *why* (decision log + current state)
 >
 > New here (human or AI agent)? Read this before opening an issue or PR.
 
@@ -21,7 +21,7 @@ independent. An issue has BOTH a `type:` label (what kind) AND a priority (how u
 `type:` is a label on the issue, the priority is a field on the board. Different homes (below).
 
 **"Value" for this project** = does it push the app toward its real vision AND teach a
-transferable skill I don't already have. (This is a learning project — see CLAUDE.md.
+transferable skill I don't already have. (This is a learning project — see `docs/PROJECT.md`.
 At a company, "value" would mean user/business impact instead. The framework is the same;
 only the definition of value changes.)
 

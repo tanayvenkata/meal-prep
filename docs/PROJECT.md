@@ -1,16 +1,11 @@
-# Meal-Prep App — Project Brief & Learning Log
-
-> Framework rules from create-next-app live in AGENTS.md — imported so they stay active.
-> KEY ONE: this is Next.js 16, breaking changes vs. older versions — read
-> `node_modules/next/dist/docs/` before writing Next.js code, don't trust memory.
-@AGENTS.md
+# Mise — Project Brief & Learning Log
 
 > **Before any issue or PR, follow `CONTRIBUTING.md`** — `type:` label on the issue,
 > priority as a board *field* on the Mise Board (not a label), three-part issue body
 > (Context / What to do / Done when), `Closes #N` on PRs. The backlog lives in **GitHub
 > Issues + the Mise Board**, not this file.
 
-> This file is the project's memory, read at the start of every session: **what we're
+> This file is the project's durable memory: **what we're
 > building, where we are, and WHY.** The "why" is the point — this is a learning project,
 > and the goal is for the human to *articulate every choice*. Finished detail lives in git;
 > this file keeps the live state + the transferable principles.
@@ -33,7 +28,7 @@
 
 A personal cooking app: stores my pantry, lets me add to it (eventually via a photo of a
 receipt), and suggests recipes based on what I have, my mood, and my time — like chatting
-with Claude but with persistent memory of my kitchen. Stretch: voice / hands-free cooking.
+with an assistant that has persistent memory of my kitchen. Stretch: voice / hands-free cooking.
 **Learning project first, product second.** 
 
 ## Current state
@@ -46,8 +41,8 @@ with Claude but with persistent memory of my kitchen. Stretch: voice / hands-fre
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
 
 **The two live loops:**
-- **Chat:** `page.tsx` → `ChatWindow.tsx` → `api/recipes/route.ts` → `ratelimit.ts` →
-  `db.ts` + `ai.ts` → Claude (streamed back, abortable).
+- **Chat:** `page.tsx` → `ChatWindow.tsx` → `api/chat/route.ts` → `ratelimit.ts` →
+  `db.ts` + `ai.ts` → Anthropic (streamed back, abortable).
 - **Pantry:** `pantry/page.tsx` → `api/pantry/route.ts` → `db.ts` → Supabase.
 
 Cross-cutting: `auth.ts` `getUserId()` puts a JWT check on every user-scoped route;
@@ -58,11 +53,11 @@ Cross-cutting: `auth.ts` `getUserId()` puts a JWT check on every user-scoped rou
 
 ```
    BROWSER (frontend)          SERVER (backend)              ANTHROPIC
-   src/app/page.tsx            src/app/api/recipes/route.ts  Claude
+   src/app/page.tsx            src/app/api/chat/route.ts     Anthropic
    - ChatWindow component      - fetches pantry from DB      - the model
    - message list              - builds system prompt
    - pill input bar            - holds the SECRET api key
-        |  POST /api/recipes         |  stream                    |
+        |  POST /api/chat             |  stream                    |
         | ------------------------>  | -----------------------> |
         | <------ stream tokens ---- | <----- stream tokens ----|
 ```
