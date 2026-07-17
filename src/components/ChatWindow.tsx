@@ -273,7 +273,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
                     {m.content}
                   </p>
                 ) : (
-                  <div className="prose prose-sm max-w-[82%] text-sm leading-relaxed text-text-primary dark:prose-invert">
+                  <div className="prose prose-sm w-full max-w-none text-sm leading-relaxed text-text-primary dark:prose-invert">
                     <ReactMarkdown>{m.content}</ReactMarkdown>
                   </div>
                 )}
@@ -305,7 +305,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
             {reply && (
               <div className="flex justify-start">
                 <div
-                  className="prose prose-sm max-w-[82%] text-sm leading-relaxed text-text-primary dark:prose-invert"
+                  className="prose prose-sm w-full max-w-none text-sm leading-relaxed text-text-primary dark:prose-invert"
                 >
                   <ReactMarkdown>{reply}</ReactMarkdown>
                 </div>
