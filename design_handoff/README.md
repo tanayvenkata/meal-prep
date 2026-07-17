@@ -23,7 +23,7 @@ See `/screens/*.png` for a rendered image of each screen.
 libraries. Where a value isn't specified, follow the Design Tokens section.
 
 ## Source of truth
-`CLAUDE.md` (repo root — also copied here) holds the canonical tokens, voice rules, nav model, and
+`DESIGN.md` holds the canonical tokens, voice rules, nav model, and
 backend build order. Read it first.
 
 ---
@@ -148,7 +148,7 @@ Sharp but never mean, hypes wins, has opinions, hates waste, brief by default. W
 - `Meal Prep Charm.dc.html` — Mise persona + Cooking Wrapped (north star).
 - `Meal Prep Navigation Map.dc.html` — the nav model diagram.
 - `support.js` — runtime for the `.dc.html` files.
-- `CLAUDE.md` — source-of-truth spec (also at repo root).
+- `DESIGN.md` — source-of-truth spec.
 - `screens/*.png` — rendered image of each screen.
 
 ---

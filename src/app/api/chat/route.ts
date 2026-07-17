@@ -3,7 +3,7 @@ import { streamChat } from "@/lib/ai";
 import { getUserId } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/ratelimit";
 
-// Mise's character, from design_handoff/CLAUDE.md ("voice = brand"). This is a STABLE
+// Mise's character, from design_handoff/DESIGN.md ("voice = brand"). This is a STABLE
 // prefix: identical on every request and every user, so the pantry block goes AFTER it.
 // Order matters — a prompt cache breaks at the first byte that changes, and the pantry
 // changes constantly while this never does. (Caching isn't wired yet: this prefix is
