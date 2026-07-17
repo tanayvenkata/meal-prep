@@ -1,11 +1,11 @@
-export type ThemeMode = "light" | "dark" | "system";
+export type ThemeMode = "light" | "dark";
 
 // Also the cycle order ThemeToggle uses, and the single source of truth for
 // what counts as a valid mode — layout.tsx validates the theme-mode cookie
 // against this. Lives outside ThemeToggle.tsx (a "use client" file) because
 // every export from a client file crosses the client boundary, and this
 // needs to be callable from the server layout.
-export const THEME_MODES: ThemeMode[] = ["system", "light", "dark"];
+export const THEME_MODES: ThemeMode[] = ["light", "dark"];
 
 export function isThemeMode(value: string | undefined): value is ThemeMode {
   return (THEME_MODES as string[]).includes(value ?? "");
@@ -18,18 +18,9 @@ export function isThemeMode(value: string | undefined): value is ThemeMode {
 // <meta> tags live on toggle) so the two never drift apart.
 export const THEME_COLORS = { light: "#f6f1e7", dark: "#1b1712" } as const;
 
-// What each of the two <meta name="theme-color" media="..."> tags should
-// read for a given mode. "system" gives them their natural distinct colors
-// so the browser's own prefers-color-scheme matching drives OS-level
-// changes with no JS; an explicit override gives both the same resolved
-// color, since whichever tag the browser ends up honoring should show it.
+// Keep both media tags in sync. Safari may honor either one when its browser
+// chrome updates, so an explicit app choice must set both to the same color.
 export function themeColorEntries(mode: ThemeMode): { media: string; color: string }[] {
-  if (mode === "system") {
-    return [
-      { media: "(prefers-color-scheme: light)", color: THEME_COLORS.light },
-      { media: "(prefers-color-scheme: dark)", color: THEME_COLORS.dark },
-    ];
-  }
   const color = mode === "dark" ? THEME_COLORS.dark : THEME_COLORS.light;
   return [
     { media: "(prefers-color-scheme: light)", color },
