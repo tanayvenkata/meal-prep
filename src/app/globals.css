@@ -1,8 +1,7 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-/* Class-based dark mode: JS toggles `.dark` on <html>. See layout.tsx for
-   the cookie-driven server render + the system-preference fallback script. */
+/* Class-based dark mode: the saved explicit choice controls `.dark` on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
