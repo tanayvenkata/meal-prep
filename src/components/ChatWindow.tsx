@@ -7,8 +7,7 @@ import type { ChatMessage } from "@/lib/ai";
 import { supabase } from "@/lib/supabase";
 
 // UI-level message: ChatMessage plus a timestamp for the date dividers. createdAt is
-// optional because it's presentation-only — it never travels to the API (the chat route
-// forwards messages straight to the Anthropic SDK, which rejects extra fields).
+// optional because it's presentation-only — it never travels to the API.
 export type UiMessage = ChatMessage & { createdAt?: string };
 
 type Props = {
@@ -152,7 +151,7 @@ export default function ChatWindow({ apiRoute, placeholder, requiresAuth, conver
       res = await fetch(apiRoute, {
         method: "POST",
         headers,
-        // strip createdAt — the route hands messages straight to the Anthropic SDK
+        // Strip UI-only timestamps before sending persisted chat history to the server.
         body: JSON.stringify({
           messages: newMessages.map(({ role, content }) => ({ role, content })),
           conversationId: activeConversationId,

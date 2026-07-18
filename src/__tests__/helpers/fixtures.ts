@@ -1,4 +1,4 @@
-import type { Item, Conversation, Message } from "@/lib/db";
+import type { Item, KitchenTool, Conversation, Message } from "@/lib/db";
 
 export const fakeItem = (overrides: Partial<Item> = {}): Item => ({
   id: 1,
@@ -13,6 +13,15 @@ export const fakeItem = (overrides: Partial<Item> = {}): Item => ({
 export const fakeMessage = (overrides: Partial<{ role: string; content: string }> = {}) => ({
   role: "user",
   content: "hello",
+  ...overrides,
+});
+
+export const fakeKitchenTool = (overrides: Partial<KitchenTool> = {}): KitchenTool => ({
+  id: "00000000-0000-0000-0000-000000000003",
+  user_id: "user-123",
+  name: "Frying pan",
+  kind: "cookware",
+  created_at: "2024-01-01",
   ...overrides,
 });
 

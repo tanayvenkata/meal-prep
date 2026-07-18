@@ -1,4 +1,4 @@
-import { getItems, createConversation, addMessage } from "@/lib/db";
+import { getItems, getKitchenTools, createConversation, addMessage } from "@/lib/db";
 import { streamChat } from "@/lib/ai";
 import { getUserId } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/ratelimit";
@@ -49,11 +49,12 @@ export async function POST(req: Request) {
   }
 
   let items;
+  let tools;
   try {
-    items = await getItems(userId);
+    [items, tools] = await Promise.all([getItems(userId), getKitchenTools(userId)]);
   } catch (err) {
     console.error("POST /api/chat failed (db):", err);
-    return Response.json({ error: "failed to load pantry" }, { status: 500 });
+    return Response.json({ error: "failed to load kitchen context" }, { status: 500 });
   }
 
   const lastUserMessage = messages[messages.length - 1];
@@ -68,11 +69,24 @@ export async function POST(req: Request) {
     return Response.json({ error: "failed to save message" }, { status: 500 });
   }
 
-  const pantryList = items.map((i) => i.name).join(", ");
-  // Persona FIRST (stable), pantry LAST (volatile) — see MISE_PERSONA note above.
+  const pantryList = items.length
+    ? items.map((item) => `- ${item.name} (${item.quantity}); turnover: ${item.turnover}`).join("\n")
+    : "- No pantry items recorded.";
+  const toolList = tools.length
+    ? tools.map((tool) => `- ${tool.name}; kind: ${tool.kind}`).join("\n")
+    : "- No kitchen tools recorded.";
+  // Persona FIRST (stable), kitchen data LAST (volatile) — see MISE_PERSONA note above.
   const system = `${MISE_PERSONA}
 
-The user's pantry has: ${pantryList}. Use it when they want ideas.`;
+Kitchen context (trusted app data):
+
+Pantry:
+${pantryList}
+
+Kitchen tools:
+${toolList}
+
+Use this context when it helps answer the user. Do not claim the user has ingredients or tools that are not listed.`;
 
   const stream = new ReadableStream({
     async start(controller) {
