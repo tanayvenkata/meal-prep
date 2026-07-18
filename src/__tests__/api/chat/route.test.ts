@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/chat/route";
-import { fakeItem, fakeMessage } from "@/__tests__/helpers/fixtures";
+import { fakeItem, fakeKitchenTool, fakeMessage } from "@/__tests__/helpers/fixtures";
 
 vi.mock("@/lib/auth", () => ({
   getUserId: vi.fn(),
@@ -8,6 +8,7 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/db", () => ({
   getItems: vi.fn(),
+  getKitchenTools: vi.fn(),
   createConversation: vi.fn(),
   addMessage: vi.fn(),
 }));
@@ -21,12 +22,13 @@ vi.mock("@/lib/ratelimit", () => ({
 }));
 
 import { getUserId } from "@/lib/auth";
-import { getItems, createConversation, addMessage } from "@/lib/db";
+import { getItems, getKitchenTools, createConversation, addMessage } from "@/lib/db";
 import { streamChat } from "@/lib/ai";
 import { checkRateLimit } from "@/lib/ratelimit";
 
 const mockGetUserId = vi.mocked(getUserId);
 const mockGetItems = vi.mocked(getItems);
+const mockGetKitchenTools = vi.mocked(getKitchenTools);
 const mockStreamChat = vi.mocked(streamChat);
 const mockCheckRateLimit = vi.mocked(checkRateLimit);
 const mockCreateConversation = vi.mocked(createConversation);
@@ -34,6 +36,9 @@ const mockAddMessage = vi.mocked(addMessage);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetItems.mockResolvedValue([]);
+  mockGetKitchenTools.mockResolvedValue([]);
+  mockCheckRateLimit.mockResolvedValue(true);
 });
 
 describe("POST /api/chat", () => {
@@ -165,13 +170,14 @@ describe("POST /api/chat", () => {
     expect(mockAddMessage).toHaveBeenCalledWith("conv-1", "user", "hello");
   });
 
-  it("returns a stream and calls streamChat with pantry in system prompt", async () => {
+  it("returns a stream and calls streamChat with kitchen context in instructions", async () => {
     mockGetUserId.mockResolvedValue("user-123");
     mockCheckRateLimit.mockResolvedValue(true);
     mockGetItems.mockResolvedValue([
       fakeItem({ name: "eggs" }),
       fakeItem({ id: 2, name: "milk", quantity: "1L" }),
     ]);
+    mockGetKitchenTools.mockResolvedValue([fakeKitchenTool({ name: "Air fryer", kind: "appliance" })]);
     mockCreateConversation.mockResolvedValue({ id: "conv-1", user_id: "user-123", title: "what can I make?", created_at: "" });
     mockAddMessage.mockResolvedValue({ id: "msg-1", conversation_id: "conv-1", role: "user", content: "what can I make?", created_at: "" });
     mockStreamChat.mockReturnValue(
@@ -190,5 +196,9 @@ describe("POST /api/chat", () => {
     expect(calledMessages).toEqual([msg]);
     expect(calledSystem).toContain("eggs");
     expect(calledSystem).toContain("milk");
+    expect(calledSystem).toContain("12");
+    expect(calledSystem).toContain("turnover: high");
+    expect(calledSystem).toContain("Air fryer");
+    expect(calledSystem).toContain("kind: appliance");
   });
 });

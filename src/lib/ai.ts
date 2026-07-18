@@ -1,33 +1,49 @@
-// THE BOUNDARY — only file that imports the Anthropic SDK. Swap models/providers here.
+// THE BOUNDARY — only file that imports the AI provider SDK. Swap models/providers here.
 
-import Anthropic from "@anthropic-ai/sdk";
+import { Agent, run, type AgentInputItem } from "@openai/agents";
 
-const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env automatically
+export const MISE_MODEL = "gpt-5.6-terra";
 
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
 };
 
-// Streams Claude's reply one text chunk at a time. Pass an optional system prompt
-// to give Claude context (e.g. the user's pantry) without exposing it in the chat.
+function toAgentInput(messages: ChatMessage[]): AgentInputItem[] {
+  return messages.map(({ role, content }) => {
+    if (role === "user") {
+      return { role, content: [{ type: "input_text", text: content }] };
+    }
+
+    return {
+      role,
+      status: "completed",
+      content: [{ type: "output_text", text: content }],
+    };
+  });
+}
+
+// Streams Mise's reply one text chunk at a time. The route passes trusted kitchen
+// context as instructions; chat history stays separate user/assistant input.
 export async function* streamChat(
   messages: ChatMessage[],
-  system?: string,
+  instructions?: string,
 ): AsyncGenerator<string> {
-  const stream = client.messages.stream({
-    model: "claude-sonnet-5",
-    max_tokens: 4096,
-    messages,
-    ...(system ? { system } : {}),
+  const mise = new Agent({
+    name: "Mise",
+    instructions,
+    model: MISE_MODEL,
   });
+  const stream = await run(mise, toAgentInput(messages), { stream: true });
 
   for await (const event of stream) {
     if (
-      event.type === "content_block_delta" &&
-      event.delta.type === "text_delta"
+      event.type === "raw_model_stream_event" &&
+      event.data.type === "output_text_delta"
     ) {
-      yield event.delta.text;
+      yield event.data.delta;
     }
   }
+
+  await stream.completed;
 }
