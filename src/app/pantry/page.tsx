@@ -4,10 +4,13 @@ import { useState, useEffect, useRef } from 'react'
 import { Check, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
+type Turnover = 'high' | 'low'
+
 type Item = {
   id: number
   name: string
   quantity: string
+  turnover: Turnover
 }
 
 async function getToken(): Promise<string | null> {
@@ -15,27 +18,30 @@ async function getToken(): Promise<string | null> {
   return data.session?.access_token ?? null
 }
 
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return <h2 className="mb-2 text-sm font-semibold text-text-primary">{children}</h2>
+}
+
 export default function PantryPage() {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('')
+  const [turnover, setTurnover] = useState<Turnover>('high')
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [editQuantity, setEditQuantity] = useState('')
+  const [editTurnover, setEditTurnover] = useState<Turnover>('high')
   const editNameRef = useRef<HTMLInputElement>(null)
 
   async function loadItems() {
     const token = await getToken()
     if (!token) return
     try {
-      const res = await fetch('/api/pantry', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await fetch('/api/pantry', { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error(`pantry load failed (${res.status})`)
-      const data = await res.json()
-      setItems(data)
+      setItems(await res.json())
       setError(null)
     } catch (err) {
       console.error('failed to load pantry:', err)
@@ -45,210 +51,140 @@ export default function PantryPage() {
 
   useEffect(() => {
     let ignore = false
+
     async function startFetching() {
-      const token = await getToken()
-      if (!token) return
-      try {
-        const res = await fetch('/api/pantry', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) throw new Error(`pantry load failed (${res.status})`)
-        const data = await res.json()
-        if (!ignore) setItems(data)
-      } catch (err) {
-        console.error('failed to load pantry:', err)
-        if (!ignore) setError('Could not load your pantry. Try refreshing.')
-      } finally {
-        if (!ignore) setLoading(false)
-      }
+      await loadItems()
+      if (!ignore) setLoading(false)
     }
+
     startFetching()
     return () => { ignore = true }
   }, [])
 
   async function mutate(method: 'POST' | 'PUT' | 'DELETE', body: object) {
     const token = await getToken()
-    if (!token) return
+    if (!token) return false
     setError(null)
     const res = await fetch('/api/pantry', {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     })
     if (!res.ok) {
       const data = await res.json()
       setError(data.error ?? 'Something went wrong')
-      return
+      return false
     }
     await loadItems()
+    return true
   }
 
   async function addItem() {
-    if (name.trim() === '') return
-    await mutate('POST', { name: name.trim(), quantity: quantity.trim() })
-    setName('')
-    setQuantity('')
-  }
-
-  async function deleteItem(id: number) {
-    await mutate('DELETE', { id })
+    if (!name.trim()) return
+    const added = await mutate('POST', { name: name.trim(), quantity: quantity.trim(), turnover })
+    if (added) {
+      setName('')
+      setQuantity('')
+      setTurnover('high')
+    }
   }
 
   function startEdit(item: Item) {
     setEditingId(item.id)
     setEditName(item.name)
     setEditQuantity(item.quantity ?? '')
+    setEditTurnover(item.turnover)
     setTimeout(() => editNameRef.current?.focus(), 0)
   }
 
-  function cancelEdit() {
-    setEditingId(null)
+  async function saveEdit(id: number) {
+    if (!editName.trim()) return
+    const saved = await mutate('PUT', {
+      id,
+      name: editName.trim(),
+      quantity: editQuantity.trim(),
+      turnover: editTurnover,
+    })
+    if (saved) setEditingId(null)
   }
 
-  async function saveEdit(id: number) {
-    if (editName.trim() === '') return
-    await mutate('PUT', { id, name: editName.trim(), quantity: editQuantity.trim() })
-    setEditingId(null)
+  const highTurnover = items.filter((item) => item.turnover === 'high')
+  const lowTurnover = items.filter((item) => item.turnover === 'low')
+
+  function renderItems(sectionItems: Item[]) {
+    if (!sectionItems.length) return <p className="py-3 text-sm text-text-secondary">Nothing here yet.</p>
+
+    return (
+      <ul className="divide-y divide-outline border-y border-outline">
+        {sectionItems.map((item) => (
+          <li key={item.id} className="py-3">
+            {editingId === item.id ? (
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6rem_auto_auto]">
+                <input ref={editNameRef} aria-label="Edit ingredient name" value={editName} onChange={(e) => setEditName(e.target.value)} className="min-w-0 border border-outline bg-surface-raised px-2 py-2 text-base" />
+                <input aria-label="Edit quantity" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} className="min-w-0 border border-outline bg-surface-raised px-2 py-2 text-base" placeholder="Quantity" />
+                <select aria-label="Edit turnover" value={editTurnover} onChange={(e) => setEditTurnover(e.target.value as Turnover)} className="border border-outline bg-surface-raised px-2 py-2 text-sm">
+                  <option value="high">High</option>
+                  <option value="low">Low</option>
+                </select>
+                <button aria-label="Save item" onClick={() => saveEdit(item.id)} className="border border-outline px-3 py-2 text-sm"><Check size={16} /></button>
+                <button aria-label="Cancel edit" onClick={() => setEditingId(null)} className="border border-outline px-3 py-2 text-sm"><X size={16} /></button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-base text-text-primary">{item.name}</p>
+                  {item.quantity && <p className="text-sm text-text-secondary">{item.quantity}</p>}
+                </div>
+                <div className="flex shrink-0 gap-3 text-sm">
+                  <button onClick={() => startEdit(item)} className="text-text-secondary underline underline-offset-4">Edit</button>
+                  <button onClick={() => mutate('DELETE', { id: item.id })} className="text-text-secondary underline underline-offset-4">Delete</button>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    )
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 overflow-y-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="font-serif text-2xl font-semibold text-text-primary">My Pantry</h1>
-        <p className="mt-0.5 font-mono text-xs uppercase tracking-widest text-text-secondary">
-          {loading ? ' ' : `${items.length} ${items.length === 1 ? 'item' : 'items'}`}
-        </p>
-      </div>
+    <main className="mx-auto w-full max-w-xl flex-1 overflow-y-auto px-4 py-5 sm:py-8">
+      <header className="mb-6">
+        <h1 className="text-2xl font-semibold text-text-primary">Pantry</h1>
+        <p className="mt-1 text-sm text-text-secondary">{loading ? 'Loading…' : `${items.length} items`}</p>
+      </header>
 
-      {/* add row */}
-      <div className="mb-6 flex gap-2">
-        <input
-          className="flex-1 rounded-xl border border-outline bg-surface-raised px-3 py-2 text-base text-text-primary placeholder:text-text-secondary outline-none focus:border-accent focus:ring-[0.5px] focus:ring-accent transition-colors"
-          aria-label="Ingredient name"
-          placeholder="Ingredient (e.g. chicken thighs)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addItem()}
-        />
-        <input
-          className="w-20 sm:w-36 rounded-xl border border-outline bg-surface-raised px-3 py-2 text-base text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
-          aria-label="Quantity"
-          placeholder="Qty (e.g. 2 lbs)"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addItem()}
-        />
-        <button
-          className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
-          onClick={addItem}
-        >
-          Add
-        </button>
-      </div>
+      <section aria-labelledby="add-item-heading" className="mb-8">
+        <SectionHeading><span id="add-item-heading">Add an item</span></SectionHeading>
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6rem_auto]">
+          <input aria-label="Ingredient name" placeholder="Ingredient" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addItem()} className="min-w-0 border border-outline bg-surface-raised px-3 py-2 text-base" />
+          <input aria-label="Quantity" placeholder="Quantity" value={quantity} onChange={(e) => setQuantity(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addItem()} className="min-w-0 border border-outline bg-surface-raised px-3 py-2 text-base" />
+          <select aria-label="Turnover" value={turnover} onChange={(e) => setTurnover(e.target.value as Turnover)} className="border border-outline bg-surface-raised px-3 py-2 text-base">
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+          <button onClick={addItem} className="border border-text-primary bg-text-primary px-4 py-2 text-sm font-medium text-surface-base">Add</button>
+        </div>
+      </section>
 
-      {error && (
-        <p className="mb-4 text-sm text-text-danger">{error}</p>
+      {error && <p className="mb-4 text-sm text-text-danger">{error}</p>}
+
+      {loading ? (
+        <p className="text-sm text-text-secondary">Loading pantry…</p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-text-secondary">Nothing here yet. Add the ingredients you use.</p>
+      ) : (
+        <div className="space-y-8">
+          <section aria-labelledby="high-turnover-heading">
+            <SectionHeading><span id="high-turnover-heading">High turnover</span></SectionHeading>
+            {renderItems(highTurnover)}
+          </section>
+          <section aria-labelledby="low-turnover-heading">
+            <SectionHeading><span id="low-turnover-heading">Low turnover</span></SectionHeading>
+            {renderItems(lowTurnover)}
+          </section>
+        </div>
       )}
-
-      {/* item list */}
-      <div
-        className="rounded-2xl bg-surface-raised overflow-hidden"
-        style={{ boxShadow: '0 1px 4px var(--shadow-color-sm)' }}
-      >
-        {loading ? (
-          <div className="space-y-px">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between px-4 py-3">
-                <div className="h-4 w-32 rounded bg-surface-muted animate-pulse" />
-                <div className="h-4 w-16 rounded bg-surface-muted animate-pulse" />
-              </div>
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-outline text-text-secondary text-xl">
-              +
-            </div>
-            <p className="text-sm text-text-secondary">Nothing here yet — add something above.</p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-outline">
-            {items.map((item) => (
-              <li key={item.id} className="px-4 py-3">
-                {editingId === item.id ? (
-                  /* inline edit row */
-                  <div className="flex items-center gap-2">
-                    <input
-                      ref={editNameRef}
-                      className="flex-1 rounded-lg border border-outline bg-surface-sunken px-2 py-1 text-base text-text-primary outline-none focus:border-accent transition-colors"
-                      aria-label="Edit ingredient name"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveEdit(item.id)
-                        if (e.key === 'Escape') cancelEdit()
-                      }}
-                      placeholder="Name"
-                    />
-                    <input
-                      className="w-24 rounded-lg border border-outline bg-surface-sunken px-2 py-1 text-base text-text-primary outline-none focus:border-accent transition-colors"
-                      aria-label="Edit quantity"
-                      value={editQuantity}
-                      onChange={(e) => setEditQuantity(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveEdit(item.id)
-                        if (e.key === 'Escape') cancelEdit()
-                      }}
-                      placeholder="Qty"
-                    />
-                    <button
-                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white hover:opacity-90 transition-opacity"
-                      onClick={() => saveEdit(item.id)}
-                      title="Save"
-                    >
-                      <Check size={14} strokeWidth={2.2} />
-                    </button>
-                    <button
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-outline text-text-secondary hover:border-outline-strong hover:text-text-primary transition-colors"
-                      onClick={cancelEdit}
-                      title="Cancel"
-                    >
-                      <X size={14} strokeWidth={2.2} />
-                    </button>
-                  </div>
-                ) : (
-                  /* normal row */
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-sm font-medium text-text-primary">{item.name}</span>
-                      {item.quantity && (
-                        <span className="ml-2 font-mono text-xs text-text-secondary">{item.quantity}</span>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        className="rounded-lg border border-outline px-3 py-1 text-xs text-text-secondary hover:border-outline-strong hover:text-text-primary transition-colors"
-                        onClick={() => startEdit(item)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="rounded-lg px-3 py-1 text-xs text-text-accent hover:opacity-70 transition-opacity"
-                        onClick={() => deleteItem(item.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
     </main>
   )
 }

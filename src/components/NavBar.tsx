@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
-import SignOutButton from "@/components/SignOutButton";
 import HistoryDrawer from "@/components/HistoryDrawer";
 import ThemeToggle from "@/components/ThemeToggle";
 import IconButton from "@/components/IconButton";
@@ -17,7 +16,7 @@ export default function NavBar({ initialThemeMode }: { initialThemeMode: ThemeMo
 
   return (
     <>
-      <nav className="sticky top-0 z-10 flex items-center justify-between border-b border-outline bg-surface-raised px-6 py-3">
+      <nav className="sticky top-0 z-10 flex items-center justify-between border-b border-outline bg-surface-raised px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
           {!isLogin && (
             <IconButton
@@ -35,7 +34,7 @@ export default function NavBar({ initialThemeMode }: { initialThemeMode: ThemeMo
           </Link>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-6">
           {!isLogin && (
             <>
               <Link
@@ -44,7 +43,12 @@ export default function NavBar({ initialThemeMode }: { initialThemeMode: ThemeMo
               >
                 Pantry
               </Link>
-              <SignOutButton />
+              <Link
+                href="/tools"
+                className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Tools
+              </Link>
             </>
           )}
           <ThemeToggle initialMode={initialThemeMode} />

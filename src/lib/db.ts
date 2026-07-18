@@ -5,11 +5,13 @@ import postgres from "postgres";
 
 const sql = postgres(process.env.DATABASE_URL!);
 
+export type Turnover = "high" | "low";
+
 export type Item = {
   id: number;
   name: string;
   quantity: string;
-  turnover: string;
+  turnover: Turnover;
   created_at: string;
   user_id: string;
 };
@@ -48,22 +50,33 @@ export async function getItems(userId: string): Promise<Item[]> {
   );
 }
 
-export async function addItem(userId: string, name: string, quantity: string): Promise<Item> {
+export async function addItem(
+  userId: string,
+  name: string,
+  quantity: string,
+  turnover: Turnover = "high",
+): Promise<Item> {
   return withUserContext(userId, async (tx) => {
     const [item] = await tx<Item[]>`
-      insert into items (user_id, name, quantity)
-      values (${userId}, ${name}, ${quantity})
+      insert into items (user_id, name, quantity, turnover)
+      values (${userId}, ${name}, ${quantity}, ${turnover})
       returning *
     `;
     return item;
   });
 }
 
-export async function updateItem(userId: string, id: number, quantity: string, name?: string): Promise<Item> {
+export async function updateItem(
+  userId: string,
+  id: number,
+  quantity: string,
+  name?: string,
+  turnover?: Turnover,
+): Promise<Item> {
   return withUserContext(userId, async (tx) => {
     const [item] = await tx<Item[]>`
       update items
-      set quantity = ${quantity}${name !== undefined ? tx`, name = ${name}` : tx``}
+      set quantity = ${quantity}${name !== undefined ? tx`, name = ${name}` : tx``}${turnover !== undefined ? tx`, turnover = ${turnover}` : tx``}
       where id = ${id} and user_id = ${userId}
       returning *
     `;

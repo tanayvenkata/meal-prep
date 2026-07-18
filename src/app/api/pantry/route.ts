@@ -1,4 +1,4 @@
-import { getItems, addItem, updateItem, deleteItem } from "@/lib/db";
+import { getItems, addItem, updateItem, deleteItem, type Turnover } from "@/lib/db";
 import { getUserId } from "@/lib/auth";
 
 const MAX_NAME_LENGTH = 100;
@@ -14,6 +14,11 @@ function validateName(name: unknown): { name: string } | { error: string } {
     return { error: `name must be ${MAX_NAME_LENGTH} characters or fewer` };
   }
   return { name: trimmed };
+}
+
+function validateTurnover(turnover: unknown): { turnover: Turnover } | { error: string } {
+  if (turnover === "high" || turnover === "low") return { turnover };
+  return { error: "turnover must be high or low" };
 }
 
 export async function GET(request: Request) {
@@ -33,14 +38,18 @@ export async function POST(request: Request) {
   const userId = await getUserId(request);
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const { name, quantity } = await request.json();
+  const { name, quantity, turnover = "high" } = await request.json();
   const validated = validateName(name);
   if ("error" in validated) {
     return Response.json({ error: validated.error }, { status: 400 });
   }
+  const validatedTurnover = validateTurnover(turnover);
+  if ("error" in validatedTurnover) {
+    return Response.json({ error: validatedTurnover.error }, { status: 400 });
+  }
 
   try {
-    const item = await addItem(userId, validated.name, (quantity ?? "").trim());
+    const item = await addItem(userId, validated.name, (quantity ?? "").trim(), validatedTurnover.turnover);
     return Response.json(item, { status: 201 });
   } catch (err) {
     console.error("POST /api/pantry failed:", err);
@@ -52,7 +61,7 @@ export async function PUT(request: Request) {
   const userId = await getUserId(request);
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const { id, quantity, name } = await request.json();
+  const { id, quantity, name, turnover } = await request.json();
   if (!id) return Response.json({ error: "id is required" }, { status: 400 });
 
   // name is optional on update — but if the client sends one, it must be valid.
@@ -65,8 +74,17 @@ export async function PUT(request: Request) {
     validatedName = validated.name;
   }
 
+  let validatedTurnover: Turnover | undefined;
+  if (turnover !== undefined && turnover !== null) {
+    const validated = validateTurnover(turnover);
+    if ("error" in validated) {
+      return Response.json({ error: validated.error }, { status: 400 });
+    }
+    validatedTurnover = validated.turnover;
+  }
+
   try {
-    const item = await updateItem(userId, id, (quantity ?? "").trim(), validatedName);
+    const item = await updateItem(userId, id, (quantity ?? "").trim(), validatedName, validatedTurnover);
     return Response.json(item);
   } catch (err) {
     console.error("PUT /api/pantry failed:", err);
