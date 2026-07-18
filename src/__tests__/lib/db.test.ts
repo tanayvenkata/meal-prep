@@ -1,5 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
-import { getItems, addItem, updateItem, deleteItem } from "@/lib/db";
+import {
+  getItems,
+  addItem,
+  updateItem,
+  deleteItem,
+  getKitchenTools,
+  addKitchenTool,
+  updateKitchenTool,
+  deleteKitchenTool,
+} from "@/lib/db";
 import postgres from "postgres";
 
 const sql = postgres(process.env.DATABASE_URL!);
@@ -11,6 +20,7 @@ beforeAll(async () => {
   // Conversations now reference auth.users as well. Clear any rows left by a
   // prior interrupted test run before recreating these fixed test identities.
   await sql`delete from conversations where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
+  await sql`delete from kitchen_tools where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
   await sql`
     insert into auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
     values
@@ -22,6 +32,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await sql`delete from conversations where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
+  await sql`delete from kitchen_tools where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
   await sql`delete from auth.users where id in (${TEST_USER_A}, ${TEST_USER_B})`;
   await sql.end();
 });
@@ -31,10 +42,12 @@ afterAll(async () => {
 // afterEach leaves the DB clean for whatever runs after the suite. Belt and suspenders.
 beforeEach(async () => {
   await sql`delete from items where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
+  await sql`delete from kitchen_tools where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
 });
 
 afterEach(async () => {
   await sql`delete from items where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
+  await sql`delete from kitchen_tools where user_id in (${TEST_USER_A}, ${TEST_USER_B})`;
 });
 
 describe("getItems", () => {
@@ -60,8 +73,65 @@ describe("addItem", () => {
 
     expect(item.name).toBe("eggs");
     expect(item.quantity).toBe("12");
+    expect(item.turnover).toBe("high");
     expect(item.user_id).toBe(TEST_USER_A);
     expect(item.id).toBeDefined();
+  });
+});
+
+describe("kitchen tools", () => {
+  it("returns only tools belonging to the given user", async () => {
+    await addKitchenTool(TEST_USER_A, "Air fryer", "appliance");
+    await addKitchenTool(TEST_USER_B, "Sheet pan", "bakeware");
+
+    const tools = await getKitchenTools(TEST_USER_A);
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({
+      user_id: TEST_USER_A,
+      name: "Air fryer",
+      kind: "appliance",
+    });
+  });
+
+  it("updates a user's tool", async () => {
+    const tool = await addKitchenTool(TEST_USER_A, "Frying pan", "cookware");
+
+    const updated = await updateKitchenTool(TEST_USER_A, tool.id, "12-inch skillet", "cookware");
+
+    expect(updated).toMatchObject({ name: "12-inch skillet", kind: "cookware" });
+  });
+
+  it("cannot update or delete another user's tool", async () => {
+    const tool = await addKitchenTool(TEST_USER_B, "Oven", "appliance");
+
+    const updated = await updateKitchenTool(TEST_USER_A, tool.id, "My oven", "appliance");
+    await deleteKitchenTool(TEST_USER_A, tool.id);
+
+    expect(updated).toBeUndefined();
+    const remaining = await sql`select * from kitchen_tools where id = ${tool.id}`;
+    expect(remaining).toHaveLength(1);
+  });
+
+  it("RLS hides another user's tool from an unfiltered query", async () => {
+    await addKitchenTool(TEST_USER_B, "Oven", "appliance");
+
+    const visibleToA = await sql.begin(async (tx) => {
+      await tx`select set_config('request.jwt.claim.sub', ${TEST_USER_A}, true)`;
+      await tx`set local role authenticated`;
+      return tx`select * from kitchen_tools where user_id = ${TEST_USER_B}`;
+    });
+
+    expect(visibleToA).toHaveLength(0);
+  });
+
+  it("deletes the given tool", async () => {
+    const tool = await addKitchenTool(TEST_USER_A, "Baking sheet", "bakeware");
+
+    await deleteKitchenTool(TEST_USER_A, tool.id);
+
+    const remaining = await sql`select * from kitchen_tools where id = ${tool.id}`;
+    expect(remaining).toHaveLength(0);
   });
 });
 
