@@ -4,6 +4,7 @@ export const fakeItem = (overrides: Partial<Item> = {}): Item => ({
   id: 1,
   name: "eggs",
   quantity: "12",
+  turnover: "high",
   created_at: "2024-01-01",
   user_id: "user-123",
   ...overrides,

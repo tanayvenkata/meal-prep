@@ -9,8 +9,17 @@ export type Item = {
   id: number;
   name: string;
   quantity: string;
+  turnover: string;
   created_at: string;
   user_id: string;
+};
+
+export type KitchenTool = {
+  id: string;
+  user_id: string;
+  name: string;
+  kind: string;
+  created_at: string;
 };
 
 // db.ts connects as the `postgres` role, which owns `items` and bypasses RLS.
@@ -66,6 +75,53 @@ export async function deleteItem(userId: string, id: number): Promise<void> {
   await withUserContext(userId, (tx) =>
     tx`
       delete from items
+      where id = ${id} and user_id = ${userId}
+    `,
+  );
+}
+
+export async function getKitchenTools(userId: string): Promise<KitchenTool[]> {
+  return withUserContext(userId, (tx) =>
+    tx<KitchenTool[]>`
+      select * from kitchen_tools
+      where user_id = ${userId}
+      order by created_at desc
+    `,
+  );
+}
+
+export async function addKitchenTool(userId: string, name: string, kind: string): Promise<KitchenTool> {
+  return withUserContext(userId, async (tx) => {
+    const [tool] = await tx<KitchenTool[]>`
+      insert into kitchen_tools (user_id, name, kind)
+      values (${userId}, ${name}, ${kind})
+      returning *
+    `;
+    return tool;
+  });
+}
+
+export async function updateKitchenTool(
+  userId: string,
+  id: string,
+  name: string,
+  kind: string,
+): Promise<KitchenTool> {
+  return withUserContext(userId, async (tx) => {
+    const [tool] = await tx<KitchenTool[]>`
+      update kitchen_tools
+      set name = ${name}, kind = ${kind}
+      where id = ${id} and user_id = ${userId}
+      returning *
+    `;
+    return tool;
+  });
+}
+
+export async function deleteKitchenTool(userId: string, id: string): Promise<void> {
+  await withUserContext(userId, (tx) =>
+    tx`
+      delete from kitchen_tools
       where id = ${id} and user_id = ${userId}
     `,
   );
