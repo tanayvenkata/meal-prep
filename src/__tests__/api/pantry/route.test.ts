@@ -138,6 +138,34 @@ describe("POST /api/pantry", () => {
     expect(body.name).toBe("eggs");
     expect(body.quantity).toBe("12");
   });
+
+  it("accepts a low-turnover item", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+    mockAddItem.mockResolvedValue(fakeItem({ turnover: "low" }));
+
+    const request = new Request("http://localhost/api/pantry", {
+      method: "POST",
+      body: JSON.stringify({ name: "paprika", quantity: "1 jar", turnover: "low" }),
+    });
+    const response = await POST(request);
+
+    expect(response.status).toBe(201);
+    expect(mockAddItem).toHaveBeenCalledWith("user-123", "paprika", "1 jar", "low");
+  });
+
+  it("rejects an unknown turnover value", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+
+    const request = new Request("http://localhost/api/pantry", {
+      method: "POST",
+      body: JSON.stringify({ name: "paprika", turnover: "medium" }),
+    });
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe("turnover must be high or low");
+    expect(mockAddItem).not.toHaveBeenCalled();
+  });
 });
 
 describe("PUT /api/pantry", () => {
@@ -210,7 +238,21 @@ describe("PUT /api/pantry", () => {
     const response = await PUT(request);
 
     expect(response.status).toBe(200);
-    expect(mockUpdateItem).toHaveBeenCalledWith("user-123", 1, "6", undefined);
+    expect(mockUpdateItem).toHaveBeenCalledWith("user-123", 1, "6", undefined, undefined);
+  });
+
+  it("updates turnover when provided", async () => {
+    mockGetUserId.mockResolvedValue("user-123");
+    mockUpdateItem.mockResolvedValue(fakeItem({ turnover: "low" }));
+
+    const request = new Request("http://localhost/api/pantry", {
+      method: "PUT",
+      body: JSON.stringify({ id: 1, quantity: "1 jar", turnover: "low" }),
+    });
+    const response = await PUT(request);
+
+    expect(response.status).toBe(200);
+    expect(mockUpdateItem).toHaveBeenCalledWith("user-123", 1, "1 jar", undefined, "low");
   });
 
   it("returns 200 with the updated item", async () => {

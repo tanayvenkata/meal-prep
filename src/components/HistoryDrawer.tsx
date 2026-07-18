@@ -6,6 +6,7 @@ import { X, Plus, Trash2 } from "lucide-react";
 import { getToken } from "@/lib/supabase";
 import type { Conversation } from "@/lib/db";
 import IconButton from "@/components/IconButton";
+import SignOutButton from "@/components/SignOutButton";
 
 type Props = {
   open: boolean;
@@ -195,6 +196,10 @@ export default function HistoryDrawer({ open, onClose }: Props) {
               </div>
             ))
           )}
+        </div>
+
+        <div className="border-t border-outline px-4 py-3">
+          <SignOutButton />
         </div>
       </div>
     </>
