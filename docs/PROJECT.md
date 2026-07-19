@@ -44,6 +44,9 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 - **What's next** lives on the Mise Board (sort by the Priority field), not here — M7 (OCR),
   the nav-model change, history, and gamification are all tracked issues.
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
+- **Public source:** https://github.com/tanayvenkata/meal-prep is publicly readable as a
+  learning and portfolio reference. No software license has been selected yet, so public
+  visibility does not grant reuse rights.
 
 **The two live loops:**
 - **Chat:** `page.tsx` → `ChatWindow.tsx` → `api/chat/route.ts` → `ratelimit.ts` →
