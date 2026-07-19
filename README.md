@@ -148,3 +148,7 @@ ChatWindow.tsx      →      auth.ts + db.ts         →   Supabase Postgres
 ```
 
 All secrets live in [Doppler](https://dashboard.doppler.com) under the `meal-prep` project. `dev` config flows to local via CLI; `prd` config syncs to Vercel automatically.
+
+## License
+
+Mise is open source under the [MIT License](LICENSE).

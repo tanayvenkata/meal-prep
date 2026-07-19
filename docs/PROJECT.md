@@ -44,9 +44,9 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 - **What's next** lives on the Mise Board (sort by the Priority field), not here — M7 (OCR),
   the nav-model change, history, and gamification are all tracked issues.
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
-- **Public source:** https://github.com/tanayvenkata/meal-prep is publicly readable as a
-  learning and portfolio reference. No software license has been selected yet, so public
-  visibility does not grant reuse rights.
+- **Open source:** https://github.com/tanayvenkata/meal-prep is an MIT-licensed learning
+  and portfolio project. Others may use, modify, and redistribute the owned source under
+  the license terms; dependencies retain their own licenses.
 
 **The two live loops:**
 - **Chat:** `page.tsx` → `ChatWindow.tsx` → `api/chat/route.ts` → `ratelimit.ts` →
@@ -116,8 +116,8 @@ are in git (commits + PRs); these are the patterns worth carrying to the next pr
   the SQL. Three zones per endpoint (auth gate / input validation / happy path) = one test
   per branch. User-isolation tested explicitly on write ops that take a row id.
 - **Defense in depth for process.** Husky pre-commit (lint) + pre-push (build + unit tests)
-  catch errors before CI does; CI re-checks remotely; `.husky/pre-push` blocks direct pushes
-  to `main` (PR-first habit, since server-side branch protection is Pro/public-only).
+  catch errors before CI does; CI re-checks remotely; the default-branch ruleset requires
+  the PR + CI path, while `.husky/pre-push` gives immediate local feedback.
 - **Security sequenced to when it's real, not skipped.** Each gap is a *deliberate* deferral
   with a named trigger, written down — not drift.
 
