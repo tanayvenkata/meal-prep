@@ -11,12 +11,14 @@
     "test": "vitest",
     "test:unit": "vitest --run src/__tests__/api src/__tests__/lib/auth.test.ts src/__tests__/lib/theme.test.ts src/__tests__/middleware.test.ts",
     "test:integration": "vitest --run src/__tests__/lib",
-    "mcp:dev": "tsx watch src/mcp/server.ts",
+    "mcp:dev": "tsx watch --include 'src/mcp/kitchen-widget.*' src/mcp/server.ts",
     "prepare": "husky"
   },
   "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^1.7.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@openai/agents": "^0.13.5",
+    "@openai/apps-sdk-ui": "^0.2.2",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "@tailwindcss/typography": "^0.5.20",
@@ -36,6 +38,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.3",
+    "esbuild": "^0.28.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "husky": "^9.1.7",

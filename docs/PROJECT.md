@@ -36,6 +36,11 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 - **Done: M1–M6.5 + pre-M7 hardening.** Streaming chat → Vercel deploy → pantry CRUD →
   pantry-aware recipes → auth → tests + CI/CD → voice → Mise redesign; plus rate limiting
   and a stop button. (Per-milestone detail: git history.)
+- **Experimental ChatGPT surface:** a Streamable HTTP MCP server exposes one
+  `get_kitchen_context` tool and an MCP Apps widget. The complete tool → resource → widget
+  handshake works in MCP Inspector and ChatGPT Developer Mode, including light and dark
+  themes. It still returns an explicit fixture; OAuth and real user data are the next
+  security boundary.
 - **What's next** lives on the Mise Board (sort by the Priority field), not here — M7 (OCR),
   the nav-model change, history, and gamification are all tracked issues.
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
@@ -44,6 +49,11 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 - **Chat:** `page.tsx` → `ChatWindow.tsx` → `api/chat/route.ts` → `ratelimit.ts` →
   `db.ts` + `ai.ts` → Anthropic (streamed back, abortable).
 - **Pantry:** `pantry/page.tsx` → `api/pantry/route.ts` → `db.ts` → Supabase.
+
+**Experimental third loop:**
+- **ChatGPT app:** ChatGPT → HTTPS MCP endpoint → `src/mcp/server.ts` →
+  `get_kitchen_context` → MCP Apps resource → inline React widget. Local development uses
+  ngrok only as an HTTPS tunnel to port `8787`; the laptop remains the server.
 
 Cross-cutting: `auth.ts` `getUserId()` puts a JWT check on every user-scoped route;
 `middleware.ts` gates all routes except `/login`. Design = Mise system
@@ -127,6 +137,9 @@ didn't know them — the architectural truths a tracker title can't carry.
 - 🔧 **Dev session ritual:** OrbStack → `supabase start` → `npm run dev`. Skipping
   `supabase start` → `ECONNREFUSED 127.0.0.1:54322` (the dev app and the db tests both need
   the local stack up).
+- 🔐 **The MCP surface is not authenticated yet.** It must expose fixtures only until an
+  OAuth 2.1 flow maps each bearer token to a Supabase user and every tool enforces that
+  identity. An ngrok URL is public reachability, not authentication.
 
 ## Commands & setup
 

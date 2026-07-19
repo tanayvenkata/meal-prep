@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "node",
+    exclude: [...configDefaults.exclude, ".claude/**"],
     env: {
       DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
     },
