@@ -231,6 +231,11 @@ Two separate things a new teammate needs:
 - **Access** → Settings → Collaborators → invite their GitHub username.
 - **Knowledge** → point them at this file.
 
+## Licensing contributions
+
+Unless explicitly stated otherwise, contributions submitted for inclusion in
+Mise are licensed under the repository's [MIT License](LICENSE).
+
 ---
 
 ## Keeping this from going stale
