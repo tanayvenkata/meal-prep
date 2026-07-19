@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -47,7 +50,7 @@ jobs:
         run: npm test -- --run
 
       - name: Push migrations to remote Supabase
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           supabase link --project-ref omwvoxemybeukmhnyrhb
           supabase db push --yes
