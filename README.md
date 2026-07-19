@@ -76,10 +76,35 @@ in, send a message in the chat to get a recipe reply.
 | `npm test` | All tests in watch mode |
 | `npm run test:unit` | Unit tests only (no Supabase needed) |
 | `npm run test:integration` | DB integration tests (requires `supabase start`) |
+| `npm run mcp:dev` | Start the local Mise MCP server and rebuild its widget on changes |
 
 > **Why two build commands?** `build` is intentionally bare so it works where the Doppler
 > CLI doesn't exist — Vercel and CI inject the same secrets their own way. On your laptop,
 > use `build:local`, which wraps `next build` in `doppler run` to supply those secrets.
+
+## ChatGPT app development
+
+Mise also has an experimental MCP Apps surface for ChatGPT. This first slice is
+deliberately safe: `get_kitchen_context` returns a small fixture and renders it in an
+inline widget. It does **not** read Supabase or identify the current user yet.
+
+```bash
+# Terminal 1: MCP server with widget rebuilds
+npm run mcp:dev
+
+# Terminal 2: temporary public HTTPS tunnel for ChatGPT Developer Mode
+ngrok http 8787
+```
+
+- Local MCP endpoint: `http://localhost:8787/mcp`
+- MCP Inspector can connect directly to that local endpoint.
+- ChatGPT Developer Mode connects to the ngrok HTTPS URL with `/mcp` appended.
+- ngrok forwards to this checkout; no commit or deployment is needed for local testing.
+- Keep both processes running. If ngrok assigns a new URL, update the ChatGPT app.
+
+Use a fresh tool call to test new data. Historical ChatGPT messages retain their original
+tool-result snapshot. Widget implementation and host-testing rules live in
+[`src/mcp/AGENTS.md`](src/mcp/AGENTS.md).
 
 ### Before running integration tests
 
