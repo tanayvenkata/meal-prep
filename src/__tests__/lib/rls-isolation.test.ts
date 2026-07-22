@@ -382,7 +382,13 @@ describe("fail-closed application connection (mise_app)", () => {
     expect(safety.currentUser).toBe("mise_app");
     expect(safety.sessionUser).toBe("mise_app");
     expect(safety.rolsuper).toBe(false);
+    expect(safety.rolinherit).toBe(false);
+    expect(safety.rolcreatedb).toBe(false);
+    expect(safety.rolcreaterole).toBe(false);
+    expect(safety.rolreplication).toBe(false);
     expect(safety.rolbypassrls).toBe(false);
+    expect(safety.canSetAuthenticated).toBe(true);
+    expect(safety.hasUnexpectedMemberships).toBe(false);
     expect(safety.ownsPublicTables).toBe(false);
   });
 
@@ -393,6 +399,65 @@ describe("fail-closed application connection (mise_app)", () => {
     await expect(
       appSql`insert into items (user_id, name, quantity) values (${USER_A}, 'eggs', '12')`,
     ).rejects.toThrow(/permission denied|must be owner/i);
+  });
+
+  it("has no effective table or sequence privileges before request context", async () => {
+    const tables = await sql<{
+      table_name: string;
+      can_select: boolean;
+      can_insert: boolean;
+      can_update: boolean;
+      can_delete: boolean;
+      can_truncate: boolean;
+      can_references: boolean;
+      can_trigger: boolean;
+    }[]>`
+      select
+        table_name,
+        has_table_privilege('mise_app', format('%I.%I', table_schema, table_name), 'SELECT') as can_select,
+        has_table_privilege('mise_app', format('%I.%I', table_schema, table_name), 'INSERT') as can_insert,
+        has_table_privilege('mise_app', format('%I.%I', table_schema, table_name), 'UPDATE') as can_update,
+        has_table_privilege('mise_app', format('%I.%I', table_schema, table_name), 'DELETE') as can_delete,
+        has_table_privilege('mise_app', format('%I.%I', table_schema, table_name), 'TRUNCATE') as can_truncate,
+        has_table_privilege('mise_app', format('%I.%I', table_schema, table_name), 'REFERENCES') as can_references,
+        has_table_privilege('mise_app', format('%I.%I', table_schema, table_name), 'TRIGGER') as can_trigger
+      from information_schema.tables
+      where table_schema = 'public'
+        and table_name in ('items', 'kitchen_tools', 'conversations', 'messages')
+      order by table_name
+    `;
+    expect(tables).toHaveLength(4);
+    for (const table of tables) {
+      expect(Object.values(table).slice(1)).toEqual(Array(7).fill(false));
+    }
+
+    const sequences = await sql<{
+      sequence_name: string;
+      can_usage: boolean;
+      can_select: boolean;
+      can_update: boolean;
+    }[]>`
+      with user_data_sequences as (
+        select distinct
+          pg_get_serial_sequence(format('%I.%I', n.nspname, c.relname), a.attname)::regclass as sequence_id
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+        where n.nspname = 'public'
+          and c.relname in ('items', 'kitchen_tools', 'conversations', 'messages')
+          and pg_get_serial_sequence(format('%I.%I', n.nspname, c.relname), a.attname) is not null
+      )
+      select
+        sequence_id::text as sequence_name,
+        has_sequence_privilege('mise_app', sequence_id, 'USAGE') as can_usage,
+        has_sequence_privilege('mise_app', sequence_id, 'SELECT') as can_select,
+        has_sequence_privilege('mise_app', sequence_id, 'UPDATE') as can_update
+      from user_data_sequences
+      order by sequence_name
+    `;
+    for (const sequence of sequences) {
+      expect(Object.values(sequence).slice(1)).toEqual([false, false, false]);
+    }
   });
 
   it("still serves same-user data through withUserContext helpers", async () => {

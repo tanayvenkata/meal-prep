@@ -32,7 +32,13 @@ export type DatabaseConnectionSafety = {
   currentUser: string;
   sessionUser: string;
   rolsuper: boolean;
+  rolinherit: boolean;
+  rolcreatedb: boolean;
+  rolcreaterole: boolean;
+  rolreplication: boolean;
   rolbypassrls: boolean;
+  canSetAuthenticated: boolean;
+  hasUnexpectedMemberships: boolean;
   ownsPublicTables: boolean;
 };
 
@@ -46,7 +52,13 @@ export async function getDatabaseConnectionSafety(): Promise<DatabaseConnectionS
       current_user: string;
       session_user: string;
       rolsuper: boolean;
+      rolinherit: boolean;
+      rolcreatedb: boolean;
+      rolcreaterole: boolean;
+      rolreplication: boolean;
       rolbypassrls: boolean;
+      can_set_authenticated: boolean;
+      has_unexpected_memberships: boolean;
       owns_public_tables: boolean;
     }[]
   >`
@@ -54,13 +66,25 @@ export async function getDatabaseConnectionSafety(): Promise<DatabaseConnectionS
       current_user,
       session_user,
       r.rolsuper,
+      r.rolinherit,
+      r.rolcreatedb,
+      r.rolcreaterole,
+      r.rolreplication,
       r.rolbypassrls,
+      pg_has_role(r.oid, 'authenticated', 'MEMBER') as can_set_authenticated,
+      exists (
+        select 1
+        from pg_auth_members membership
+        join pg_roles parent_role on parent_role.oid = membership.roleid
+        where membership.member = r.oid
+          and parent_role.rolname <> 'authenticated'
+      ) as has_unexpected_memberships,
       exists (
         select 1
         from pg_class c
         join pg_namespace n on n.oid = c.relnamespace
         where n.nspname = 'public'
-          and c.relkind = 'r'
+          and c.relkind in ('r', 'p')
           and c.relowner = r.oid
       ) as owns_public_tables
     from pg_roles r
@@ -70,7 +94,13 @@ export async function getDatabaseConnectionSafety(): Promise<DatabaseConnectionS
     currentUser: row.current_user,
     sessionUser: row.session_user,
     rolsuper: row.rolsuper,
+    rolinherit: row.rolinherit,
+    rolcreatedb: row.rolcreatedb,
+    rolcreaterole: row.rolcreaterole,
+    rolreplication: row.rolreplication,
     rolbypassrls: row.rolbypassrls,
+    canSetAuthenticated: row.can_set_authenticated,
+    hasUnexpectedMemberships: row.has_unexpected_memberships,
     ownsPublicTables: row.owns_public_tables,
   };
 }

@@ -14,8 +14,22 @@
 -- the durable path; attributes are fixed at create time.
 
 do $$
+declare
+  existing_role record;
 begin
-  if not exists (select 1 from pg_roles where rolname = 'mise_app') then
+  select
+    rolcanlogin,
+    rolsuper,
+    rolinherit,
+    rolcreatedb,
+    rolcreaterole,
+    rolreplication,
+    rolbypassrls
+  into existing_role
+  from pg_roles
+  where rolname = 'mise_app';
+
+  if not found then
     create role mise_app
       nosuperuser
       nocreatedb
@@ -24,12 +38,47 @@ begin
       noinherit
       nobypassrls
       login;
+  elsif not existing_role.rolcanlogin
+    or existing_role.rolsuper
+    or existing_role.rolinherit
+    or existing_role.rolcreatedb
+    or existing_role.rolcreaterole
+    or existing_role.rolreplication
+    or existing_role.rolbypassrls
+  then
+    raise exception 'Existing mise_app role has unsafe attributes; refuse to continue';
+  end if;
+
+  if exists (
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    join pg_roles r on r.oid = c.relowner
+    where n.nspname = 'public'
+      and c.relkind in ('r', 'p')
+      and r.rolname = 'mise_app'
+  ) then
+    raise exception 'Existing mise_app role owns public tables; refuse to continue';
   end if;
 end $$;
 
 -- Match PostgREST's authenticator pattern: login role may SET ROLE authenticated
 -- but does not inherit those privileges outside the SET ROLE boundary.
 grant authenticated to mise_app;
+
+do $$
+begin
+  if exists (
+    select 1
+    from pg_auth_members membership
+    join pg_roles parent_role on parent_role.oid = membership.roleid
+    join pg_roles member_role on member_role.oid = membership.member
+    where member_role.rolname = 'mise_app'
+      and parent_role.rolname <> 'authenticated'
+  ) then
+    raise exception 'Existing mise_app role has unexpected role memberships; refuse to continue';
+  end if;
+end $$;
 
 grant connect on database postgres to mise_app;
 grant usage on schema public to mise_app;
