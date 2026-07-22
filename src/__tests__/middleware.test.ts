@@ -31,6 +31,14 @@ describe("middleware", () => {
     expect(response.status).toBe(200);
   });
 
+  it("lets the login form POST reach its public route", async () => {
+    const request = makeRequest("/api/auth/login");
+    const response = await middleware(request);
+
+    expect(mockCreateServerClient).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+  });
+
   it("redirects unauthenticated users to /login with returnTo", async () => {
     mockCreateServerClient.mockReturnValue({
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
