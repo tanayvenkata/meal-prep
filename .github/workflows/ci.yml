@@ -15,7 +15,9 @@ jobs:
     timeout-minutes: 10
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      # App pool uses the fail-closed mise_app role (password from local seed only).
+      DATABASE_URL: postgresql://mise_app:mise_app_local@127.0.0.1:54322/postgres
+      ADMIN_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
       NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder-for-build
 
@@ -39,6 +41,14 @@ jobs:
 
       - name: Start Supabase local stack
         run: supabase start --exclude realtime,storage-api,imgproxy,inbucket,edge-runtime,logflare,vector,supavisor
+
+      # Seed only runs on db reset; start applies migrations but not seed passwords.
+      - name: Provision local mise_app password
+        run: npm run db:provision-app-role
+        env:
+          ADMIN_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          MISE_APP_DB_PASSWORD: mise_app_local
+          ALLOW_SHORT_MISE_APP_PASSWORD: "1"
 
       - name: Lint
         run: npm run lint

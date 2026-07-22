@@ -159,6 +159,9 @@ repeated here. The non-obvious bits worth knowing in-session:
 - **Tests:** `npm run test:unit` (mock-based, no infra) / `npm run test:integration` (db
   tests, needs `supabase start`) / `npm test -- --run` (all once).
 - **Secrets (Doppler):** all live in Doppler (`dev` → local CLI, `prd` → Vercel sync); add a
-  secret once → flows everywhere. `.env.local` holds ONLY `TEST_DATABASE_URL`.
+  secret once → flows everywhere. `.env.local` can hold local-only DB URLs
+  (`DATABASE_URL` as `mise_app`, `ADMIN_DATABASE_URL` as owner for rare ops).
+- **DB login role:** app pool = `mise_app` (NOBYPASSRLS, non-owner). Provision hosted
+  passwords with `npm run db:provision-app-role`; never point the app at owner `postgres`.
 - **Schema change:** `supabase db pull` (remote → migrations) / `supabase db push`
   (migrations → remote).

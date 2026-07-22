@@ -9,6 +9,16 @@
 -- hashed password and required bookkeeping columns, and needs a matching auth.identities row
 -- for email/password login to work. We hash the password with pgcrypto's crypt()+bf salt.
 
+-- Local-only password for the fail-closed app role (issue #64). Production/staging must
+-- use scripts/provision-mise-app-role.mjs with a secret password stored in Doppler — never
+-- reuse this value outside the local stack. Matches vitest.config.ts + .env.example.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'mise_app') then
+    alter role mise_app with login password 'mise_app_local';
+  end if;
+end $$;
+
 -- Fixed UUID so the user_id in items below can reference it deterministically.
 -- (Any valid uuid works; this one is arbitrary but stable.)
 do $$

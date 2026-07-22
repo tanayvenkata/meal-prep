@@ -3,6 +3,10 @@
 
 import postgres from "postgres";
 
+// DATABASE_URL must point at the dedicated `mise_app` login role (issue #64):
+// non-owner, NOBYPASSRLS, no direct table DML. Owner/`BYPASSRLS` credentials
+// stay out of the application pool (local tests use ADMIN_DATABASE_URL only
+// for fixture setup).
 const sql = postgres(process.env.DATABASE_URL!);
 
 export type Turnover = "high" | "low";
@@ -24,11 +28,88 @@ export type KitchenTool = {
   created_at: string;
 };
 
-// db.ts connects as the `postgres` role, which owns the user-data tables and
-// bypasses RLS (issue #64 will replace that owner connection). Impersonating
-// `authenticated` inside a transaction makes ownership policies on items,
-// kitchen_tools, conversations, and messages actually apply — RLS is a real
-// second layer under the app-level user_id / parent-ownership predicates.
+export type DatabaseConnectionSafety = {
+  currentUser: string;
+  sessionUser: string;
+  rolsuper: boolean;
+  rolinherit: boolean;
+  rolcreatedb: boolean;
+  rolcreaterole: boolean;
+  rolreplication: boolean;
+  rolbypassrls: boolean;
+  canSetAuthenticated: boolean;
+  hasUnexpectedMemberships: boolean;
+  ownsPublicTables: boolean;
+};
+
+/**
+ * Inspect the live pool role. Used by integration tests and production
+ * verification after rotating DATABASE_URL onto `mise_app`.
+ */
+export async function getDatabaseConnectionSafety(): Promise<DatabaseConnectionSafety> {
+  const [row] = await sql<
+    {
+      current_user: string;
+      session_user: string;
+      rolsuper: boolean;
+      rolinherit: boolean;
+      rolcreatedb: boolean;
+      rolcreaterole: boolean;
+      rolreplication: boolean;
+      rolbypassrls: boolean;
+      can_set_authenticated: boolean;
+      has_unexpected_memberships: boolean;
+      owns_public_tables: boolean;
+    }[]
+  >`
+    select
+      current_user,
+      session_user,
+      r.rolsuper,
+      r.rolinherit,
+      r.rolcreatedb,
+      r.rolcreaterole,
+      r.rolreplication,
+      r.rolbypassrls,
+      pg_has_role(r.oid, 'authenticated', 'MEMBER') as can_set_authenticated,
+      exists (
+        select 1
+        from pg_auth_members membership
+        join pg_roles parent_role on parent_role.oid = membership.roleid
+        where membership.member = r.oid
+          and parent_role.rolname <> 'authenticated'
+      ) as has_unexpected_memberships,
+      exists (
+        select 1
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public'
+          and c.relkind in ('r', 'p')
+          and c.relowner = r.oid
+      ) as owns_public_tables
+    from pg_roles r
+    where r.rolname = current_user
+  `;
+  return {
+    currentUser: row.current_user,
+    sessionUser: row.session_user,
+    rolsuper: row.rolsuper,
+    rolinherit: row.rolinherit,
+    rolcreatedb: row.rolcreatedb,
+    rolcreaterole: row.rolcreaterole,
+    rolreplication: row.rolreplication,
+    rolbypassrls: row.rolbypassrls,
+    canSetAuthenticated: row.can_set_authenticated,
+    hasUnexpectedMemberships: row.has_unexpected_memberships,
+    ownsPublicTables: row.owns_public_tables,
+  };
+}
+
+// Connect as `mise_app` (fail closed: no table DML, no BYPASSRLS). Each request
+// enters withUserContext, which SET ROLE authenticated + stamps auth.uid() so
+// ownership policies on items, kitchen_tools, conversations, and messages apply.
+// App-level user_id / parent-ownership predicates remain the first layer; RLS is
+// the second. Omitting withUserContext cannot silently run as table owner.
 async function withUserContext<T>(
   userId: string,
   fn: (tx: postgres.TransactionSql) => Promise<T>,

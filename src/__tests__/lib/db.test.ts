@@ -11,7 +11,8 @@ import {
 } from "@/lib/db";
 import postgres from "postgres";
 
-const sql = postgres(process.env.DATABASE_URL!);
+// Owner connection for fixture setup only — app code under test uses mise_app via DATABASE_URL.
+const sql = postgres(process.env.ADMIN_DATABASE_URL ?? process.env.DATABASE_URL!);
 
 const TEST_USER_A = "00000000-0000-0000-0000-000000000001";
 const TEST_USER_B = "00000000-0000-0000-0000-000000000002";
