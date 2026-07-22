@@ -241,7 +241,15 @@ export async function createMiseServer() {
   return server;
 }
 
-export function createMiseHttpServer() {
+type VerifyAccessToken = (token: string) => Promise<AuthInfo>;
+
+type MiseHttpServerOptions = {
+  verifyAccessToken?: VerifyAccessToken;
+};
+
+export function createMiseHttpServer({
+  verifyAccessToken = verifyMcpAccessToken,
+}: MiseHttpServerOptions = {}) {
   return createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
@@ -290,25 +298,34 @@ export function createMiseHttpServer() {
     const authorizationHeader = Array.isArray(req.headers.authorization)
       ? req.headers.authorization[0]
       : req.headers.authorization;
-    if (authorizationHeader) {
-      const token = readBearerToken(authorizationHeader);
-      try {
-        if (!token) throw new Error("Malformed bearer token.");
-        (req as typeof req & { auth?: AuthInfo }).auth =
-          await verifyMcpAccessToken(token);
-      } catch (error) {
-        console.warn("MCP authentication failed:", error);
-        res
-          .writeHead(401, {
-            "content-type": "application/json",
-            "www-authenticate": getMcpAuthChallenge(getMcpAuthConfig(), {
-              error: "invalid_token",
-              errorDescription: "The Mise access token is invalid or expired.",
-            }),
-          })
-          .end(JSON.stringify({ error: "invalid_token" }));
-        return;
-      }
+    const token = readBearerToken(authorizationHeader);
+    if (!token) {
+      res
+        .writeHead(401, {
+          "content-type": "application/json",
+          "www-authenticate": getMcpAuthChallenge(getMcpAuthConfig(), {
+            error: null,
+          }),
+        })
+        .end(JSON.stringify({ error: "authorization_required" }));
+      return;
+    }
+
+    try {
+      (req as typeof req & { auth?: AuthInfo }).auth =
+        await verifyAccessToken(token);
+    } catch (error) {
+      console.warn("MCP authentication failed:", error);
+      res
+        .writeHead(401, {
+          "content-type": "application/json",
+          "www-authenticate": getMcpAuthChallenge(getMcpAuthConfig(), {
+            error: "invalid_token",
+            errorDescription: "The Mise access token is invalid or expired.",
+          }),
+        })
+        .end(JSON.stringify({ error: "invalid_token" }));
+      return;
     }
 
     const server = await createMiseServer();
