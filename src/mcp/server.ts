@@ -7,6 +7,7 @@ import tailwindcss from "@tailwindcss/postcss";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import {
   registerAppResource,
   registerAppTool,
@@ -27,6 +28,10 @@ import { loadKitchenContext } from "./kitchen-context.js";
 
 const PORT = 8787;
 const MCP_PATH = "/mcp";
+const KITCHEN_CONTEXT_TOOL = "get_kitchen_context";
+const KITCHEN_CONTEXT_SECURITY_SCHEMES = [
+  { type: "oauth2", scopes: MCP_SCOPES },
+];
 const LEGACY_KITCHEN_WIDGET_URIS = [
   "ui://widget/kitchen-context-v1.html",
   "ui://widget/kitchen-context-v2.html",
@@ -118,6 +123,52 @@ const kitchenContextSchema = z.object({
   ),
 });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * OpenAI's Apps SDK requires securitySchemes at the top level of each tool
+ * descriptor and mirrors it in _meta for older clients. The current MCP SDK
+ * high-level registerTool helper only serializes core MCP fields, so this
+ * narrow wire adapter preserves the extension until the SDK supports it.
+ */
+export function addOpenAiToolSecuritySchemes(message: JSONRPCMessage): JSONRPCMessage {
+  if (!("result" in message) || !isRecord(message.result)) return message;
+
+  const tools = message.result.tools;
+  if (!Array.isArray(tools)) return message;
+
+  return {
+    ...message,
+    result: {
+      ...message.result,
+      tools: tools.map((tool) => {
+        if (!isRecord(tool) || tool.name !== KITCHEN_CONTEXT_TOOL) return tool;
+
+        const meta = isRecord(tool._meta) ? tool._meta : {};
+        return {
+          ...tool,
+          securitySchemes: KITCHEN_CONTEXT_SECURITY_SCHEMES,
+          _meta: {
+            ...meta,
+            securitySchemes: KITCHEN_CONTEXT_SECURITY_SCHEMES,
+          },
+        };
+      }),
+    },
+  } as JSONRPCMessage;
+}
+
+class OpenAiCompatibleStreamableHTTPServerTransport extends StreamableHTTPServerTransport {
+  override send(
+    message: JSONRPCMessage,
+    options?: Parameters<StreamableHTTPServerTransport["send"]>[1],
+  ) {
+    return super.send(addOpenAiToolSecuritySchemes(message), options);
+  }
+}
+
 export async function createMiseServer() {
   const kitchenWidgetResource = await kitchenWidgetResourcePromise;
   const kitchenWidgetUris = [
@@ -151,7 +202,7 @@ export async function createMiseServer() {
 
   registerAppTool(
     server,
-    "get_kitchen_context",
+    KITCHEN_CONTEXT_TOOL,
     {
       title: "Show kitchen context",
       description: "Returns the user's pantry and kitchen tools for cooking suggestions.",
@@ -163,7 +214,7 @@ export async function createMiseServer() {
         openWorldHint: false,
       },
       _meta: {
-        securitySchemes: [{ type: "oauth2", scopes: MCP_SCOPES }],
+        securitySchemes: KITCHEN_CONTEXT_SECURITY_SCHEMES,
         ui: { resourceUri: kitchenWidgetResource.uri },
         "openai/toolInvocation/invoking": "Checking your kitchen…",
         "openai/toolInvocation/invoked": "Kitchen ready.",
@@ -190,87 +241,98 @@ export async function createMiseServer() {
   return server;
 }
 
-const httpServer = createServer(async (req, res) => {
-  const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+export function createMiseHttpServer() {
+  return createServer(async (req, res) => {
+    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
-  // A plain browser/curl health check, separate from MCP itself.
-  if (req.method === "GET" && url.pathname === "/") {
-    res.writeHead(200, { "content-type": "text/plain" }).end("Mise MCP server");
-    return;
-  }
-
-  const metadataPaths = new Set([
-    "/.well-known/oauth-protected-resource",
-    `/.well-known/oauth-protected-resource${MCP_PATH}`,
-  ]);
-  if ((req.method === "GET" || req.method === "OPTIONS") && metadataPaths.has(url.pathname)) {
-    res
-      .writeHead(200, {
-        "content-type": "application/json",
-        "access-control-allow-origin": "*",
-      })
-      .end(JSON.stringify(getProtectedResourceMetadata()));
-    return;
-  }
-
-  if (url.pathname !== MCP_PATH) {
-    res.writeHead(404).end("Not Found");
-    return;
-  }
-
-  // This first server is deliberately stateless: every MCP request gets a
-  // short-lived server and transport. Streamable HTTP clients send GET while
-  // probing for a stream, which this stateless version does not provide.
-  if (req.method !== "POST") {
-    res.writeHead(405, { "content-type": "application/json" }).end(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        error: { code: -32000, message: "Method not allowed." },
-        id: null,
-      }),
-    );
-    return;
-  }
-
-  const authorizationHeader = Array.isArray(req.headers.authorization)
-    ? req.headers.authorization[0]
-    : req.headers.authorization;
-  if (authorizationHeader) {
-    const token = readBearerToken(authorizationHeader);
-    try {
-      if (!token) throw new Error("Malformed bearer token.");
-      (req as typeof req & { auth?: AuthInfo }).auth = await verifyMcpAccessToken(token);
-    } catch (error) {
-      console.warn("MCP authentication failed:", error);
-      res
-        .writeHead(401, {
-          "content-type": "application/json",
-          "www-authenticate": getMcpAuthChallenge(),
-        })
-        .end(JSON.stringify({ error: "invalid_token" }));
+    // A plain browser/curl health check, separate from MCP itself.
+    if (req.method === "GET" && url.pathname === "/") {
+      res.writeHead(200, { "content-type": "text/plain" }).end("Mise MCP server");
       return;
     }
-  }
 
-  const server = await createMiseServer();
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-    enableJsonResponse: true,
-  });
+    const metadataPaths = new Set([
+      "/.well-known/oauth-protected-resource",
+      `/.well-known/oauth-protected-resource${MCP_PATH}`,
+    ]);
+    if (
+      (req.method === "GET" || req.method === "OPTIONS") &&
+      metadataPaths.has(url.pathname)
+    ) {
+      res
+        .writeHead(200, {
+          "content-type": "application/json",
+          "access-control-allow-origin": "*",
+        })
+        .end(JSON.stringify(getProtectedResourceMetadata()));
+      return;
+    }
 
-  try {
-    await server.connect(transport);
-    await transport.handleRequest(req, res);
-    res.on("close", () => {
-      void transport.close();
-      void server.close();
+    if (url.pathname !== MCP_PATH) {
+      res.writeHead(404).end("Not Found");
+      return;
+    }
+
+    // This first server is deliberately stateless: every MCP request gets a
+    // short-lived server and transport. Streamable HTTP clients send GET while
+    // probing for a stream, which this stateless version does not provide.
+    if (req.method !== "POST") {
+      res.writeHead(405, { "content-type": "application/json" }).end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          error: { code: -32000, message: "Method not allowed." },
+          id: null,
+        }),
+      );
+      return;
+    }
+
+    const authorizationHeader = Array.isArray(req.headers.authorization)
+      ? req.headers.authorization[0]
+      : req.headers.authorization;
+    if (authorizationHeader) {
+      const token = readBearerToken(authorizationHeader);
+      try {
+        if (!token) throw new Error("Malformed bearer token.");
+        (req as typeof req & { auth?: AuthInfo }).auth =
+          await verifyMcpAccessToken(token);
+      } catch (error) {
+        console.warn("MCP authentication failed:", error);
+        res
+          .writeHead(401, {
+            "content-type": "application/json",
+            "www-authenticate": getMcpAuthChallenge(getMcpAuthConfig(), {
+              error: "invalid_token",
+              errorDescription: "The Mise access token is invalid or expired.",
+            }),
+          })
+          .end(JSON.stringify({ error: "invalid_token" }));
+        return;
+      }
+    }
+
+    const server = await createMiseServer();
+    const transport = new OpenAiCompatibleStreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
     });
-  } catch (error) {
-    console.error("MCP request failed:", error);
-    if (!res.headersSent) res.writeHead(500).end("Internal server error");
-  }
-});
 
-httpServer.listen(PORT, () => {
-  console.log(`Mise MCP server: ${getMcpAuthConfig().resource.href}`);
-});
+    try {
+      await server.connect(transport);
+      await transport.handleRequest(req, res);
+      res.on("close", () => {
+        void transport.close();
+        void server.close();
+      });
+    } catch (error) {
+      console.error("MCP request failed:", error);
+      if (!res.headersSent) res.writeHead(500).end("Internal server error");
+    }
+  });
+}
+
+if (process.env.NODE_ENV !== "test") {
+  createMiseHttpServer().listen(PORT, () => {
+    console.log(`Mise MCP server: ${getMcpAuthConfig().resource.href}`);
+  });
+}

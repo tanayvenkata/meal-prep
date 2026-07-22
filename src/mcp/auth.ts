@@ -43,8 +43,28 @@ export function getResourceMetadataUrl(config = getMcpAuthConfig()) {
   );
 }
 
-export function getMcpAuthChallenge(config = getMcpAuthConfig()) {
-  return `Bearer resource_metadata="${getResourceMetadataUrl(config).href}", scope="${MCP_SCOPES.join(" ")}"`;
+type McpAuthChallengeOptions = {
+  error?: "insufficient_scope" | "invalid_token";
+  errorDescription?: string;
+};
+
+function quoteChallengeValue(value: string) {
+  return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
+}
+
+export function getMcpAuthChallenge(
+  config = getMcpAuthConfig(),
+  {
+    error = "insufficient_scope",
+    errorDescription = "Connect your Mise account to continue.",
+  }: McpAuthChallengeOptions = {},
+) {
+  return [
+    `Bearer resource_metadata=${quoteChallengeValue(getResourceMetadataUrl(config).href)}`,
+    `scope=${quoteChallengeValue(MCP_SCOPES.join(" "))}`,
+    `error=${quoteChallengeValue(error)}`,
+    `error_description=${quoteChallengeValue(errorDescription)}`,
+  ].join(", ");
 }
 
 export function readBearerToken(header: string | undefined): string | null {

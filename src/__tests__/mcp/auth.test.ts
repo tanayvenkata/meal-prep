@@ -34,6 +34,10 @@ describe("MCP OAuth boundary", () => {
     expect(getMcpAuthChallenge(config)).toContain(
       'resource_metadata="https://mcp.mise.example/.well-known/oauth-protected-resource/mcp"',
     );
+    expect(getMcpAuthChallenge(config)).toContain('error="insufficient_scope"');
+    expect(getMcpAuthChallenge(config)).toContain(
+      'error_description="Connect your Mise account to continue."',
+    );
   });
 
   it("accepts a well-formed bearer token and creates user-scoped auth info", () => {
