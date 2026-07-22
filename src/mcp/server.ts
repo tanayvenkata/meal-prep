@@ -4,8 +4,16 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/postcss";
+import { InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
+import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
+import type { OAuthTokenVerifier } from "@modelcontextprotocol/sdk/server/auth/provider.js";
+import {
+  getOAuthProtectedResourceMetadataUrl,
+  mcpAuthMetadataRouter,
+} from "@modelcontextprotocol/sdk/server/auth/router.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import {
@@ -19,8 +27,7 @@ import { z } from "zod";
 import {
   getMcpAuthChallenge,
   getMcpAuthConfig,
-  getProtectedResourceMetadata,
-  readBearerToken,
+  getSupabaseOAuthMetadata,
   verifyMcpAccessToken,
   MCP_SCOPES,
 } from "./auth.js";
@@ -250,84 +257,76 @@ type MiseHttpServerOptions = {
 export function createMiseHttpServer({
   verifyAccessToken = verifyMcpAccessToken,
 }: MiseHttpServerOptions = {}) {
-  return createServer(async (req, res) => {
-    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+  const authConfig = getMcpAuthConfig();
+  const app = createMcpExpressApp({
+    host: "0.0.0.0",
+    allowedHosts: [
+      authConfig.resource.hostname,
+      "localhost",
+      "127.0.0.1",
+      // SDK hostHeaderValidation uses URL.hostname (unbracketed IPv6).
+      "::1",
+    ],
+  });
+  const resourceMetadataUrl = getOAuthProtectedResourceMetadataUrl(
+    authConfig.resource,
+  );
+  const tokenVerifier: OAuthTokenVerifier = {
+    async verifyAccessToken(token) {
+      try {
+        return await verifyAccessToken(token);
+      } catch (error) {
+        console.warn("MCP authentication failed:", error);
+        throw new InvalidTokenError(
+          "The Mise access token is invalid or expired.",
+        );
+      }
+    },
+  };
 
-    // A plain browser/curl health check, separate from MCP itself.
-    if (req.method === "GET" && url.pathname === "/") {
-      res.writeHead(200, { "content-type": "text/plain" }).end("Mise MCP server");
+  // A plain browser/curl health check, separate from MCP itself.
+  app.get("/", (_req, res) => {
+    res.type("text").send("Mise MCP server");
+  });
+
+  app.use(
+    mcpAuthMetadataRouter({
+      oauthMetadata: getSupabaseOAuthMetadata(authConfig),
+      resourceServerUrl: authConfig.resource,
+      scopesSupported: MCP_SCOPES,
+      resourceName: "Mise",
+    }),
+  );
+
+  // RFC 6750 says a first request with no credentials should advertise login
+  // without calling the missing token an invalid token. The SDK handles every
+  // presented bearer token after this small discovery compatibility check.
+  app.post(MCP_PATH, (req, res, next) => {
+    if (req.headers.authorization) {
+      next();
       return;
     }
 
-    const metadataPaths = new Set([
-      "/.well-known/oauth-protected-resource",
-      `/.well-known/oauth-protected-resource${MCP_PATH}`,
-    ]);
-    if (
-      (req.method === "GET" || req.method === "OPTIONS") &&
-      metadataPaths.has(url.pathname)
-    ) {
-      res
-        .writeHead(200, {
-          "content-type": "application/json",
-          "access-control-allow-origin": "*",
-        })
-        .end(JSON.stringify(getProtectedResourceMetadata()));
-      return;
-    }
+    res
+      .set(
+        "WWW-Authenticate",
+        getMcpAuthChallenge(authConfig, { error: null }),
+      )
+      .status(401)
+      .json({ error: "authorization_required" });
+  });
+  app.post(
+    MCP_PATH,
+    requireBearerAuth({
+      verifier: tokenVerifier,
+      requiredScopes: MCP_SCOPES,
+      resourceMetadataUrl,
+    }),
+  );
 
-    if (url.pathname !== MCP_PATH) {
-      res.writeHead(404).end("Not Found");
-      return;
-    }
-
-    // This first server is deliberately stateless: every MCP request gets a
-    // short-lived server and transport. Streamable HTTP clients send GET while
-    // probing for a stream, which this stateless version does not provide.
-    if (req.method !== "POST") {
-      res.writeHead(405, { "content-type": "application/json" }).end(
-        JSON.stringify({
-          jsonrpc: "2.0",
-          error: { code: -32000, message: "Method not allowed." },
-          id: null,
-        }),
-      );
-      return;
-    }
-
-    const authorizationHeader = Array.isArray(req.headers.authorization)
-      ? req.headers.authorization[0]
-      : req.headers.authorization;
-    const token = readBearerToken(authorizationHeader);
-    if (!token) {
-      res
-        .writeHead(401, {
-          "content-type": "application/json",
-          "www-authenticate": getMcpAuthChallenge(getMcpAuthConfig(), {
-            error: null,
-          }),
-        })
-        .end(JSON.stringify({ error: "authorization_required" }));
-      return;
-    }
-
-    try {
-      (req as typeof req & { auth?: AuthInfo }).auth =
-        await verifyAccessToken(token);
-    } catch (error) {
-      console.warn("MCP authentication failed:", error);
-      res
-        .writeHead(401, {
-          "content-type": "application/json",
-          "www-authenticate": getMcpAuthChallenge(getMcpAuthConfig(), {
-            error: "invalid_token",
-            errorDescription: "The Mise access token is invalid or expired.",
-          }),
-        })
-        .end(JSON.stringify({ error: "invalid_token" }));
-      return;
-    }
-
+  app.post(MCP_PATH, async (req, res) => {
+    // This server is deliberately stateless: every MCP request gets a
+    // short-lived server and transport.
     const server = await createMiseServer();
     const transport = new OpenAiCompatibleStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
@@ -336,16 +335,28 @@ export function createMiseHttpServer({
 
     try {
       await server.connect(transport);
-      await transport.handleRequest(req, res);
       res.on("close", () => {
         void transport.close();
         void server.close();
       });
+      await transport.handleRequest(req, res, req.body);
     } catch (error) {
       console.error("MCP request failed:", error);
-      if (!res.headersSent) res.writeHead(500).end("Internal server error");
+      if (!res.headersSent) res.status(500).send("Internal server error");
     }
   });
+
+  // Streamable HTTP clients may probe with GET, but this server intentionally
+  // has no resumable stream because each POST uses a short-lived transport.
+  app.all(MCP_PATH, (_req, res) => {
+    res.status(405).json({
+      jsonrpc: "2.0",
+      error: { code: -32000, message: "Method not allowed." },
+      id: null,
+    });
+  });
+
+  return createServer(app);
 }
 
 if (process.env.NODE_ENV !== "test") {

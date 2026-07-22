@@ -64,6 +64,37 @@ afterEach(async () => {
 });
 
 describe("Mise MCP OAuth wire contract", () => {
+  it("publishes SDK-generated protected-resource metadata", async () => {
+    const response = await fetch(
+      new URL("/.well-known/oauth-protected-resource/mcp", mcpUrl),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      resource: "https://mcp.mise.example/mcp",
+      authorization_servers: ["https://project.supabase.co/auth/v1"],
+      scopes_supported: ["openid"],
+      resource_name: "Mise",
+    });
+  });
+
+  it("republishes the Supabase authorization endpoints", async () => {
+    const response = await fetch(
+      new URL("/.well-known/oauth-authorization-server", mcpUrl),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      issuer: "https://project.supabase.co/auth/v1",
+      authorization_endpoint:
+        "https://project.supabase.co/auth/v1/oauth/authorize",
+      token_endpoint: "https://project.supabase.co/auth/v1/oauth/token",
+      registration_endpoint:
+        "https://project.supabase.co/auth/v1/oauth/clients/register",
+      code_challenge_methods_supported: ["S256"],
+    });
+  });
+
   it("publishes OAuth security schemes at the top level and in the compatibility mirror", async () => {
     const httpResponse = await postMcp({
       jsonrpc: "2.0",
