@@ -99,6 +99,7 @@ begin
       and c.relname in ('items', 'kitchen_tools', 'conversations', 'messages')
       and pg_get_serial_sequence(format('%I.%I', n.nspname, c.relname), a.attname) is not null
   loop
+    execute format('revoke all on sequence %s from authenticated', seq);
     execute format('grant usage, select on sequence %s to authenticated', seq);
     execute format('revoke all on sequence %s from anon', seq);
   end loop;
