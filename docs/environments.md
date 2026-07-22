@@ -122,10 +122,12 @@ Doppler's environment is **Development** / config **dev**; **Staging** / **stg**
 # The "who fills the box, where" map (the cleanse)
 
 The connection call lives only in `src/lib/db.ts` and always reads `DATABASE_URL`. That URI
-must be the **`mise_app`** role (fail-closed; see above), and production pooler URIs need
-`{ prepare: false }` when using transaction mode. `DATABASE_URL` itself is just a labeled
-box. The whole question is always: **in THIS place, who put the value in the box, and what is it?**
-"Who fills it" and "what value is in it" are SEPARATE questions — trace them separately.
+must be the **`mise_app`** role (fail-closed; see above). Production uses Supavisor
+transaction mode, so the call must keep `{ prepare: false }` — prepared statements are
+connection-local and break when the pooler hands you a different backend. `DATABASE_URL`
+itself is just a labeled box. The whole question is always: **in THIS place, who put the
+value in the box, and what is it?** "Who fills it" and "what value is in it" are SEPARATE
+questions — trace them separately.
 
 | Place | Script run | Who fills the box | Mechanism | DB it hits |
 |---|---|---|---|---|
