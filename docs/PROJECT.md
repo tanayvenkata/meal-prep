@@ -142,11 +142,12 @@ didn't know them — the architectural truths a tracker title can't carry.
 - 🔧 **Dev session ritual:** OrbStack → `supabase start` → `npm run dev`. Skipping
   `supabase start` → `ECONNREFUSED 127.0.0.1:54322` (the dev app and the db tests both need
   the local stack up).
-- 🔐 **The MCP surface is authenticated at the tool boundary.** Supabase OAuth 2.1 access
+- 🔐 **The MCP surface is authenticated at the HTTP transport boundary.** Supabase OAuth 2.1 access
   tokens are checked for signature, issuer, audience, expiry, client identity, role, and
-  scope before `sub` becomes the database user ID. Missing credentials produce the MCP
-  authorization challenge; invalid credentials receive HTTP 401. An ngrok URL remains
-  public reachability, not authentication.
+  scope before the MCP server exposes tools or resources and before `sub` becomes the
+  database user ID. Missing or invalid credentials receive HTTP 401 with the MCP OAuth
+  discovery challenge. The tool also keeps its own auth declaration and challenge as
+  defense in depth. An ngrok URL remains public reachability, not authentication.
 
 ## Commands & setup
 

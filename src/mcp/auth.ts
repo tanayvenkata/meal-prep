@@ -44,7 +44,7 @@ export function getResourceMetadataUrl(config = getMcpAuthConfig()) {
 }
 
 type McpAuthChallengeOptions = {
-  error?: "insufficient_scope" | "invalid_token";
+  error?: "insufficient_scope" | "invalid_token" | null;
   errorDescription?: string;
 };
 
@@ -59,12 +59,19 @@ export function getMcpAuthChallenge(
     errorDescription = "Connect your Mise account to continue.",
   }: McpAuthChallengeOptions = {},
 ) {
-  return [
+  const challenge = [
     `Bearer resource_metadata=${quoteChallengeValue(getResourceMetadataUrl(config).href)}`,
     `scope=${quoteChallengeValue(MCP_SCOPES.join(" "))}`,
-    `error=${quoteChallengeValue(error)}`,
-    `error_description=${quoteChallengeValue(errorDescription)}`,
-  ].join(", ");
+  ];
+
+  // A first-time 401 is a discovery signal, not an OAuth failure. RFC 6750 says
+  // clients should not receive an error code when no credentials were supplied.
+  if (error) {
+    challenge.push(`error=${quoteChallengeValue(error)}`);
+    challenge.push(`error_description=${quoteChallengeValue(errorDescription)}`);
+  }
+
+  return challenge.join(", ");
 }
 
 export function readBearerToken(header: string | undefined): string | null {

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { ConsentDecisionForm } from "./consent-decision-form";
 
 type ConsentPageProps = {
   searchParams: Promise<{ authorization_id?: string }>;
@@ -76,30 +77,7 @@ export default async function OAuthConsentPage({ searchParams }: ConsentPageProp
           or delete pantry items or tools.
         </p>
 
-        <form action="/api/oauth/decision" method="post" className="flex gap-3">
-          <input
-            type="hidden"
-            name="authorization_id"
-            value={data.authorization_id}
-            aria-label="Authorization request ID"
-          />
-          <button
-            type="submit"
-            name="decision"
-            value="deny"
-            className="flex-1 rounded-xl border border-outline bg-surface-raised px-4 py-2.5 text-sm text-text-primary hover:border-outline-strong"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            name="decision"
-            value="approve"
-            className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
-          >
-            Connect
-          </button>
-        </form>
+        <ConsentDecisionForm authorizationId={data.authorization_id} />
       </section>
     </main>
   );

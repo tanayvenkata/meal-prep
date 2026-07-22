@@ -2,83 +2,34 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { AuthError } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+
+const AUTH_ERRORS: Record<string, string> = {
+  missing_credentials: "Enter your email and password.",
+  invalid_credentials: "That email or password is incorrect.",
+  too_many_attempts: "Too many attempts. Please wait a few minutes and try again.",
+  check_email: "Check your email to finish creating your account, then return here.",
+};
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  // Only honor same-origin, path-relative redirects. We navigate to returnTo with a
-  // hard window.location.assign, so an attacker-supplied "//evil.com" (or any absolute
-  // URL) would send a freshly-logged-in user off-site — an open-redirect phishing vector.
-  // A leading "/" but NOT "//" means a same-origin path; anything else falls back to "/".
+  // Only send same-origin, path-relative redirects to the server. The login route
+  // validates this again before redirecting; the client check keeps the submitted
+  // form honest, while the server check is the actual security boundary.
   const rawReturnTo = searchParams.get("returnTo") ?? "/";
   const returnTo =
     rawReturnTo.startsWith("/") && !rawReturnTo.startsWith("//") ? rawReturnTo : "/";
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const errorCode = searchParams.get("error");
+  const error = errorCode ? AUTH_ERRORS[errorCode] ?? "Mise could not sign you in." : "";
 
-  // After a successful sign-in we leave via window.location.assign while loading is
-  // true, so the browser's bfcache can snapshot the page frozen on "Signing in…".
-  // Hitting Back restores that DOM without re-running React. pageshow with
-  // e.persisted fires exactly on a bfcache restore — reset the transient state.
   useEffect(() => {
-    const onPageShow = (e: PageTransitionEvent) => {
-      if (e.persisted) setLoading(false); // restored from bfcache → un-freeze
+    const resetAfterBackNavigation = (event: PageTransitionEvent) => {
+      if (event.persisted) setLoading(false);
     };
-    window.addEventListener("pageshow", onPageShow);
-    return () => window.removeEventListener("pageshow", onPageShow);
+
+    window.addEventListener("pageshow", resetAfterBackNavigation);
+    return () => window.removeEventListener("pageshow", resetAfterBackNavigation);
   }, []);
-
-  // Both buttons run the same loading / timeout / error dance and differ only in
-  // WHICH Supabase call they make — so the tricky parts (timeout, error mapping)
-  // live here once and each handler just passes its auth call in.
-  async function runAuth(authCall: () => Promise<{ error: AuthError | null }>) {
-    setLoading(true);
-    setError("");
-
-    // A hung network must never leave the button stuck spinning with no result.
-    // Promise.race against a timeout that resolves to a synthetic timeout marker.
-    // Deliberate tradeoff: this does NOT abort the in-flight auth call. If it's merely
-    // slow and succeeds at, say, 16s, the user sees "taking too long" while actually
-    // being logged in. Acceptable at a 15s threshold (a real success is far faster);
-    // revisit with an AbortController if slow-but-successful logins become common.
-    const TIMEOUT_MS = 15_000;
-    const timeout = new Promise<"timeout">((resolve) =>
-      setTimeout(() => resolve("timeout"), TIMEOUT_MS),
-    );
-
-    const result = await Promise.race([authCall(), timeout]);
-
-    if (result === "timeout") {
-      setError("This is taking longer than expected — check your connection and try again.");
-      setLoading(false);
-      return;
-    }
-
-    const { error } = result;
-    if (error) {
-      // Map the few cases worth a tailored message; fall back to Supabase's own text.
-      if (error.status === 429) {
-        setError("Too many attempts. Please wait a few minutes and try again.");
-      } else {
-        setError(error.message);
-      }
-      setLoading(false);
-      return;
-    }
-
-    // Success. Use a HARD navigation, not router.push: a full page load guarantees
-    // the freshly-set auth cookie is sent with the request, so middleware's
-    // getUser() sees the session instead of racing it and bouncing back to /login.
-    window.location.assign(returnTo);
-  }
-
-  const handleSignIn = () =>
-    runAuth(() => supabase.auth.signInWithPassword({ email, password }));
-
-  const handleSignUp = () => runAuth(() => supabase.auth.signUp({ email, password }));
 
   return (
     <main className="mx-auto flex h-screen max-w-sm flex-col justify-center px-4">
@@ -90,49 +41,62 @@ function LoginForm() {
         <p className="mt-1 text-sm text-text-secondary">Your pantry-aware sous-chef</p>
       </div>
 
-      <input
-        className="mb-3 rounded-xl border border-outline bg-surface-raised px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
-        type="email"
-        aria-label="Email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <input
-        className="mb-4 rounded-xl border border-outline bg-surface-raised px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
-        type="password"
-        aria-label="Password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
-      />
+      <form action="/api/auth/login" method="post" onSubmit={() => setLoading(true)}>
+        <input
+          type="hidden"
+          name="returnTo"
+          value={returnTo}
+          aria-label="Return destination"
+        />
+        <input
+          className="mb-3 w-full rounded-xl border border-outline bg-surface-raised px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
+          type="email"
+          name="email"
+          aria-label="Email"
+          placeholder="Email"
+          autoComplete="email"
+          required
+        />
+        <input
+          className="mb-4 w-full rounded-xl border border-outline bg-surface-raised px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
+          type="password"
+          name="password"
+          aria-label="Password"
+          placeholder="Password"
+          autoComplete="current-password"
+          required
+        />
 
-      {error && (
-        <p
-          role="alert"
-          className="mb-3 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm font-medium text-text-danger"
-        >
-          {error}
-        </p>
-      )}
+        {error && (
+          <p
+            role="alert"
+            className="mb-3 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm font-medium text-text-danger"
+          >
+            {error}
+          </p>
+        )}
 
-      <div className="flex gap-2">
-        <button
-          className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-          onClick={handleSignIn}
-          disabled={loading}
-        >
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
-        <button
-          className="flex-1 rounded-xl border border-outline bg-surface-raised px-4 py-2.5 text-sm text-text-primary disabled:opacity-50 hover:border-outline-strong transition-colors"
-          onClick={handleSignUp}
-          disabled={loading}
-        >
-          Sign up
-        </button>
-      </div>
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            name="intent"
+            value="sign-in"
+            className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+            disabled={loading}
+          >
+            {loading ? "Signing in…" : "Sign in"}
+          </button>
+          <button
+            type="submit"
+            name="intent"
+            value="sign-up"
+            className="flex-1 rounded-xl border border-outline bg-surface-raised px-4 py-2.5 text-sm text-text-primary disabled:opacity-50 hover:border-outline-strong transition-colors"
+            disabled={loading}
+          >
+            Sign up
+          </button>
+        </div>
+      </form>
     </main>
   );
 }
