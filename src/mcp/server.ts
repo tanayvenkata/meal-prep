@@ -264,7 +264,8 @@ export function createMiseHttpServer({
       authConfig.resource.hostname,
       "localhost",
       "127.0.0.1",
-      "[::1]",
+      // SDK hostHeaderValidation uses URL.hostname (unbracketed IPv6).
+      "::1",
     ],
   });
   const resourceMetadataUrl = getOAuthProtectedResourceMetadataUrl(
