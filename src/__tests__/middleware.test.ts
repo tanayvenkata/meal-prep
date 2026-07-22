@@ -44,6 +44,21 @@ describe("middleware", () => {
     expect(response.headers.get("location")).toContain("returnTo=%2Fpantry");
   });
 
+  it("preserves the OAuth authorization ID through login", async () => {
+    mockCreateServerClient.mockReturnValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
+    } as any);
+
+    const request = makeRequest("/oauth/consent?authorization_id=request-123");
+    const response = await middleware(request);
+    const location = new URL(response.headers.get("location")!);
+
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("returnTo")).toBe(
+      "/oauth/consent?authorization_id=request-123",
+    );
+  });
+
   it("lets authenticated users through", async () => {
     mockCreateServerClient.mockReturnValue({
       auth: {

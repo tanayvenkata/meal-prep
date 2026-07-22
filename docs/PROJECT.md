@@ -36,11 +36,13 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 - **Done: M1–M6.5 + pre-M7 hardening.** Streaming chat → Vercel deploy → pantry CRUD →
   pantry-aware recipes → auth → tests + CI/CD → voice → Mise redesign; plus rate limiting
   and a stop button. (Per-milestone detail: git history.)
-- **Experimental ChatGPT surface:** a Streamable HTTP MCP server exposes one
-  `get_kitchen_context` tool and an MCP Apps widget. The complete tool → resource → widget
+- **Experimental ChatGPT surface:** a Streamable HTTP MCP server exposes one read-only
+  `get_kitchen_context` tool and an MCP Apps widget. Supabase OAuth 2.1 maps the connector
+  token to a Mise user; the tool then reads only that user's pantry and kitchen tools
+  through the existing RLS-enforced database boundary. The complete tool → resource → widget
   handshake works in MCP Inspector and ChatGPT Developer Mode, including light and dark
-  themes. It still returns an explicit fixture; OAuth and real user data are the next
-  security boundary.
+  themes. The hosted OAuth server is enabled; deploying this branch and completing an
+  end-to-end account-linking proof are the next security boundary.
 - **What's next** lives on the Mise Board (sort by the Priority field), not here — M7 (OCR),
   the nav-model change, history, and gamification are all tracked issues.
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
@@ -140,9 +142,11 @@ didn't know them — the architectural truths a tracker title can't carry.
 - 🔧 **Dev session ritual:** OrbStack → `supabase start` → `npm run dev`. Skipping
   `supabase start` → `ECONNREFUSED 127.0.0.1:54322` (the dev app and the db tests both need
   the local stack up).
-- 🔐 **The MCP surface is not authenticated yet.** It must expose fixtures only until an
-  OAuth 2.1 flow maps each bearer token to a Supabase user and every tool enforces that
-  identity. An ngrok URL is public reachability, not authentication.
+- 🔐 **The MCP surface is authenticated at the tool boundary.** Supabase OAuth 2.1 access
+  tokens are checked for signature, issuer, audience, expiry, client identity, role, and
+  scope before `sub` becomes the database user ID. Missing credentials produce the MCP
+  authorization challenge; invalid credentials receive HTTP 401. An ngrok URL remains
+  public reachability, not authentication.
 
 ## Commands & setup
 

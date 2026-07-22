@@ -184,6 +184,14 @@ minimum_password_length = 6
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
 
+# Mise acts as an OAuth 2.1 authorization server for ChatGPT and other MCP
+# clients. Dynamic registration is needed for local ChatGPT connector testing;
+# the consent screen above remains the explicit user approval gate.
+[auth.oauth_server]
+enabled = true
+authorization_url_path = "/oauth/consent"
+allow_dynamic_registration = true
+
 # Configure passkey sign-ins.
 # [auth.passkey]
 # enabled = false

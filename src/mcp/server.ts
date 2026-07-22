@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/postcss";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   registerAppResource,
@@ -14,6 +15,15 @@ import {
 import { build } from "esbuild";
 import postcss from "postcss";
 import { z } from "zod";
+import {
+  getMcpAuthChallenge,
+  getMcpAuthConfig,
+  getProtectedResourceMetadata,
+  readBearerToken,
+  verifyMcpAccessToken,
+  MCP_SCOPES,
+} from "./auth.js";
+import { loadKitchenContext } from "./kitchen-context.js";
 
 const PORT = 8787;
 const MCP_PATH = "/mcp";
@@ -95,18 +105,6 @@ const kitchenWidgetResourcePromise = Promise.all([
   };
 });
 
-// This is fake, safe data for our first MCP connection. It does not read Mise's
-// database yet; the next slice replaces it only after authentication is designed.
-const kitchenContext = {
-  pantry: [
-    { name: "eggs", quantity: "12", turnover: "high" },
-    { name: "cumin", quantity: "1 jar", turnover: "low" },
-    { name: "lemon juice", quantity: "1 bottle", turnover: "high" },
-    { name: "salmon", quantity: "2 fillets", turnover: "high" },
-  ],
-  tools: [{ name: "Air fryer", kind: "appliance" }],
-};
-
 const kitchenContextSchema = z.object({
   pantry: z.array(
     z.object({
@@ -120,7 +118,7 @@ const kitchenContextSchema = z.object({
   ),
 });
 
-async function createMiseServer() {
+export async function createMiseServer() {
   const kitchenWidgetResource = await kitchenWidgetResourcePromise;
   const kitchenWidgetUris = [
     ...LEGACY_KITCHEN_WIDGET_URIS,
@@ -165,15 +163,28 @@ async function createMiseServer() {
         openWorldHint: false,
       },
       _meta: {
+        securitySchemes: [{ type: "oauth2", scopes: MCP_SCOPES }],
         ui: { resourceUri: kitchenWidgetResource.uri },
         "openai/toolInvocation/invoking": "Checking your kitchen…",
         "openai/toolInvocation/invoked": "Kitchen ready.",
       },
     },
-    async () => ({
-      content: [{ type: "text", text: "Returned Mise kitchen context." }],
-      structuredContent: kitchenContext,
-    }),
+    async (extra) => {
+      const userId = extra.authInfo?.extra?.userId;
+      if (typeof userId !== "string") {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Connect your Mise account to continue." }],
+          _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+        };
+      }
+
+      const kitchenContext = await loadKitchenContext(userId);
+      return {
+        content: [{ type: "text", text: "Returned your Mise kitchen context." }],
+        structuredContent: kitchenContext,
+      };
+    },
   );
 
   return server;
@@ -185,6 +196,20 @@ const httpServer = createServer(async (req, res) => {
   // A plain browser/curl health check, separate from MCP itself.
   if (req.method === "GET" && url.pathname === "/") {
     res.writeHead(200, { "content-type": "text/plain" }).end("Mise MCP server");
+    return;
+  }
+
+  const metadataPaths = new Set([
+    "/.well-known/oauth-protected-resource",
+    `/.well-known/oauth-protected-resource${MCP_PATH}`,
+  ]);
+  if ((req.method === "GET" || req.method === "OPTIONS") && metadataPaths.has(url.pathname)) {
+    res
+      .writeHead(200, {
+        "content-type": "application/json",
+        "access-control-allow-origin": "*",
+      })
+      .end(JSON.stringify(getProtectedResourceMetadata()));
     return;
   }
 
@@ -207,6 +232,26 @@ const httpServer = createServer(async (req, res) => {
     return;
   }
 
+  const authorizationHeader = Array.isArray(req.headers.authorization)
+    ? req.headers.authorization[0]
+    : req.headers.authorization;
+  if (authorizationHeader) {
+    const token = readBearerToken(authorizationHeader);
+    try {
+      if (!token) throw new Error("Malformed bearer token.");
+      (req as typeof req & { auth?: AuthInfo }).auth = await verifyMcpAccessToken(token);
+    } catch (error) {
+      console.warn("MCP authentication failed:", error);
+      res
+        .writeHead(401, {
+          "content-type": "application/json",
+          "www-authenticate": getMcpAuthChallenge(),
+        })
+        .end(JSON.stringify({ error: "invalid_token" }));
+      return;
+    }
+  }
+
   const server = await createMiseServer();
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
@@ -227,5 +272,5 @@ const httpServer = createServer(async (req, res) => {
 });
 
 httpServer.listen(PORT, () => {
-  console.log(`Mise MCP server: http://localhost:${PORT}${MCP_PATH}`);
+  console.log(`Mise MCP server: ${getMcpAuthConfig().resource.href}`);
 });

@@ -76,7 +76,8 @@ in, send a message in the chat to get a recipe reply.
 | `npm test` | All tests in watch mode |
 | `npm run test:unit` | Unit tests only (no Supabase needed) |
 | `npm run test:integration` | DB integration tests (requires `supabase start`) |
-| `npm run mcp:dev` | Start the local Mise MCP server and rebuild its widget on changes |
+| `npm run mcp:dev` | Start the local Mise MCP server with Doppler `dev` config |
+| `npm run mcp:serve` | Start the MCP process with environment variables supplied by the caller |
 
 > **Why two build commands?** `build` is intentionally bare so it works where the Doppler
 > CLI doesn't exist — Vercel and CI inject the same secrets their own way. On your laptop,
@@ -84,23 +85,45 @@ in, send a message in the chat to get a recipe reply.
 
 ## ChatGPT app development
 
-Mise also has an experimental MCP Apps surface for ChatGPT. This first slice is
-deliberately safe: `get_kitchen_context` returns a small fixture and renders it in an
-inline widget. It does **not** read Supabase or identify the current user yet.
+Mise also has an experimental MCP Apps surface for ChatGPT. Its read-only
+`get_kitchen_context` tool uses Supabase OAuth 2.1 to identify the connected Mise user,
+then returns only that user's pantry and kitchen tools in an inline widget. The tool does
+not expose row IDs or support adding, editing, or deleting data.
 
 ```bash
-# Terminal 1: MCP server with widget rebuilds
+# Terminal 1: Next app (login + OAuth consent screen)
+npm run dev
+
+# Terminal 2: MCP server with widget rebuilds and local Supabase credentials
 npm run mcp:dev
 
-# Terminal 2: temporary public HTTPS tunnel for ChatGPT Developer Mode
+# Terminal 3: temporary public HTTPS tunnel for ChatGPT Developer Mode
 ngrok http 8787
 ```
 
 - Local MCP endpoint: `http://localhost:8787/mcp`
 - MCP Inspector can connect directly to that local endpoint.
-- ChatGPT Developer Mode connects to the ngrok HTTPS URL with `/mcp` appended.
+- Set `MCP_PUBLIC_URL` to the exact public MCP endpoint (for example,
+  `https://example.ngrok.app/mcp`) before starting the MCP process. Discovery metadata
+  and token validation use this as the connector's canonical resource identifier.
+- ChatGPT Developer Mode connects to that same ngrok HTTPS URL with `/mcp` appended.
+- Supabase OAuth Server must be enabled, with `/oauth/consent` as the authorization path
+  and ChatGPT's exact connector callback URL registered/accepted by the OAuth client.
 - ngrok forwards to this checkout; no commit or deployment is needed for local testing.
 - Keep both processes running. If ngrok assigns a new URL, update the ChatGPT app.
+
+For a real ChatGPT connection, the Supabase authorization server and consent page must be
+publicly reachable: ChatGPT exchanges the authorization code from its own servers. The
+normal dogfood path is therefore the hosted Supabase project + deployed Mise web app, with
+the local MCP server temporarily exposed through ngrok. Supply the hosted Doppler config
+explicitly for that read-only test:
+
+```bash
+MCP_PUBLIC_URL=https://example.ngrok.app/mcp \
+  doppler run -c prd -- npm run mcp:serve
+```
+
+Do not use the hosted configuration for automated tests or write-tool experiments.
 
 Use a fresh tool call to test new data. Historical ChatGPT messages retain their original
 tool-result snapshot. Widget implementation and host-testing rules live in
