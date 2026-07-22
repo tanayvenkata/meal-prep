@@ -39,10 +39,10 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 - **Experimental ChatGPT surface:** a Streamable HTTP MCP server exposes one read-only
   `get_kitchen_context` tool and an MCP Apps widget. Supabase OAuth 2.1 maps the connector
   token to a Mise user; the tool then reads only that user's pantry and kitchen tools
-  through the existing RLS-enforced database boundary. The complete tool → resource → widget
+  through the existing user-scoped database boundary. The complete tool → resource → widget
   handshake works in MCP Inspector and ChatGPT Developer Mode, including light and dark
-  themes. The hosted OAuth server is enabled; deploying this branch and completing an
-  end-to-end account-linking proof are the next security boundary.
+  themes. End-to-end account linking has been proven through the ngrok development connector;
+  durable MCP hosting and database RLS hardening remain separate follow-up boundaries.
 - **What's next** lives on the Mise Board (sort by the Priority field), not here — M7 (OCR),
   the nav-model change, history, and gamification are all tracked issues.
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
@@ -145,9 +145,11 @@ didn't know them — the architectural truths a tracker title can't carry.
 - 🔐 **The MCP surface is authenticated at the HTTP transport boundary.** Supabase OAuth 2.1 access
   tokens are checked for signature, issuer, audience, expiry, client identity, role, and
   scope before the MCP server exposes tools or resources and before `sub` becomes the
-  database user ID. Missing or invalid credentials receive HTTP 401 with the MCP OAuth
-  discovery challenge. The tool also keeps its own auth declaration and challenge as
-  defense in depth. An ngrok URL remains public reachability, not authentication.
+  database user ID. The MCP SDK owns the Express shell, OAuth metadata routes, bearer parsing,
+  and scope/expiry middleware; Mise owns the Supabase-specific claim policy. Missing or
+  invalid credentials receive HTTP 401 with the MCP OAuth discovery challenge. The tool also
+  keeps its own auth declaration and challenge as defense in depth. An ngrok URL remains
+  public reachability, not authentication.
 
 ## Commands & setup
 

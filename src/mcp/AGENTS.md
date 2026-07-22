@@ -3,6 +3,32 @@
 This directory contains Mise's MCP server and MCP App widget. Keep changes
 small and teach the protocol boundary before adding product complexity.
 
+## Docs-first and SDK-first rule
+
+Before changing MCP transport, ChatGPT Apps behavior, widget bridge code, tool
+metadata, or OAuth/account-linking behavior:
+
+1. Read the current official OpenAI Apps SDK guidance relevant to the task,
+   especially [Build your MCP server](https://developers.openai.com/apps-sdk/build/mcp-server),
+   [Authentication](https://developers.openai.com/apps-sdk/build/auth), and the
+   [Apps SDK reference](https://developers.openai.com/apps-sdk/reference).
+2. When Supabase auth, RLS, or token behavior is involved, also check the
+   current official Supabase documentation for that feature.
+3. Inspect the versions installed in this repository and the helpers they
+   actually export. The installed package API is the implementation contract;
+   examples written for a different version are only guidance.
+4. Inventory official SDK helpers and examples before writing protocol,
+   authentication, or bridge plumbing. Default to the official MCP SDK,
+   `@modelcontextprotocol/ext-apps`, and Apps SDK UI primitives when they cover
+   the required behavior.
+
+Custom protocol or authentication code is allowed only when the official
+helper cannot preserve required behavior. Keep the adapter narrow, explain the
+gap in a nearby comment or durable issue/PR note, and add a wire-level contract
+test that would fail if the interoperability behavior regresses. Import SDKs
+that production code relies on as direct dependencies, not undeclared
+transitive dependencies.
+
 ## Architecture
 
 - Treat core MCP as the tool and data contract. Treat MCP Apps as the optional
@@ -15,6 +41,30 @@ small and teach the protocol boundary before adding product complexity.
 - Keep server data access separate from widget rendering. Demo fixtures may
   remain in `server.ts`; real user data belongs behind an authenticated service
   boundary.
+- Enforce authentication at the MCP HTTP boundary for account-specific data,
+  verify token validity and required claims server-side, and retain per-tool
+  `securitySchemes` as defense in depth and host-facing metadata.
+
+## Required protocol validation
+
+Test the sequence a real host performs, not only isolated helpers. For changes
+to transport or authentication, preserve automated coverage for:
+
+- unauthenticated MCP initialization returning `401` with a valid
+  `WWW-Authenticate` challenge and path-specific protected-resource metadata;
+- malformed, expired, or otherwise invalid bearer tokens returning an
+  `invalid_token` challenge;
+- authenticated initialization, `tools/list`, and representative tool calls;
+- security schemes in both the standard top-level descriptor field and any
+  compatibility metadata required by supported hosts; and
+- widget initialization and tool-result delivery through the standard MCP Apps
+  bridge.
+
+After automated checks, verify the vertical slice in MCP Inspector and then in
+ChatGPT Developer Mode through the development HTTPS endpoint. If current docs
+and observed host behavior differ, preserve the smallest standards-compatible
+adapter proven to interoperate, cover it with a focused contract test, and
+record why it exists instead of silently hand-rolling more of the protocol.
 
 ## UI defaults
 

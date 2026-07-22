@@ -16,3 +16,14 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - This is a learning project. Teach before implementing: explain the why,
   prefer small vertical slices, and preserve the decision in the appropriate
   durable place (issue, PR, or project document).
+
+## MCP and ChatGPT Apps routing
+
+- For any task involving MCP, ChatGPT Apps, the MCP Apps widget, tool
+  descriptors, account linking, or OAuth used by the MCP app, read
+  `src/mcp/AGENTS.md` before implementation. This applies even when the edited
+  files live elsewhere, such as `src/app/oauth`, `src/app/api`, middleware, or
+  application configuration.
+- Keep the detailed protocol guidance in `src/mcp/AGENTS.md` rather than
+  duplicating it across OAuth and API directories. Update that canonical guide
+  when the architecture or required validation changes.

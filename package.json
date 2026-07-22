@@ -26,6 +26,7 @@
     "@tailwindcss/typography": "^0.5.20",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
+    "express": "^5.2.1",
     "lucide-react": "^1.21.0",
     "next": "16.2.9",
     "postgres": "^3.4.9",
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/express": "^5.0.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
