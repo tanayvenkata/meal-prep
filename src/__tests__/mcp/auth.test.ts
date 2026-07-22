@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   authInfoFromClaims,
   getMcpAuthChallenge,
-  getProtectedResourceMetadata,
-  readBearerToken,
+  getResourceMetadataUrl,
+  getSupabaseOAuthMetadata,
   type McpAuthConfig,
 } from "@/mcp/auth";
 
@@ -24,13 +24,20 @@ const validClaims = {
 };
 
 describe("MCP OAuth boundary", () => {
-  it("publishes protected-resource discovery for the Supabase authorization server", () => {
-    expect(getProtectedResourceMetadata(config)).toEqual({
-      resource: "https://mcp.mise.example/mcp",
-      authorization_servers: ["https://project.supabase.co/auth/v1"],
-      scopes_supported: ["openid"],
-      bearer_methods_supported: ["header"],
+  it("describes Supabase as the authorization server", () => {
+    expect(getSupabaseOAuthMetadata(config)).toMatchObject({
+      issuer: "https://project.supabase.co/auth/v1",
+      authorization_endpoint:
+        "https://project.supabase.co/auth/v1/oauth/authorize",
+      token_endpoint: "https://project.supabase.co/auth/v1/oauth/token",
+      registration_endpoint:
+        "https://project.supabase.co/auth/v1/oauth/clients/register",
+      response_types_supported: ["code"],
+      code_challenge_methods_supported: ["S256"],
     });
+    expect(getResourceMetadataUrl(config).href).toBe(
+      "https://mcp.mise.example/.well-known/oauth-protected-resource/mcp",
+    );
     expect(getMcpAuthChallenge(config)).toContain(
       'resource_metadata="https://mcp.mise.example/.well-known/oauth-protected-resource/mcp"',
     );
@@ -40,8 +47,7 @@ describe("MCP OAuth boundary", () => {
     );
   });
 
-  it("accepts a well-formed bearer token and creates user-scoped auth info", () => {
-    expect(readBearerToken("Bearer token-123")).toBe("token-123");
+  it("accepts verified claims and creates user-scoped auth info", () => {
     expect(authInfoFromClaims("token-123", validClaims, config)).toMatchObject({
       clientId: "chatgpt-client",
       scopes: ["openid", "email"],
@@ -60,11 +66,5 @@ describe("MCP OAuth boundary", () => {
     expect(() =>
       authInfoFromClaims("token-123", { ...validClaims, ...override }, config),
     ).toThrow();
-  });
-
-  it("rejects malformed authorization headers", () => {
-    expect(readBearerToken(undefined)).toBeNull();
-    expect(readBearerToken("Basic abc")).toBeNull();
-    expect(readBearerToken("Bearer one two")).toBeNull();
   });
 });

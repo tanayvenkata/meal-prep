@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { getOAuthProtectedResourceMetadataUrl } from "@modelcontextprotocol/sdk/server/auth/router.js";
+import type { OAuthMetadata } from "@modelcontextprotocol/sdk/shared/auth.js";
 
 export const MCP_SCOPES = ["openid"];
 
@@ -27,20 +29,38 @@ export function getMcpAuthConfig(): McpAuthConfig {
   };
 }
 
-export function getProtectedResourceMetadata(config = getMcpAuthConfig()) {
-  return {
-    resource: config.resource.href,
-    authorization_servers: [config.authorizationServer.href.replace(/\/$/, "")],
-    scopes_supported: MCP_SCOPES,
-    bearer_methods_supported: ["header"],
-  };
+export function getResourceMetadataUrl(config = getMcpAuthConfig()) {
+  return new URL(getOAuthProtectedResourceMetadataUrl(config.resource));
 }
 
-export function getResourceMetadataUrl(config = getMcpAuthConfig()) {
-  return new URL(
-    `/.well-known/oauth-protected-resource${config.resource.pathname}`,
-    config.resource.origin,
-  );
+/**
+ * Supabase is Mise's OAuth authorization server. The MCP SDK republishes this
+ * metadata from the resource server so clients can discover Supabase without
+ * Mise implementing authorization or token endpoints itself.
+ */
+export function getSupabaseOAuthMetadata(
+  config = getMcpAuthConfig(),
+): OAuthMetadata {
+  const issuer = config.authorizationServer.href.replace(/\/$/, "");
+  const oauthEndpoint = (path: string) =>
+    new URL(`oauth/${path}`, `${issuer}/`).href;
+
+  return {
+    issuer,
+    authorization_endpoint: oauthEndpoint("authorize"),
+    token_endpoint: oauthEndpoint("token"),
+    registration_endpoint: oauthEndpoint("clients/register"),
+    scopes_supported: ["openid", "profile", "email", "phone"],
+    response_types_supported: ["code"],
+    response_modes_supported: ["query"],
+    grant_types_supported: ["authorization_code", "refresh_token"],
+    token_endpoint_auth_methods_supported: [
+      "client_secret_basic",
+      "client_secret_post",
+      "none",
+    ],
+    code_challenge_methods_supported: ["S256"],
+  };
 }
 
 type McpAuthChallengeOptions = {
@@ -72,12 +92,6 @@ export function getMcpAuthChallenge(
   }
 
   return challenge.join(", ");
-}
-
-export function readBearerToken(header: string | undefined): string | null {
-  if (!header) return null;
-  const match = /^Bearer\s+([^\s]+)$/i.exec(header);
-  return match?.[1] ?? null;
 }
 
 type Claims = Record<string, unknown>;
