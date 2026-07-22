@@ -63,7 +63,7 @@ export async function POST(req: Request) {
       const title = lastUserMessage.content.slice(0, 50);
       await createConversation(userId, title, conversationId);
     }
-    await addMessage(conversationId, "user", lastUserMessage.content);
+    await addMessage(userId, conversationId, "user", lastUserMessage.content);
   } catch (err) {
     console.error("POST /api/chat failed (persist):", err);
     return Response.json({ error: "failed to save message" }, { status: 500 });

@@ -24,11 +24,11 @@ export type KitchenTool = {
   created_at: string;
 };
 
-// db.ts connects as the `postgres` role, which owns `items` and bypasses RLS.
-// Impersonating `authenticated` (a role `postgres` is a member of, with no
-// bypass) inside a transaction makes the `items_user_isolation` policy
-// actually apply, so RLS is a real second layer under the where-clause below,
-// not just schema decoration.
+// db.ts connects as the `postgres` role, which owns the user-data tables and
+// bypasses RLS (issue #64 will replace that owner connection). Impersonating
+// `authenticated` inside a transaction makes ownership policies on items,
+// kitchen_tools, conversations, and messages actually apply — RLS is a real
+// second layer under the app-level user_id / parent-ownership predicates.
 async function withUserContext<T>(
   userId: string,
   fn: (tx: postgres.TransactionSql) => Promise<T>,
@@ -156,51 +156,89 @@ export type Message = {
 };
 
 export async function createConversation(userId: string, title: string, id: string): Promise<Conversation> {
-  const [conversation] = await sql<Conversation[]>`
-    insert into conversations (id, user_id, title)
-    values (${id}, ${userId}, ${title})
-    returning *
-  `;
-  return conversation;
+  return withUserContext(userId, async (tx) => {
+    const [conversation] = await tx<Conversation[]>`
+      insert into conversations (id, user_id, title)
+      values (${id}, ${userId}, ${title})
+      returning *
+    `;
+    return conversation;
+  });
 }
 
 export async function listConversations(userId: string): Promise<Conversation[]> {
-  return sql<Conversation[]>`
-    select * from conversations
-    where user_id = ${userId}
-    order by created_at desc
-  `;
+  return withUserContext(userId, (tx) =>
+    tx<Conversation[]>`
+      select * from conversations
+      where user_id = ${userId}
+      order by created_at desc
+    `,
+  );
 }
 
 export async function getConversation(userId: string, id: string): Promise<Conversation | null> {
-  const [conversation] = await sql<Conversation[]>`
-    select * from conversations
-    where id = ${id} and user_id = ${userId}
-  `;
-  return conversation ?? null;
+  return withUserContext(userId, async (tx) => {
+    const [conversation] = await tx<Conversation[]>`
+      select * from conversations
+      where id = ${id} and user_id = ${userId}
+    `;
+    return conversation ?? null;
+  });
 }
 
 export async function deleteConversation(userId: string, id: string): Promise<void> {
   // messages rows cascade via the ON DELETE CASCADE FK on messages.conversation_id.
-  await sql`
-    delete from conversations
-    where id = ${id} and user_id = ${userId}
-  `;
+  await withUserContext(userId, (tx) =>
+    tx`
+      delete from conversations
+      where id = ${id} and user_id = ${userId}
+    `,
+  );
 }
 
-export async function getMessages(conversationId: string): Promise<Message[]> {
-  return sql<Message[]>`
-    select * from messages
-    where conversation_id = ${conversationId}
-    order by created_at asc
-  `;
+export async function getMessages(userId: string, conversationId: string): Promise<Message[]> {
+  // Ownership is enforced twice: the where-exists predicate (app layer) and the
+  // messages_via_conversation_owner RLS policy (database layer).
+  return withUserContext(userId, (tx) =>
+    tx<Message[]>`
+      select m.*
+      from messages m
+      where m.conversation_id = ${conversationId}
+        and exists (
+          select 1
+          from conversations c
+          where c.id = m.conversation_id
+            and c.user_id = ${userId}
+        )
+      order by m.created_at asc
+    `,
+  );
 }
 
-export async function addMessage(conversationId: string, role: "user" | "assistant", content: string): Promise<Message> {
-  const [message] = await sql<Message[]>`
-    insert into messages (conversation_id, role, content)
-    values (${conversationId}, ${role}, ${content})
-    returning *
-  `;
-  return message;
+export async function addMessage(
+  userId: string,
+  conversationId: string,
+  role: "user" | "assistant",
+  content: string,
+): Promise<Message> {
+  // Require parent ownership in the insert itself. RLS also checks this; the
+  // explicit predicate keeps the first authorization layer in application SQL
+  // and blocks cross-user appends even if a future caller skips a prior lookup.
+  return withUserContext(userId, async (tx) => {
+    const [message] = await tx<Message[]>`
+      insert into messages (conversation_id, role, content)
+      select ${conversationId}, ${role}, ${content}
+      where exists (
+        select 1
+        from conversations c
+        where c.id = ${conversationId}
+          and c.user_id = ${userId}
+      )
+      returning *
+    `;
+    if (!message) {
+      throw new Error("conversation not found or not owned by user");
+    }
+    return message;
+  });
 }

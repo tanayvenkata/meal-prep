@@ -19,7 +19,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const conversation = await getConversation(userId, id);
     if (!conversation) return Response.json({ error: "not found" }, { status: 404 });
 
-    const message = await addMessage(id, role, content);
+    const message = await addMessage(userId, id, role, content);
     return Response.json(message, { status: 201 });
   } catch (err) {
     console.error(`POST /api/conversations/${id}/messages failed:`, err);
