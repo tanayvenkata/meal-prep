@@ -98,14 +98,19 @@ that kicked off this whole session (localhost writes appeared in prod).
 - **Step 3** (deferred, named not built) — staging, GitHub Environments, Docker. Add when the need
   is real (a second dev, preview deploys, moving off Vercel).
 
-## Separate track (NOT env work) — RLS is one layer, not two
+## Database login role — fail closed under RLS (issue #64)
 
-Found this session: `items` has `enable row level security` but **no policies** and **no
-`force row level security`**. `db.ts` connects as the table owner via the pooler, which BYPASSES
-RLS. So in the app's real data path, the ONLY thing isolating users is the explicit
-`where user_id = $userId` clause in every query (present + tested). The mental model "the DB will
-save me if I forget the WHERE" is FALSE here. Defense-in-depth (FORCE RLS + a policy) is a good
-security lesson but optional for a single-user app. Tracked separately from the environment work.
+`DATABASE_URL` must connect as the dedicated **`mise_app`** role, not table-owner `postgres`.
+
+| Role | Used by | BYPASSRLS | Owns tables | Purpose |
+|---|---|---|---|---|
+| `mise_app` | App pool (`src/lib/db.ts`) | no | no | Login role; SET ROLE `authenticated` per request |
+| `authenticated` | Via `withUserContext` only | no | no | RLS policies apply; has table DML grants |
+| `postgres` | Migrations, local seed, rare admin | yes | yes | Schema ownership — never the app pool |
+
+Without `withUserContext`, `mise_app` has **no** table DML — queries fail closed instead of
+silently running as owner. Password for hosted envs is set with
+`npm run db:provision-app-role` and stored in Doppler; local seed sets `mise_app_local` only.
 
 ## Naming note
 
@@ -116,7 +121,9 @@ Doppler's environment is **Development** / config **dev**; **Staging** / **stg**
 
 # The "who fills the box, where" map (the cleanse)
 
-The line `postgres(process.env.DATABASE_URL!)` never changes. `DATABASE_URL` is just a labeled
+The connection call lives only in `src/lib/db.ts` and always reads `DATABASE_URL`. That URI
+must be the **`mise_app`** role (fail-closed; see above), and production pooler URIs need
+`{ prepare: false }` when using transaction mode. `DATABASE_URL` itself is just a labeled
 box. The whole question is always: **in THIS place, who put the value in the box, and what is it?**
 "Who fills it" and "what value is in it" are SEPARATE questions — trace them separately.
 

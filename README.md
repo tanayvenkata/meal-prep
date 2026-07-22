@@ -24,13 +24,18 @@ npm install
 doppler login
 doppler setup   # select: meal-prep → dev
 
-# 3. Copy the local env file (only needed for integration tests)
+# 3. Copy the local env file (only needed for integration tests / local DB URLs)
 cp .env.example .env.local
-# Fill in TEST_DATABASE_URL — see .env.example for instructions
+# Local DATABASE_URL should use the mise_app role — see .env.example
 
 # 4. Start the local Supabase stack (the dev app logs in against it)
 orbstack          # or open Docker Desktop
 supabase start    # first run seeds the test user — see "Logging in locally" below
+# Seed passwords only apply on fresh init / db reset. If integration tests fail
+# with mise_app auth errors, run:
+#   ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres \
+#   MISE_APP_DB_PASSWORD=mise_app_local ALLOW_SHORT_MISE_APP_PASSWORD=1 \
+#   npm run db:provision-app-role
 
 # 5. Start the dev server
 npm run dev
@@ -76,6 +81,7 @@ in, send a message in the chat to get a recipe reply.
 | `npm test` | All tests in watch mode |
 | `npm run test:unit` | Unit tests only (no Supabase needed) |
 | `npm run test:integration` | DB integration tests (requires `supabase start`) |
+| `npm run db:provision-app-role` | Set/rotate `mise_app` password (needs `ADMIN_DATABASE_URL` + `MISE_APP_DB_PASSWORD`) |
 | `npm run mcp:dev` | Start the local Mise MCP server with Doppler `dev` config |
 | `npm run mcp:serve` | Start the MCP process with environment variables supplied by the caller |
 

@@ -3,6 +3,10 @@
 
 import postgres from "postgres";
 
+// DATABASE_URL must point at the dedicated `mise_app` login role (issue #64):
+// non-owner, NOBYPASSRLS, no direct table DML. Owner/`BYPASSRLS` credentials
+// stay out of the application pool (local tests use ADMIN_DATABASE_URL only
+// for fixture setup).
 const sql = postgres(process.env.DATABASE_URL!);
 
 export type Turnover = "high" | "low";
@@ -24,11 +28,58 @@ export type KitchenTool = {
   created_at: string;
 };
 
-// db.ts connects as the `postgres` role, which owns the user-data tables and
-// bypasses RLS (issue #64 will replace that owner connection). Impersonating
-// `authenticated` inside a transaction makes ownership policies on items,
-// kitchen_tools, conversations, and messages actually apply — RLS is a real
-// second layer under the app-level user_id / parent-ownership predicates.
+export type DatabaseConnectionSafety = {
+  currentUser: string;
+  sessionUser: string;
+  rolsuper: boolean;
+  rolbypassrls: boolean;
+  ownsPublicTables: boolean;
+};
+
+/**
+ * Inspect the live pool role. Used by integration tests and production
+ * verification after rotating DATABASE_URL onto `mise_app`.
+ */
+export async function getDatabaseConnectionSafety(): Promise<DatabaseConnectionSafety> {
+  const [row] = await sql<
+    {
+      current_user: string;
+      session_user: string;
+      rolsuper: boolean;
+      rolbypassrls: boolean;
+      owns_public_tables: boolean;
+    }[]
+  >`
+    select
+      current_user,
+      session_user,
+      r.rolsuper,
+      r.rolbypassrls,
+      exists (
+        select 1
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public'
+          and c.relkind = 'r'
+          and c.relowner = r.oid
+      ) as owns_public_tables
+    from pg_roles r
+    where r.rolname = current_user
+  `;
+  return {
+    currentUser: row.current_user,
+    sessionUser: row.session_user,
+    rolsuper: row.rolsuper,
+    rolbypassrls: row.rolbypassrls,
+    ownsPublicTables: row.owns_public_tables,
+  };
+}
+
+// Connect as `mise_app` (fail closed: no table DML, no BYPASSRLS). Each request
+// enters withUserContext, which SET ROLE authenticated + stamps auth.uid() so
+// ownership policies on items, kitchen_tools, conversations, and messages apply.
+// App-level user_id / parent-ownership predicates remain the first layer; RLS is
+// the second. Omitting withUserContext cannot silently run as table owner.
 async function withUserContext<T>(
   userId: string,
   fn: (tx: postgres.TransactionSql) => Promise<T>,

@@ -8,10 +8,14 @@ import {
   listConversations,
   getItems,
   getKitchenTools,
+  getDatabaseConnectionSafety,
 } from "@/lib/db";
 import postgres from "postgres";
 
-const sql = postgres(process.env.DATABASE_URL!);
+// Owner connection for fixtures / privilege catalog checks only.
+const sql = postgres(process.env.ADMIN_DATABASE_URL ?? process.env.DATABASE_URL!);
+// Application pool role — same DATABASE_URL src/lib/db.ts uses.
+const appSql = postgres(process.env.DATABASE_URL!);
 
 const USER_A = "00000000-0000-0000-0000-0000000000a1";
 const USER_B = "00000000-0000-0000-0000-0000000000b2";
@@ -21,7 +25,8 @@ async function asUser<T>(
   userId: string,
   fn: (tx: postgres.TransactionSql) => Promise<T>,
 ): Promise<T> {
-  return sql.begin(async (tx) => {
+  // Impersonate through the real app login role so isolation is proven without BYPASSRLS.
+  return appSql.begin(async (tx) => {
     await tx`select set_config('request.jwt.claim.sub', ${userId}, true)`;
     await tx`set local role authenticated`;
     return fn(tx);
@@ -46,7 +51,8 @@ afterAll(async () => {
   await sql`delete from kitchen_tools where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from items where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from auth.users where id in (${USER_A}, ${USER_B})`;
-  await sql.end();
+  await sql.end({ timeout: 5 });
+  await appSql.end({ timeout: 5 });
 });
 
 beforeEach(async () => {
@@ -366,5 +372,38 @@ describe("RLS ownership across all four user-data tables", () => {
         expect(policy.with_check).toContain("( SELECT auth.uid()");
       }
     }
+  });
+});
+
+describe("fail-closed application connection (mise_app)", () => {
+  it("connects as a non-owner role that cannot bypass RLS", async () => {
+    const safety = await getDatabaseConnectionSafety();
+
+    expect(safety.currentUser).toBe("mise_app");
+    expect(safety.sessionUser).toBe("mise_app");
+    expect(safety.rolsuper).toBe(false);
+    expect(safety.rolbypassrls).toBe(false);
+    expect(safety.ownsPublicTables).toBe(false);
+  });
+
+  it("denies bare queries without withUserContext (no silent owner path)", async () => {
+    await addItem(USER_B, "milk", "1L");
+
+    await expect(appSql`select * from items`).rejects.toThrow(/permission denied|must be owner/i);
+    await expect(
+      appSql`insert into items (user_id, name, quantity) values (${USER_A}, 'eggs', '12')`,
+    ).rejects.toThrow(/permission denied|must be owner/i);
+  });
+
+  it("still serves same-user data through withUserContext helpers", async () => {
+    await addItem(USER_A, "eggs", "12");
+    await addKitchenTool(USER_A, "Skillet", "cookware");
+    const convo = await createConversation(USER_A, "eggs chat", id());
+    await addMessage(USER_A, convo.id, "user", "what can I make?");
+
+    expect((await getItems(USER_A)).map((i) => i.name)).toContain("eggs");
+    expect((await getKitchenTools(USER_A)).map((t) => t.name)).toContain("Skillet");
+    expect((await listConversations(USER_A)).map((c) => c.title)).toContain("eggs chat");
+    expect(await getMessages(USER_A, convo.id)).toHaveLength(1);
   });
 });
