@@ -7,7 +7,11 @@ import postgres from "postgres";
 // non-owner, NOBYPASSRLS, no direct table DML. Owner/`BYPASSRLS` credentials
 // stay out of the application pool (local tests use ADMIN_DATABASE_URL only
 // for fixture setup).
-const sql = postgres(process.env.DATABASE_URL!);
+//
+// Production uses Supavisor's transaction pooler, where consecutive queries can
+// land on different Postgres connections. Prepared statements are connection-local,
+// so Postgres.js must send each query without trying to reuse one across connections.
+const sql = postgres(process.env.DATABASE_URL!, { prepare: false });
 
 export type Turnover = "high" | "low";
 
