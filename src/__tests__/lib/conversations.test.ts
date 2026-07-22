@@ -121,10 +121,10 @@ describe("createConversation → addMessage seam", () => {
   it("message inserted with the same id produces consistent DB state", async () => {
     const newId = id();
     await createConversation(TEST_USER_A, "eggs chat", newId);
-    const msg = await addMessage(newId, "user", "what can I make?");
+    const msg = await addMessage(TEST_USER_A, newId, "user", "what can I make?");
 
     expect(msg.conversation_id).toBe(newId);
-    const messages = await getMessages(newId);
+    const messages = await getMessages(TEST_USER_A, newId);
     expect(messages).toHaveLength(1);
   });
 });
@@ -133,7 +133,7 @@ describe("addMessage + getMessages", () => {
   it("inserts a message and returns it with correct values", async () => {
     const convo = await createConversation(TEST_USER_A, "eggs chat", id());
 
-    const msg = await addMessage(convo.id, "user", "what can I make with eggs?");
+    const msg = await addMessage(TEST_USER_A, convo.id, "user", "what can I make with eggs?");
 
     expect(msg.conversation_id).toBe(convo.id);
     expect(msg.role).toBe("user");
@@ -143,23 +143,42 @@ describe("addMessage + getMessages", () => {
 
   it("getMessages returns messages in chronological order", async () => {
     const convo = await createConversation(TEST_USER_A, "eggs chat", id());
-    await addMessage(convo.id, "user", "what can I make with eggs?");
-    await addMessage(convo.id, "assistant", "frittata, easy.");
+    await addMessage(TEST_USER_A, convo.id, "user", "what can I make with eggs?");
+    await addMessage(TEST_USER_A, convo.id, "assistant", "frittata, easy.");
 
-    const messages = await getMessages(convo.id);
+    const messages = await getMessages(TEST_USER_A, convo.id);
 
     expect(messages).toHaveLength(2);
     expect(messages[0].role).toBe("user");
     expect(messages[1].role).toBe("assistant");
   });
 
+  it("rejects appending a message to another user's conversation", async () => {
+    const convo = await createConversation(TEST_USER_B, "milk chat", id());
+
+    await expect(
+      addMessage(TEST_USER_A, convo.id, "user", "sneaking in"),
+    ).rejects.toThrow(/not found or not owned/i);
+
+    const remaining = await sql`select * from messages where conversation_id = ${convo.id}`;
+    expect(remaining).toHaveLength(0);
+  });
+
+  it("hides another user's messages even when the conversation UUID is known", async () => {
+    const convo = await createConversation(TEST_USER_B, "milk chat", id());
+    await addMessage(TEST_USER_B, convo.id, "user", "what about milk?");
+
+    const leaked = await getMessages(TEST_USER_A, convo.id);
+    expect(leaked).toHaveLength(0);
+  });
+
   it("messages are deleted when their conversation is deleted (cascade)", async () => {
     const convo = await createConversation(TEST_USER_A, "eggs chat", id());
-    await addMessage(convo.id, "user", "what can I make with eggs?");
+    await addMessage(TEST_USER_A, convo.id, "user", "what can I make with eggs?");
 
     await sql`delete from conversations where id = ${convo.id}`;
 
-    const messages = await getMessages(convo.id);
+    const messages = await getMessages(TEST_USER_A, convo.id);
     expect(messages).toHaveLength(0);
   });
 });

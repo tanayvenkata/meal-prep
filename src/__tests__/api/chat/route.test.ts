@@ -167,7 +167,7 @@ describe("POST /api/chat", () => {
     });
     await POST(request);
 
-    expect(mockAddMessage).toHaveBeenCalledWith("conv-1", "user", "hello");
+    expect(mockAddMessage).toHaveBeenCalledWith("user-123", "conv-1", "user", "hello");
   });
 
   it("returns a stream and calls streamChat with kitchen context in instructions", async () => {

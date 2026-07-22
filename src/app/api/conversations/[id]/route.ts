@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const conversation = await getConversation(userId, id);
     if (!conversation) return Response.json({ error: "not found" }, { status: 404 });
 
-    const messages = await getMessages(id);
+    const messages = await getMessages(userId, id);
     return Response.json({ conversation, messages });
   } catch (err) {
     console.error(`GET /api/conversations/${id} failed:`, err);
