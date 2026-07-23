@@ -83,7 +83,46 @@ describe("kitchen reads", () => {
       fakeItem({
         id: 42,
         name: "Rice",
+        quantity: "2 cup",
+        quantity_text: "",
+        quantity_value: "2.000000",
+        quantity_unit: "cup",
+        turnover: "high",
+      }),
+      fakeItem({
+        id: 43,
+        name: "Milk",
         quantity: "2 cups",
+        quantity_text: "2 cups",
+        quantity_value: null,
+        quantity_unit: null,
+        turnover: "low",
+      }),
+      fakeItem({
+        id: 44,
+        name: "Salt",
+        quantity: "",
+        quantity_text: "",
+        quantity_value: null,
+        quantity_unit: null,
+        turnover: "high",
+      }),
+      fakeItem({
+        id: 45,
+        name: "Protein powder",
+        quantity: "4 scoop",
+        quantity_text: "",
+        quantity_value: "4",
+        quantity_unit: "scoop",
+        turnover: "high",
+      }),
+      fakeItem({
+        id: 46,
+        name: "Eggs",
+        quantity: "6",
+        quantity_text: "",
+        quantity_value: "6",
+        quantity_unit: "count",
         turnover: "high",
       }),
     ]);
@@ -92,7 +131,48 @@ describe("kitchen reads", () => {
     ]);
 
     await expect(getKitchenContext("user-123")).resolves.toEqual({
-      pantry: [{ name: "Rice", quantity: "2 cups", turnover: "high" }],
+      pantry: [
+        {
+          name: "Rice",
+          quantity: "2 cup",
+          turnover: "high",
+          quantityMode: "structured",
+          quantityAmount: "2.000000",
+          quantityUnit: "cup",
+        },
+        {
+          name: "Milk",
+          quantity: "2 cups",
+          turnover: "low",
+          quantityMode: "text",
+          quantityAmount: null,
+          quantityUnit: null,
+        },
+        {
+          name: "Salt",
+          quantity: "",
+          turnover: "high",
+          quantityMode: "unknown",
+          quantityAmount: null,
+          quantityUnit: null,
+        },
+        {
+          name: "Protein powder",
+          quantity: "4 scoop",
+          turnover: "high",
+          quantityMode: "unsupported",
+          quantityAmount: "4",
+          quantityUnit: "scoop",
+        },
+        {
+          name: "Eggs",
+          quantity: "6",
+          turnover: "high",
+          quantityMode: "structured",
+          quantityAmount: "6",
+          quantityUnit: "count",
+        },
+      ],
       tools: [{ name: "Dutch oven", kind: "cookware" }],
     });
     expect(mockGetItems).toHaveBeenCalledWith("user-123");

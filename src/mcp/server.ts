@@ -28,20 +28,27 @@ import {
 } from "./auth";
 import { kitchenWidgetResource as generatedKitchenWidgetResource } from "./kitchen-widget.generated";
 import {
+  adjustPantryItemQuantity as adjustPantryQuantity,
   getKitchenContext as loadKitchenContext,
   setPantryItemQuantity as updatePantryItemQuantity,
+  type AdjustPantryItemQuantityOutcome,
 } from "@/lib/kitchen-service";
+import { PANTRY_QUANTITY_UNITS } from "@/lib/pantry-quantity";
 import type { KitchenWidgetResource } from "./build-widget";
 
 const MCP_PATH = "/mcp";
 const KITCHEN_CONTEXT_TOOL = "get_kitchen_context";
 const SET_PANTRY_ITEM_QUANTITY_TOOL = "set_pantry_item_quantity";
+const CONSUME_PANTRY_ITEM_TOOL = "consume_pantry_item";
+const RESTOCK_PANTRY_ITEM_TOOL = "restock_pantry_item";
 const MISE_OAUTH_SECURITY_SCHEMES = [
   { type: "oauth2", scopes: MCP_SCOPES },
 ];
 const AUTHENTICATED_MISE_TOOLS = new Set([
   KITCHEN_CONTEXT_TOOL,
   SET_PANTRY_ITEM_QUANTITY_TOOL,
+  CONSUME_PANTRY_ITEM_TOOL,
+  RESTOCK_PANTRY_ITEM_TOOL,
 ]);
 const LEGACY_KITCHEN_WIDGET_URIS = [
   // Historical ChatGPT messages can re-read the resource URI captured in their
@@ -56,11 +63,13 @@ const LEGACY_KITCHEN_WIDGET_URIS = [
 type KitchenContext = Awaited<ReturnType<typeof loadKitchenContext>>;
 type KitchenContextLoader = (userId: string) => Promise<KitchenContext>;
 type PantryQuantityUpdater = typeof updatePantryItemQuantity;
+type PantryQuantityAdjuster = typeof adjustPantryQuantity;
 
 type MiseServerOptions = {
   kitchenWidgetResource?: KitchenWidgetResource;
   loadKitchenContext?: KitchenContextLoader;
   setPantryItemQuantity?: PantryQuantityUpdater;
+  adjustPantryItemQuantity?: PantryQuantityAdjuster;
 };
 
 const kitchenContextSchema = z.object({
@@ -68,6 +77,14 @@ const kitchenContextSchema = z.object({
     z.object({
       name: z.string(),
       quantity: z.string(),
+      quantityMode: z.enum([
+        "unknown",
+        "text",
+        "structured",
+        "unsupported",
+      ]),
+      quantityAmount: z.string().nullable(),
+      quantityUnit: z.string().nullable(),
       turnover: z.enum(["high", "low"]),
     }),
   ),
@@ -87,6 +104,131 @@ const setPantryItemQuantityOutputSchema = z.object({
   beforeQuantity: z.string().optional(),
   quantity: z.string().optional(),
 });
+
+const canonicalPantryAmountSchema = z.string().trim().regex(
+  /^(?:0|[1-9]\d{0,8})(?:\.\d{1,6})?$/,
+  "Use a canonical nonnegative decimal no greater than 999999999.999999.",
+);
+
+const structuredPantryQuantitySchema = z.object({
+  mode: z.literal("structured"),
+  amount: canonicalPantryAmountSchema,
+  unit: z.enum(PANTRY_QUANTITY_UNITS),
+  text: z.null(),
+}).strict();
+
+const expectedPantryQuantityInputSchema = z.object({
+  amount: canonicalPantryAmountSchema.describe(
+    "Exact nonnegative decimal amount from Mise structured quantity data.",
+  ),
+  unit: z.enum(PANTRY_QUANTITY_UNITS).describe(
+    "Canonical Mise quantity unit. Use count explicitly for counts.",
+  ),
+}).strict();
+
+const deltaPantryQuantityInputSchema = z.object({
+  amount: canonicalPantryAmountSchema.regex(
+    /[1-9]/,
+    "The adjustment amount must be greater than zero.",
+  ).describe("Exact positive decimal amount to consume or restock."),
+  unit: z.enum(PANTRY_QUANTITY_UNITS).describe(
+    "Canonical Mise quantity unit. Use count explicitly for counts.",
+  ),
+}).strict();
+
+const adjustPantryItemQuantityInputSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  expectedQuantity: expectedPantryQuantityInputSchema.describe(
+    "Current structured quantity returned by get_kitchen_context.",
+  ),
+  deltaQuantity: deltaPantryQuantityInputSchema.describe(
+    "Positive same-unit quantity to consume or restock.",
+  ),
+}).strict();
+
+const adjustPantryItemQuantityOutcomeSchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("applied"),
+    operation: z.enum(["consume", "restock"]),
+    name: z.string(),
+    beforeQuantity: z.string(),
+    quantity: z.string(),
+    before: structuredPantryQuantitySchema,
+    delta: structuredPantryQuantitySchema,
+    after: structuredPantryQuantitySchema,
+  }).strict(),
+  z.object({
+    status: z.literal("not_found"),
+    name: z.string(),
+  }).strict(),
+  z.object({
+    status: z.literal("unsupported_quantity"),
+    name: z.string(),
+    currentQuantity: z.string(),
+  }).strict(),
+  z.object({
+    status: z.literal("conflict"),
+    name: z.string(),
+    expected: structuredPantryQuantitySchema,
+    current: structuredPantryQuantitySchema,
+  }).strict(),
+  z.object({
+    status: z.literal("unit_mismatch"),
+    name: z.string(),
+    expectedUnit: z.enum(PANTRY_QUANTITY_UNITS),
+    deltaUnit: z.enum(PANTRY_QUANTITY_UNITS),
+  }).strict(),
+  z.object({
+    status: z.literal("insufficient_quantity"),
+    name: z.string(),
+    current: structuredPantryQuantitySchema,
+    delta: structuredPantryQuantitySchema,
+  }).strict(),
+  z.object({
+    status: z.literal("amount_exceeded"),
+    name: z.string(),
+    current: structuredPantryQuantitySchema,
+    delta: structuredPantryQuantitySchema,
+  }).strict(),
+]);
+
+// McpServer.registerTool requires an object-shaped root schema. Nesting the
+// discriminated outcome preserves an exact per-status contract.
+const adjustPantryItemQuantityOutputSchema = z.object({
+  outcome: adjustPantryItemQuantityOutcomeSchema,
+}).strict();
+
+function formatStructuredToolQuantity(
+  quantity: Extract<
+    AdjustPantryItemQuantityOutcome,
+    { status: "conflict" }
+  >["current"],
+) {
+  return `${quantity.amount} ${quantity.unit}`;
+}
+
+function narratePantryAdjustment(
+  outcome: AdjustPantryItemQuantityOutcome,
+): string {
+  switch (outcome.status) {
+    case "applied":
+      return outcome.operation === "consume"
+        ? `Consumed ${formatStructuredToolQuantity(outcome.delta)} from ${outcome.name}. Quantity is now ${outcome.quantity}.`
+        : `Restocked ${outcome.name} by ${formatStructuredToolQuantity(outcome.delta)}. Quantity is now ${outcome.quantity}.`;
+    case "not_found":
+      return `No pantry item matched ${outcome.name}. Nothing changed.`;
+    case "unsupported_quantity":
+      return `${outcome.name} has an unsupported quantity (${outcome.currentQuantity || "unknown"}). Set an exact structured quantity first.`;
+    case "conflict":
+      return `${outcome.name} is now ${formatStructuredToolQuantity(outcome.current)}. Refresh kitchen context before retrying. Nothing changed.`;
+    case "unit_mismatch":
+      return `Expected ${outcome.expectedUnit}, but the change uses ${outcome.deltaUnit}. Nothing changed.`;
+    case "insufficient_quantity":
+      return `${outcome.name} has ${formatStructuredToolQuantity(outcome.current)}, less than the requested ${formatStructuredToolQuantity(outcome.delta)}. Nothing changed.`;
+    case "amount_exceeded":
+      return `Restocking ${outcome.name} by ${formatStructuredToolQuantity(outcome.delta)} would exceed the quantity limit. Nothing changed.`;
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -154,6 +296,7 @@ export async function createMiseServer(
     kitchenWidgetResource = generatedKitchenWidgetResource,
     loadKitchenContext: getKitchenContext = loadKitchenContext,
     setPantryItemQuantity = updatePantryItemQuantity,
+    adjustPantryItemQuantity = adjustPantryQuantity,
   }: MiseServerOptions = {},
 ) {
   const kitchenWidgetUris = [
@@ -164,7 +307,7 @@ export async function createMiseServer(
     { name: "mise", version: "0.1.0" },
     {
       instructions:
-        "Use get_kitchen_context when current saved inventory or equipment is needed. Use set_pantry_item_quantity only when the user clearly asks to set an exact quantity for an existing pantry item. Never infer a pantry write from recipe planning. If no item matches, explain the result instead of guessing or creating an item.",
+        "Call get_kitchen_context before consume_pantry_item or restock_pantry_item so expectedQuantity comes from current structured data. Mutate only when the user clearly requests that change in the current turn; never infer a write from meal planning. Counts must use count, not a bare number. On conflict, call get_kitchen_context again before proposing another mutation. Use set_pantry_item_quantity only for a clear exact-set request. Never create an item implicitly.",
     },
   );
 
@@ -237,8 +380,7 @@ export async function createMiseServer(
     },
   );
 
-  registerAppTool(
-    server,
+  server.registerTool(
     SET_PANTRY_ITEM_QUANTITY_TOOL,
     {
       title: "Set pantry item quantity",
@@ -248,7 +390,7 @@ export async function createMiseServer(
       outputSchema: setPantryItemQuantityOutputSchema,
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
+        destructiveHint: true,
         idempotentHint: true,
         openWorldHint: false,
       },
@@ -297,6 +439,85 @@ export async function createMiseServer(
     },
   );
 
+  for (const tool of [
+    {
+      name: CONSUME_PANTRY_ITEM_TOOL,
+      operation: "consume" as const,
+      title: "Consume pantry item",
+      description:
+        "Use this when the user clearly says in the current turn that they used or consumed a positive quantity of one existing pantry item. First read get_kitchen_context, then pass its explicit structured value as expectedQuantity and an explicit same-unit quantity to subtract. Counts must include count. Never use for meal planning or inferred consumption.",
+      destructiveHint: true,
+      invoking: "Consuming pantry quantity…",
+      invoked: "Pantry consumption checked.",
+    },
+    {
+      name: RESTOCK_PANTRY_ITEM_TOOL,
+      operation: "restock" as const,
+      title: "Restock pantry item",
+      description:
+        "Use this when the user clearly says in the current turn that they added or restocked a positive quantity of one existing pantry item. First read get_kitchen_context, then pass its explicit structured value as expectedQuantity and an explicit same-unit quantity to add. Counts must include count. Never create an item or infer a restock.",
+      destructiveHint: false,
+      invoking: "Restocking pantry quantity…",
+      invoked: "Pantry restock checked.",
+    },
+  ]) {
+    server.registerTool(
+      tool.name,
+      {
+        title: tool.title,
+        description: tool.description,
+        inputSchema: adjustPantryItemQuantityInputSchema,
+        outputSchema: adjustPantryItemQuantityOutputSchema,
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: tool.destructiveHint,
+          idempotentHint: false,
+          openWorldHint: false,
+        },
+        _meta: {
+          securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+          "openai/toolInvocation/invoking": tool.invoking,
+          "openai/toolInvocation/invoked": tool.invoked,
+        },
+      },
+      async ({ name, expectedQuantity, deltaQuantity }, extra) => {
+        const userId = extra.authInfo?.extra?.userId;
+        if (typeof userId !== "string") {
+          return {
+            isError: true,
+            content: [{
+              type: "text",
+              text: "Connect your Mise account to continue.",
+            }],
+            _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+          };
+        }
+
+        const result = await adjustPantryItemQuantity(userId, {
+          name,
+          operation: tool.operation,
+          expectedQuantity:
+            `${expectedQuantity.amount} ${expectedQuantity.unit}`,
+          deltaQuantity: `${deltaQuantity.amount} ${deltaQuantity.unit}`,
+        });
+        if (!result.ok) {
+          return {
+            isError: true,
+            content: [{ type: "text", text: result.error }],
+          };
+        }
+
+        return {
+          content: [{
+            type: "text",
+            text: narratePantryAdjustment(result.value),
+          }],
+          structuredContent: { outcome: result.value },
+        };
+      },
+    );
+  }
+
   return server;
 }
 
@@ -307,6 +528,7 @@ type MiseHttpServerOptions = {
   kitchenWidgetResource?: KitchenWidgetResource;
   loadKitchenContext?: KitchenContextLoader;
   setPantryItemQuantity?: PantryQuantityUpdater;
+  adjustPantryItemQuantity?: PantryQuantityAdjuster;
 };
 
 function invalidTokenResponse(authConfig = getMcpAuthConfig()) {
@@ -338,9 +560,13 @@ export async function handleMiseMcpRequest(
     verifyAccessToken = verifyMcpAccessToken,
     loadKitchenContext: getKitchenContext = loadKitchenContext,
     setPantryItemQuantity = updatePantryItemQuantity,
+    adjustPantryItemQuantity = adjustPantryQuantity,
   }: Pick<
     MiseHttpServerOptions,
-    "verifyAccessToken" | "loadKitchenContext" | "setPantryItemQuantity"
+    | "verifyAccessToken"
+    | "loadKitchenContext"
+    | "setPantryItemQuantity"
+    | "adjustPantryItemQuantity"
   > = {},
 ) {
   const startedAt = performance.now();
@@ -397,6 +623,7 @@ export async function handleMiseMcpRequest(
   const server = await createMiseServer({
     loadKitchenContext: getKitchenContext,
     setPantryItemQuantity,
+    adjustPantryItemQuantity,
   });
   const transport =
     new OpenAiCompatibleWebStandardStreamableHTTPServerTransport({
@@ -437,6 +664,7 @@ export function createMiseHttpServer({
   kitchenWidgetResource = generatedKitchenWidgetResource,
   loadKitchenContext: getKitchenContext = loadKitchenContext,
   setPantryItemQuantity = updatePantryItemQuantity,
+  adjustPantryItemQuantity = adjustPantryQuantity,
 }: MiseHttpServerOptions = {}) {
   const authConfig = getMcpAuthConfig();
   const app = createMcpExpressApp({
@@ -512,6 +740,7 @@ export function createMiseHttpServer({
       kitchenWidgetResource,
       loadKitchenContext: getKitchenContext,
       setPantryItemQuantity,
+      adjustPantryItemQuantity,
     });
     const transport = new OpenAiCompatibleStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
