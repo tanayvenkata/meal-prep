@@ -7,6 +7,10 @@ import {
   type PantryItem,
   type Turnover,
 } from '@/lib/pantry-api'
+import {
+  filterAndSortInventory,
+  type InventoryListSort,
+} from '@/lib/inventory-list'
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-2 text-sm font-semibold text-text-primary">{children}</h2>
@@ -19,6 +23,8 @@ export default function PantryPage() {
   const [quantity, setQuantity] = useState('')
   const [turnover, setTurnover] = useState<Turnover>('high')
   const [error, setError] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<InventoryListSort>('recent')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [editQuantity, setEditQuantity] = useState('')
@@ -93,8 +99,9 @@ export default function PantryPage() {
     if (saved) setEditingId(null)
   }
 
-  const highTurnover = items.filter((item) => item.turnover === 'high')
-  const lowTurnover = items.filter((item) => item.turnover === 'low')
+  const visibleItems = filterAndSortInventory(items, { query, sort })
+  const highTurnover = visibleItems.filter((item) => item.turnover === 'high')
+  const lowTurnover = visibleItems.filter((item) => item.turnover === 'low')
 
   function renderItems(sectionItems: PantryItem[]) {
     if (!sectionItems.length) return <p className="py-3 text-sm text-text-secondary">Nothing here yet.</p>
@@ -136,8 +143,18 @@ export default function PantryPage() {
     <main className="mx-auto w-full max-w-xl flex-1 overflow-y-auto px-4 py-5 sm:py-8">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold text-text-primary">Pantry</h1>
-        <p className="mt-1 text-sm text-text-secondary">{loading ? 'Loading…' : `${items.length} items`}</p>
+        <p className="mt-1 text-sm text-text-secondary">
+          {loading ? 'Loading…' : query.trim() ? `${visibleItems.length} of ${items.length} items` : `${items.length} items`}
+        </p>
       </header>
+
+      <section aria-label="Organize pantry" className="mb-6 grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem]">
+        <input aria-label="Search pantry" placeholder="Search pantry" value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 border border-outline bg-surface-raised px-3 py-2 text-base" />
+        <select aria-label="Sort pantry" value={sort} onChange={(event) => setSort(event.target.value as InventoryListSort)} className="border border-outline bg-surface-raised px-3 py-2 text-sm">
+          <option value="recent">Recently added</option>
+          <option value="name">A–Z</option>
+        </select>
+      </section>
 
       <section aria-labelledby="add-item-heading" className="mb-8">
         <SectionHeading><span id="add-item-heading">Add an item</span></SectionHeading>
@@ -158,6 +175,8 @@ export default function PantryPage() {
         <p className="text-sm text-text-secondary">Loading pantry…</p>
       ) : items.length === 0 ? (
         <p className="text-sm text-text-secondary">Nothing here yet. Add the ingredients you use.</p>
+      ) : visibleItems.length === 0 ? (
+        <p className="text-sm text-text-secondary">No pantry items match “{query.trim()}”.</p>
       ) : (
         <div className="space-y-8">
           <section aria-labelledby="high-turnover-heading">

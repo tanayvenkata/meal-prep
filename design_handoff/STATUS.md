@@ -86,6 +86,7 @@ Surfaced here so they don't get lost in the per-screen tables. Grouped by what u
 | Empty state with dashed circle | ✅ Done | |
 | Item list: surface cards, sand dividers | ✅ Done | |
 | Ember "Add" button | ✅ Done | |
+| Search + Recently added / A–Z sort | ✅ Done | Shared client-side inventory helper; tools page matches |
 | Pantry as dismissible sheet over chat | ⬜ Not started | Navigation model change — future PR |
 | Grabber handle / swipe-down dismiss | ⬜ Not started | Depends on sheet |
 | Chevron › opens Edit sheet | ⬜ Not started | Depends on Edit sheet |
