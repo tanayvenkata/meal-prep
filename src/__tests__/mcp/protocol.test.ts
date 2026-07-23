@@ -42,6 +42,9 @@ const mockAdjustPantryItemQuantities = vi.fn<
 const mockApplyReviewedReceiptImport = vi.fn<
   typeof import("@/lib/kitchen-service").applyReviewedReceiptImport
 >();
+const mockCreateKitchenTool = vi.fn<
+  typeof import("@/lib/kitchen-service").createKitchenTool
+>();
 const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalMcpPublicUrl = process.env.MCP_PUBLIC_URL;
 
@@ -239,6 +242,21 @@ beforeEach(async () => {
       ],
     },
   });
+  mockCreateKitchenTool.mockReset();
+  mockCreateKitchenTool.mockResolvedValue({
+    ok: true,
+    value: {
+      status: "created",
+      tool: {
+        id: "00000000-0000-4000-8000-000000000010",
+        user_id: "user-123",
+        name: "Cast iron skillet",
+        name_key: "cast iron skillet",
+        kind: "cookware",
+        created_at: "2026-07-23T22:00:00Z",
+      },
+    },
+  });
 
   httpServer = createMiseHttpServer({
     verifyAccessToken: verifyTestAccessToken,
@@ -247,6 +265,7 @@ beforeEach(async () => {
     adjustPantryItemQuantity: mockAdjustPantryItemQuantity,
     adjustPantryItemQuantities: mockAdjustPantryItemQuantities,
     applyReviewedReceiptImport: mockApplyReviewedReceiptImport,
+    createKitchenTool: mockCreateKitchenTool,
   });
   await new Promise<void>((resolve, reject) => {
     httpServer.once("error", reject);
@@ -518,6 +537,141 @@ describe("Mise MCP OAuth wire contract", () => {
       "beforeQuantity",
       "quantity",
     ]);
+  });
+
+  it("publishes and executes retry-safe kitchen tool creation without exposing ownership fields", async () => {
+    const listResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 70,
+      method: "tools/list",
+    }, "test-token");
+    const listBody = await listResponse.json() as {
+      result: { tools: Array<Record<string, unknown>> };
+    };
+    const tool = listBody.result.tools.find(
+      ({ name }) => name === "add_kitchen_tool",
+    );
+    expect(tool).toMatchObject({
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["name", "kind"],
+      },
+      outputSchema: {
+        type: "object",
+        required: ["status", "tool"],
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      securitySchemes: [{ type: "oauth2", scopes: ["openid"] }],
+      _meta: {
+        securitySchemes: [{ type: "oauth2", scopes: ["openid"] }],
+      },
+    });
+    expect((tool?._meta as Record<string, unknown>).ui).toBeUndefined();
+
+    const response = await postMcp({
+      jsonrpc: "2.0",
+      id: 71,
+      method: "tools/call",
+      params: {
+        name: "add_kitchen_tool",
+        arguments: {
+          name: " Cast iron skillet ",
+          kind: "cookware",
+        },
+      },
+    }, "test-token");
+    const body = await response.json() as {
+      result: {
+        content: Array<{ type: string; text: string }>;
+        structuredContent: Record<string, unknown>;
+      };
+    };
+    expect(body.result).toEqual({
+      content: [{
+        type: "text",
+        text: "Added Cast iron skillet to your kitchen tools.",
+      }],
+      structuredContent: {
+        status: "created",
+        tool: {
+          id: "00000000-0000-4000-8000-000000000010",
+          name: "Cast iron skillet",
+          kind: "cookware",
+          created_at: "2026-07-23T22:00:00Z",
+        },
+      },
+    });
+    expect(mockCreateKitchenTool).toHaveBeenCalledWith("user-123", {
+      name: "Cast iron skillet",
+      kind: "cookware",
+    });
+    expect(body.result.structuredContent.tool).not.toHaveProperty("user_id");
+    expect(body.result.structuredContent.tool).not.toHaveProperty("name_key");
+
+    mockCreateKitchenTool.mockResolvedValueOnce({
+      ok: true,
+      value: {
+        status: "already_exists",
+        tool: {
+          id: "00000000-0000-4000-8000-000000000010",
+          user_id: "user-123",
+          name: "Cast iron skillet",
+          name_key: "cast iron skillet",
+          kind: "cookware",
+          created_at: "2026-07-23T22:00:00Z",
+        },
+      },
+    });
+    const retry = await postMcp({
+      jsonrpc: "2.0",
+      id: 74,
+      method: "tools/call",
+      params: {
+        name: "add_kitchen_tool",
+        arguments: {
+          name: "  CAST IRON SKILLET ",
+          kind: "cookware",
+        },
+      },
+    }, "test-token");
+    await expect(retry.json()).resolves.toMatchObject({
+      result: {
+        content: [{
+          type: "text",
+          text: "Cast iron skillet is already in your kitchen tools.",
+        }],
+        structuredContent: { status: "already_exists" },
+      },
+    });
+  });
+
+  it("rejects caller identity and invalid kinds before kitchen tool creation", async () => {
+    for (const arguments_ of [
+      {
+        name: "Cast iron skillet",
+        kind: "cookware",
+        userId: "attacker-selected-user",
+      },
+      { name: "Cast iron skillet", kind: "utensil" },
+    ]) {
+      const response = await postMcp({
+        jsonrpc: "2.0",
+        id: 72,
+        method: "tools/call",
+        params: { name: "add_kitchen_tool", arguments: arguments_ },
+      }, "test-token");
+      const body = await response.json() as {
+        result: { isError?: boolean };
+      };
+      expect(body.result.isError).toBe(true);
+    }
+    expect(mockCreateKitchenTool).not.toHaveBeenCalled();
   });
 
   it("never accepts caller-supplied identity for a pantry write", async () => {
@@ -1617,6 +1771,7 @@ describe("Mise MCP OAuth wire contract", () => {
       adjustPantryItemQuantity: mockAdjustPantryItemQuantity,
       adjustPantryItemQuantities: mockAdjustPantryItemQuantities,
       applyReviewedReceiptImport: mockApplyReviewedReceiptImport,
+      createKitchenTool: mockCreateKitchenTool,
     });
     const body = (await response.json()) as {
       result: { tools: Array<Record<string, unknown>> };
@@ -1624,6 +1779,7 @@ describe("Mise MCP OAuth wire contract", () => {
     expect(response.status).toBe(200);
     for (const name of [
       "get_kitchen_context",
+      "add_kitchen_tool",
       "set_pantry_item_quantity",
       "consume_pantry_item",
       "restock_pantry_item",
@@ -1639,6 +1795,60 @@ describe("Mise MCP OAuth wire contract", () => {
         (tool?._meta as Record<string, unknown>).securitySchemes,
       ).toEqual(expectedSchemes);
     }
+  });
+
+  it("adds a kitchen tool once through the hosted transport with authenticated identity", async () => {
+    const request = new Request("https://mcp.mise.example/mcp", {
+      method: "POST",
+      headers: {
+        accept: "application/json, text/event-stream",
+        authorization: "Bearer test-token",
+        "content-type": "application/json",
+        "mcp-protocol-version": "2025-11-25",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 73,
+        method: "tools/call",
+        params: {
+          name: "add_kitchen_tool",
+          arguments: {
+            name: "Cast iron skillet",
+            kind: "cookware",
+          },
+        },
+      }),
+    });
+    const response = await handleMiseMcpRequest(request, {
+      verifyAccessToken: verifyTestAccessToken,
+      loadKitchenContext: mockLoadKitchenContext,
+      setPantryItemQuantity: mockSetPantryItemQuantity,
+      adjustPantryItemQuantity: mockAdjustPantryItemQuantity,
+      adjustPantryItemQuantities: mockAdjustPantryItemQuantities,
+      applyReviewedReceiptImport: mockApplyReviewedReceiptImport,
+      createKitchenTool: mockCreateKitchenTool,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      result: {
+        content: [{
+          type: "text",
+          text: "Added Cast iron skillet to your kitchen tools.",
+        }],
+        structuredContent: {
+          status: "created",
+          tool: {
+            name: "Cast iron skillet",
+            kind: "cookware",
+          },
+        },
+      },
+    });
+    expect(mockCreateKitchenTool).toHaveBeenCalledWith("user-123", {
+      name: "Cast iron skillet",
+      kind: "cookware",
+    });
   });
 
   it("executes the pantry batch once through the hosted transport with authenticated identity", async () => {

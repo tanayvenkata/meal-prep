@@ -31,6 +31,7 @@ import {
   applyReviewedReceiptImport as importReviewedReceipt,
   adjustPantryItemQuantities as adjustPantryQuantities,
   adjustPantryItemQuantity as adjustPantryQuantity,
+  createKitchenTool as addKitchenTool,
   getKitchenContext as loadKitchenContext,
   setPantryItemQuantity as updatePantryItemQuantity,
   type ApplyReviewedReceiptImportOutcome,
@@ -42,6 +43,7 @@ import type { KitchenWidgetResource } from "./build-widget";
 
 const MCP_PATH = "/mcp";
 const KITCHEN_CONTEXT_TOOL = "get_kitchen_context";
+const ADD_KITCHEN_TOOL = "add_kitchen_tool";
 const SET_PANTRY_ITEM_QUANTITY_TOOL = "set_pantry_item_quantity";
 const CONSUME_PANTRY_ITEM_TOOL = "consume_pantry_item";
 const RESTOCK_PANTRY_ITEM_TOOL = "restock_pantry_item";
@@ -52,6 +54,7 @@ const MISE_OAUTH_SECURITY_SCHEMES = [
 ];
 const AUTHENTICATED_MISE_TOOLS = new Set([
   KITCHEN_CONTEXT_TOOL,
+  ADD_KITCHEN_TOOL,
   SET_PANTRY_ITEM_QUANTITY_TOOL,
   CONSUME_PANTRY_ITEM_TOOL,
   RESTOCK_PANTRY_ITEM_TOOL,
@@ -74,6 +77,7 @@ type PantryQuantityUpdater = typeof updatePantryItemQuantity;
 type PantryQuantityAdjuster = typeof adjustPantryQuantity;
 type PantryQuantityBatchAdjuster = typeof adjustPantryQuantities;
 type ReviewedReceiptImporter = typeof importReviewedReceipt;
+type KitchenToolCreator = typeof addKitchenTool;
 
 type MiseServerOptions = {
   kitchenWidgetResource?: KitchenWidgetResource;
@@ -82,6 +86,7 @@ type MiseServerOptions = {
   adjustPantryItemQuantity?: PantryQuantityAdjuster;
   adjustPantryItemQuantities?: PantryQuantityBatchAdjuster;
   applyReviewedReceiptImport?: ReviewedReceiptImporter;
+  createKitchenTool?: KitchenToolCreator;
 };
 
 const kitchenContextSchema = z.object({
@@ -103,6 +108,21 @@ const kitchenContextSchema = z.object({
   tools: z.array(
     z.object({ name: z.string(), kind: z.string() }),
   ),
+});
+
+const addKitchenToolInputSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  kind: z.enum(["appliance", "cookware", "bakeware"]),
+}).strict();
+
+const kitchenToolMutationOutputSchema = z.object({
+  status: z.enum(["created", "already_exists"]),
+  tool: z.object({
+    id: z.uuid(),
+    name: z.string(),
+    kind: z.enum(["appliance", "cookware", "bakeware"]),
+    created_at: z.string(),
+  }),
 });
 
 const setPantryItemQuantityInputSchema = z.object({
@@ -562,6 +582,7 @@ export async function createMiseServer(
     adjustPantryItemQuantity = adjustPantryQuantity,
     adjustPantryItemQuantities = adjustPantryQuantities,
     applyReviewedReceiptImport = importReviewedReceipt,
+    createKitchenTool = addKitchenTool,
   }: MiseServerOptions = {},
 ) {
   const kitchenWidgetUris = [
@@ -572,7 +593,7 @@ export async function createMiseServer(
     { name: "mise", version: "0.1.0" },
     {
       instructions:
-        "Read get_kitchen_context before relative or receipt writes. Use apply_pantry_adjustments once for a confirmed current-turn list. Use apply_reviewed_receipt_import only after the user confirms exact create/restock lines; receipt images and proposals alone never authorize writes. Reuse its UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection/conflict, reread. Exact set requires a clear request.",
+        "Read get_kitchen_context before relative or receipt writes. Use add_kitchen_tool only after a clear current-turn request; canonical retries are safe. Use apply_pantry_adjustments once for a confirmed current-turn list. Use apply_reviewed_receipt_import only after exact confirmation; receipt images and proposals alone never authorize writes. Reuse its UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection/conflict, reread. Exact set requires a clear request.",
     },
   );
 
@@ -641,6 +662,65 @@ export async function createMiseServer(
       return {
         content: [{ type: "text", text: "Returned your Mise kitchen context." }],
         structuredContent: kitchenContext,
+      };
+    },
+  );
+
+  server.registerTool(
+    ADD_KITCHEN_TOOL,
+    {
+      title: "Add kitchen tool",
+      description:
+        "Use this when the user clearly asks in the current turn to save one kitchen tool in Mise. Choose exactly one kind: appliance, cookware, or bakeware. Canonical-equivalent retries return the existing tool instead of creating a duplicate. Never infer ownership or save a merely discussed tool.",
+      inputSchema: addKitchenToolInputSchema,
+      outputSchema: kitchenToolMutationOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: {
+        securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+        "openai/toolInvocation/invoking": "Adding kitchen tool…",
+        "openai/toolInvocation/invoked": "Kitchen tool checked.",
+      },
+    },
+    async ({ name, kind }, extra) => {
+      const userId = extra.authInfo?.extra?.userId;
+      if (typeof userId !== "string") {
+        return {
+          isError: true,
+          content: [{
+            type: "text",
+            text: "Connect your Mise account to continue.",
+          }],
+          _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+        };
+      }
+
+      const result = await createKitchenTool(userId, { name, kind });
+      if (!result.ok) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: result.error }],
+        };
+      }
+      const outcome = {
+        status: result.value.status,
+        tool: {
+          id: result.value.tool.id,
+          name: result.value.tool.name,
+          kind: result.value.tool.kind,
+          created_at: result.value.tool.created_at,
+        },
+      };
+      const text = outcome.status === "created"
+        ? `Added ${outcome.tool.name} to your kitchen tools.`
+        : `${outcome.tool.name} is already in your kitchen tools.`;
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: outcome,
       };
     },
   );
@@ -925,6 +1005,7 @@ type MiseHttpServerOptions = {
   adjustPantryItemQuantity?: PantryQuantityAdjuster;
   adjustPantryItemQuantities?: PantryQuantityBatchAdjuster;
   applyReviewedReceiptImport?: ReviewedReceiptImporter;
+  createKitchenTool?: KitchenToolCreator;
 };
 
 function invalidTokenResponse(authConfig = getMcpAuthConfig()) {
@@ -959,6 +1040,7 @@ export async function handleMiseMcpRequest(
     adjustPantryItemQuantity = adjustPantryQuantity,
     adjustPantryItemQuantities = adjustPantryQuantities,
     applyReviewedReceiptImport = importReviewedReceipt,
+    createKitchenTool = addKitchenTool,
   }: Pick<
     MiseHttpServerOptions,
     | "verifyAccessToken"
@@ -967,6 +1049,7 @@ export async function handleMiseMcpRequest(
     | "adjustPantryItemQuantity"
     | "adjustPantryItemQuantities"
     | "applyReviewedReceiptImport"
+    | "createKitchenTool"
   > = {},
 ) {
   const startedAt = performance.now();
@@ -1026,6 +1109,7 @@ export async function handleMiseMcpRequest(
     adjustPantryItemQuantity,
     adjustPantryItemQuantities,
     applyReviewedReceiptImport,
+    createKitchenTool,
   });
   const transport =
     new OpenAiCompatibleWebStandardStreamableHTTPServerTransport({
@@ -1069,6 +1153,7 @@ export function createMiseHttpServer({
   adjustPantryItemQuantity = adjustPantryQuantity,
   adjustPantryItemQuantities = adjustPantryQuantities,
   applyReviewedReceiptImport = importReviewedReceipt,
+  createKitchenTool = addKitchenTool,
 }: MiseHttpServerOptions = {}) {
   const authConfig = getMcpAuthConfig();
   const app = createMcpExpressApp({
@@ -1147,6 +1232,7 @@ export function createMiseHttpServer({
       adjustPantryItemQuantity,
       adjustPantryItemQuantities,
       applyReviewedReceiptImport,
+      createKitchenTool,
     });
     const transport = new OpenAiCompatibleStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
