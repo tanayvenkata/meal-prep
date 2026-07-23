@@ -1,12 +1,15 @@
 import { createConversation, listConversations } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getRequestAuth } from "@/lib/auth";
 
 export async function GET(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (auth.oauthClientId) {
+    return Response.json({ error: "oauth client is not permitted" }, { status: 403 });
+  }
 
   try {
-    const conversations = await listConversations(userId);
+    const conversations = await listConversations(auth.userId);
     return Response.json(conversations);
   } catch (err) {
     console.error("GET /api/conversations failed:", err);
@@ -15,8 +18,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (auth.oauthClientId) {
+    return Response.json({ error: "oauth client is not permitted" }, { status: 403 });
+  }
 
   const { title, id } = await request.json();
   if (!title || title.trim() === "") {
@@ -24,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const conversation = await createConversation(userId, title.trim(), id ?? crypto.randomUUID());
+    const conversation = await createConversation(auth.userId, title.trim(), id ?? crypto.randomUUID());
     return Response.json(conversation, { status: 201 });
   } catch (err) {
     console.error("POST /api/conversations failed:", err);

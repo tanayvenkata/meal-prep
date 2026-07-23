@@ -3,7 +3,7 @@ import { GET, POST, PUT, DELETE } from "@/app/api/pantry/route";
 import { fakeItem } from "@/__tests__/helpers/fixtures";
 
 vi.mock("@/lib/auth", () => ({
-  getUserId: vi.fn(),
+  getRequestAuth: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -13,10 +13,10 @@ vi.mock("@/lib/db", () => ({
   deleteItem: vi.fn(),
 }));
 
-import { getUserId } from "@/lib/auth";
+import { getRequestAuth } from "@/lib/auth";
 import { getItems, addItem, updateItem, deleteItem } from "@/lib/db";
 
-const mockGetUserId = vi.mocked(getUserId);
+const mockGetRequestAuth = vi.mocked(getRequestAuth);
 const mockGetItems = vi.mocked(getItems);
 const mockAddItem = vi.mocked(addItem);
 const mockUpdateItem = vi.mocked(updateItem);
@@ -28,7 +28,7 @@ beforeEach(() => {
 
 describe("GET /api/pantry", () => {
   it("returns 401 when not authenticated", async () => {
-    mockGetUserId.mockResolvedValue(null);
+    mockGetRequestAuth.mockResolvedValue(null);
 
     const request = new Request("http://localhost/api/pantry");
     const response = await GET(request);
@@ -39,7 +39,7 @@ describe("GET /api/pantry", () => {
   });
 
   it("returns 200 with items for authenticated user", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockGetItems.mockResolvedValue([fakeItem()]);
 
     const request = new Request("http://localhost/api/pantry");
@@ -53,7 +53,7 @@ describe("GET /api/pantry", () => {
 
 describe("POST /api/pantry", () => {
   it("returns 401 when not authenticated", async () => {
-    mockGetUserId.mockResolvedValue(null);
+    mockGetRequestAuth.mockResolvedValue(null);
 
     const request = new Request("http://localhost/api/pantry", {
       method: "POST",
@@ -66,8 +66,24 @@ describe("POST /api/pantry", () => {
     expect(body.error).toBe("unauthorized");
   });
 
+  it("returns 403 for an OAuth client token", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: "chatgpt-client",
+    });
+
+    const response = await POST(new Request("http://localhost/api/pantry", {
+      method: "POST",
+      body: JSON.stringify({ name: "eggs", quantity: "12" }),
+    }));
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error).toBe("oauth client is read-only");
+    expect(mockAddItem).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when name is missing", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const request = new Request("http://localhost/api/pantry", {
       method: "POST",
@@ -81,7 +97,7 @@ describe("POST /api/pantry", () => {
   });
 
   it("returns 400 when name is empty string", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const request = new Request("http://localhost/api/pantry", {
       method: "POST",
@@ -95,7 +111,7 @@ describe("POST /api/pantry", () => {
   });
 
   it("returns 400 when name is not a string", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const request = new Request("http://localhost/api/pantry", {
       method: "POST",
@@ -109,7 +125,7 @@ describe("POST /api/pantry", () => {
   });
 
   it("returns 400 when name exceeds 100 characters", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const request = new Request("http://localhost/api/pantry", {
       method: "POST",
@@ -124,7 +140,7 @@ describe("POST /api/pantry", () => {
   });
 
   it("returns 201 with the new item", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockAddItem.mockResolvedValue(fakeItem());
 
     const request = new Request("http://localhost/api/pantry", {
@@ -140,7 +156,7 @@ describe("POST /api/pantry", () => {
   });
 
   it("accepts a low-turnover item", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockAddItem.mockResolvedValue(fakeItem({ turnover: "low" }));
 
     const request = new Request("http://localhost/api/pantry", {
@@ -154,7 +170,7 @@ describe("POST /api/pantry", () => {
   });
 
   it("rejects an unknown turnover value", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const request = new Request("http://localhost/api/pantry", {
       method: "POST",
@@ -170,7 +186,7 @@ describe("POST /api/pantry", () => {
 
 describe("PUT /api/pantry", () => {
   it("returns 401 when not authenticated", async () => {
-    mockGetUserId.mockResolvedValue(null);
+    mockGetRequestAuth.mockResolvedValue(null);
 
     const request = new Request("http://localhost/api/pantry", {
       method: "PUT",
@@ -183,8 +199,23 @@ describe("PUT /api/pantry", () => {
     expect(body.error).toBe("unauthorized");
   });
 
+  it("returns 403 for an OAuth client token", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: "chatgpt-client",
+    });
+
+    const response = await PUT(new Request("http://localhost/api/pantry", {
+      method: "PUT",
+      body: JSON.stringify({ id: 1, quantity: "6" }),
+    }));
+
+    expect(response.status).toBe(403);
+    expect(mockUpdateItem).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when id is missing", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const request = new Request("http://localhost/api/pantry", {
       method: "PUT",
@@ -198,7 +229,7 @@ describe("PUT /api/pantry", () => {
   });
 
   it("returns 400 when name is provided but whitespace-only", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const request = new Request("http://localhost/api/pantry", {
       method: "PUT",
@@ -213,7 +244,7 @@ describe("PUT /api/pantry", () => {
   });
 
   it("returns 400 when name exceeds 100 characters", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const request = new Request("http://localhost/api/pantry", {
       method: "PUT",
@@ -228,7 +259,7 @@ describe("PUT /api/pantry", () => {
   });
 
   it("returns 200 when name is omitted (quantity-only update)", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockUpdateItem.mockResolvedValue(fakeItem({ quantity: "6" }));
 
     const request = new Request("http://localhost/api/pantry", {
@@ -242,7 +273,7 @@ describe("PUT /api/pantry", () => {
   });
 
   it("updates turnover when provided", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockUpdateItem.mockResolvedValue(fakeItem({ turnover: "low" }));
 
     const request = new Request("http://localhost/api/pantry", {
@@ -256,7 +287,7 @@ describe("PUT /api/pantry", () => {
   });
 
   it("returns 200 with the updated item", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockUpdateItem.mockResolvedValue(fakeItem({ quantity: "6" }));
 
     const request = new Request("http://localhost/api/pantry", {
@@ -274,7 +305,7 @@ describe("PUT /api/pantry", () => {
 
 describe("DELETE /api/pantry", () => {
   it("returns 401 when not authenticated", async () => {
-    mockGetUserId.mockResolvedValue(null);
+    mockGetRequestAuth.mockResolvedValue(null);
 
     const request = new Request("http://localhost/api/pantry", {
       method: "DELETE",
@@ -287,8 +318,23 @@ describe("DELETE /api/pantry", () => {
     expect(body.error).toBe("unauthorized");
   });
 
+  it("returns 403 for an OAuth client token", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: "chatgpt-client",
+    });
+
+    const response = await DELETE(new Request("http://localhost/api/pantry", {
+      method: "DELETE",
+      body: JSON.stringify({ id: 1 }),
+    }));
+
+    expect(response.status).toBe(403);
+    expect(mockDeleteItem).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when id is missing", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const request = new Request("http://localhost/api/pantry", {
       method: "DELETE",
@@ -302,7 +348,7 @@ describe("DELETE /api/pantry", () => {
   });
 
   it("returns 200 with success on deletion", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockDeleteItem.mockResolvedValue();
 
     const request = new Request("http://localhost/api/pantry", {

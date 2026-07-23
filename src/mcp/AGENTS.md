@@ -44,6 +44,12 @@ transitive dependencies.
 - Enforce authentication at the MCP HTTP boundary for account-specific data,
   verify token validity and required claims server-side, and retain per-tool
   `securitySchemes` as defense in depth and host-facing metadata.
+- Supabase's standard OAuth scopes describe OIDC identity claims; they do not
+  limit Data API permissions. Preserve the OAuth `client_id` through every
+  HTTP authorization decision. Direct OAuth tokens may read only the owning
+  user's pantry/tools and may not access chat data or call website mutation
+  routes. MCP writes, when intentionally added, must execute through Mise's
+  authenticated service boundary rather than widening direct token access.
 
 ## Required protocol validation
 

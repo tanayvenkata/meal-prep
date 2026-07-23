@@ -4,7 +4,7 @@ import {
   getKitchenTools,
   updateKitchenTool,
 } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getRequestAuth } from "@/lib/auth";
 
 const MAX_NAME_LENGTH = 100;
 const MAX_KIND_LENGTH = 50;
@@ -21,11 +21,11 @@ function validateText(value: unknown, field: "name" | "kind", maxLength: number)
 }
 
 export async function GET(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   try {
-    return Response.json(await getKitchenTools(userId));
+    return Response.json(await getKitchenTools(auth.userId));
   } catch (err) {
     console.error("GET /api/tools failed:", err);
     return Response.json({ error: "failed to fetch kitchen tools" }, { status: 500 });
@@ -33,8 +33,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (auth.oauthClientId) {
+    return Response.json({ error: "oauth client is read-only" }, { status: 403 });
+  }
 
   const { name, kind } = await request.json();
   const validName = validateText(name, "name", MAX_NAME_LENGTH);
@@ -43,7 +46,7 @@ export async function POST(request: Request) {
   if ("error" in validKind) return Response.json({ error: validKind.error }, { status: 400 });
 
   try {
-    return Response.json(await addKitchenTool(userId, validName.value, validKind.value), { status: 201 });
+    return Response.json(await addKitchenTool(auth.userId, validName.value, validKind.value), { status: 201 });
   } catch (err) {
     console.error("POST /api/tools failed:", err);
     return Response.json({ error: "failed to add kitchen tool" }, { status: 500 });
@@ -51,8 +54,11 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (auth.oauthClientId) {
+    return Response.json({ error: "oauth client is read-only" }, { status: 403 });
+  }
 
   const { id, name, kind } = await request.json();
   if (typeof id !== "string" || id === "") {
@@ -64,7 +70,7 @@ export async function PUT(request: Request) {
   if ("error" in validKind) return Response.json({ error: validKind.error }, { status: 400 });
 
   try {
-    return Response.json(await updateKitchenTool(userId, id, validName.value, validKind.value));
+    return Response.json(await updateKitchenTool(auth.userId, id, validName.value, validKind.value));
   } catch (err) {
     console.error("PUT /api/tools failed:", err);
     return Response.json({ error: "failed to update kitchen tool" }, { status: 500 });
@@ -72,8 +78,11 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (auth.oauthClientId) {
+    return Response.json({ error: "oauth client is read-only" }, { status: 403 });
+  }
 
   const { id } = await request.json();
   if (typeof id !== "string" || id === "") {
@@ -81,7 +90,7 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    await deleteKitchenTool(userId, id);
+    await deleteKitchenTool(auth.userId, id);
     return Response.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/tools failed:", err);
