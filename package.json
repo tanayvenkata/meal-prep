@@ -15,7 +15,7 @@
     "test:integration": "vitest --run src/__tests__/lib",
     "db:provision-app-role": "node scripts/provision-mise-app-role.mjs",
     "mcp:widget": "tsx scripts/build-mcp-widget.ts",
-    "mcp:serve": "tsx watch --include 'src/mcp/kitchen-widget.*' src/mcp/standalone.ts",
+    "mcp:serve": "tsx watch --include 'src/mcp/widget/**/*' src/mcp/standalone.ts",
     "mcp:dev": "doppler run -- npm run mcp:serve",
     "prepare": "husky"
   },
@@ -49,6 +49,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "husky": "^9.1.7",
+    "resolve.exports": "^2.0.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
     "typescript": "^5",
