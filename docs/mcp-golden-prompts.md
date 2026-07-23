@@ -49,6 +49,13 @@ conversation proves real tool selection, account linking, and rendering.
 | Ambiguous batch quantity | “I used some eggs and a little flour; update Mise.” | Does not call a mutation tool until every requested line has an exact positive structured delta. |
 | Partial-failure rollback | With fresh Eggs and stale Flour expectations, ask to apply both consumes together. | Returns `rejected` with the Flour conflict and states that no pantry changes were applied; Eggs also remains unchanged. |
 | Batch retry | Immediately repeat an applied batch with its old expectations. | Returns `rejected` conflicts and applies no line twice while the stored quantities remain changed. ChatGPT rereads before proposing another call. |
+| Receipt proposal | Attach a grocery receipt and ask Mise to update the pantry. | ChatGPT reads fresh kitchen context, interprets the image, asks about ambiguous names/quantities and create-versus-restock decisions, then presents exact typed lines. It does not call `apply_reviewed_receipt_import` yet. |
+| Confirmed receipt | After reviewing the exact proposal, say “Yes, apply those receipt additions.” | Calls `apply_reviewed_receipt_import` once with one fresh UUID and the complete confirmed line list. The result is atomic: every create/restock applies or none does. |
+| Receipt replay | Retry the identical confirmed import with the same UUID. | Returns the original outcome with `replayed: true`; no item is created twice and no restock is added twice. |
+| Reused receipt ID | Reuse an earlier UUID with any changed line, quantity, decision, or create display name. | Returns `request_id_reused`; nothing changes and ChatGPT generates a fresh UUID only after the changed proposal is confirmed. |
+| Ambiguous receipt | A photographed line is unclear, lacks a supported unit, or could refer to an existing pantry item. | Does not call the import tool until the user resolves the exact quantity and explicit create-versus-restock decision. No fuzzy matching or unit conversion occurs. |
+| Receipt rejection | Confirm a proposal whose fresh restock expectation becomes stale before the call. | Returns `rejected`, clearly states that zero lines applied, rereads kitchen context, and asks before submitting any revised proposal. |
+| Receipt planning negative | Ask what a photographed grocery list could be used to cook. | May read kitchen context, but does not call `apply_reviewed_receipt_import` because the user did not confirm a pantry mutation. |
 
 ## Reversible production mutation check
 
@@ -79,6 +86,21 @@ Use two harmless structured items, for example `6 count` Eggs and `2 bag` Rice:
 Do not replay the original first batch after restoring both baselines; the same ABA limitation applies
 to a batch as to a single relative change.
 
+## Reversible production receipt-import check
+
+Use two harmless existing structured items so the test leaves no new pantry row behind:
+
+1. Read the kitchen and record both exact structured baselines.
+2. Present an exact two-line restock proposal and explicitly confirm it.
+3. Call `apply_reviewed_receipt_import` once with a fresh UUID and both fresh expectations.
+4. Repeat the identical call with the same UUID; verify `replayed: true` and no second addition.
+5. Read again, then use one confirmed inverse `apply_pantry_adjustments` consume batch.
+6. Read once more and verify both original baselines are restored.
+
+Local protocol and database tests cover mixed create/restock behavior. Production dogfood uses
+existing items because the current MCP surface intentionally has no delete action for a temporary
+created row.
+
 ## Generic MCP Apps bridge check
 
 In MCP Inspector:
@@ -93,9 +115,10 @@ In MCP Inspector:
    no browser network access.
 
 With read and write tools present, server-level instructions define their shared boundary: read
-before relative mutations, use one batch call for a confirmed current-turn list, pass explicit
-structured expectations, refresh after rejection or conflict, and never infer a write from recipe
-planning. Each descriptor still carries its own narrow “when to use” guidance.
+before relative or receipt mutations, use one batch call for a confirmed current-turn list, call
+the receipt action only after exact line confirmation, pass explicit structured expectations,
+refresh after rejection or conflict, and never infer a write from an image or recipe planning.
+Each descriptor still carries its own narrow “when to use” guidance.
 
 The older `ui://widget/kitchen-context-v*.html` resources are compatibility aliases for historical
 ChatGPT messages that may re-read their original resource URI. Remove them only after production
