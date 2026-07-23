@@ -18,11 +18,31 @@ export type Turnover = "high" | "low";
 export type Item = {
   id: number;
   name: string;
+  name_key: string;
   quantity: string;
   turnover: Turnover;
   created_at: string;
   user_id: string;
 };
+
+export type AddItemResult =
+  | { status: "created"; item: Item }
+  | { status: "already_exists"; item: Item };
+
+export type UpdateItemResult =
+  | { status: "updated"; item: Item }
+  | { status: "not_found" }
+  | { status: "name_conflict" };
+
+export type UpdateItemChanges = {
+  name?: string;
+  quantity?: string;
+  turnover?: Turnover;
+};
+
+export type SetItemQuantityResult =
+  | { status: "updated"; item: Item }
+  | { status: "not_found" };
 
 export type KitchenTool = {
   id: string;
@@ -130,9 +150,36 @@ export async function getItems(userId: string): Promise<Item[]> {
     tx<Item[]>`
       select * from items
       where user_id = ${userId}
-      order by created_at desc
+      order by created_at desc, id desc
     `,
   );
+}
+
+export async function getItemById(
+  userId: string,
+  id: number,
+): Promise<Item | null> {
+  return withUserContext(userId, async (tx) => {
+    const [item] = await tx<Item[]>`
+      select * from items
+      where user_id = ${userId} and id = ${id}
+    `;
+    return item ?? null;
+  });
+}
+
+export async function getItemByCanonicalName(
+  userId: string,
+  name: string,
+): Promise<Item | null> {
+  return withUserContext(userId, async (tx) => {
+    const [item] = await tx<Item[]>`
+      select * from items
+      where user_id = ${userId}
+        and name_key = public.canonical_pantry_name(${name})
+    `;
+    return item ?? null;
+  });
 }
 
 export async function addItem(
@@ -140,32 +187,89 @@ export async function addItem(
   name: string,
   quantity: string,
   turnover: Turnover = "high",
-): Promise<Item> {
+): Promise<AddItemResult> {
   return withUserContext(userId, async (tx) => {
     const [item] = await tx<Item[]>`
       insert into items (user_id, name, quantity, turnover)
       values (${userId}, ${name}, ${quantity}, ${turnover})
+      on conflict (user_id, name_key) do nothing
       returning *
     `;
-    return item;
+    if (item) return { status: "created", item };
+
+    const [existing] = await tx<Item[]>`
+      select * from items
+      where user_id = ${userId}
+        and name_key = public.canonical_pantry_name(${name})
+    `;
+    if (!existing) {
+      throw new Error("pantry item conflict disappeared before lookup");
+    }
+    return { status: "already_exists", item: existing };
   });
 }
 
 export async function updateItem(
   userId: string,
   id: number,
+  changes: UpdateItemChanges,
+): Promise<UpdateItemResult> {
+  try {
+    return await withUserContext(userId, async (tx) => {
+      const [item] = await tx<Item[]>`
+        update items
+        set quantity = case
+              when ${changes.quantity !== undefined}
+                then ${changes.quantity ?? ""}
+              else quantity
+            end,
+            name = case
+              when ${changes.name !== undefined}
+                then ${changes.name ?? ""}
+              else name
+            end,
+            turnover = case
+              when ${changes.turnover !== undefined}
+                then ${changes.turnover ?? "high"}
+              else turnover
+            end
+        where id = ${id} and user_id = ${userId}
+        returning *
+      `;
+      return item
+        ? { status: "updated", item }
+        : { status: "not_found" };
+    });
+  } catch (error) {
+    if (
+      typeof error === "object"
+      && error !== null
+      && "code" in error
+      && error.code === "23505"
+      && "constraint_name" in error
+      && error.constraint_name === "items_user_id_name_key_key"
+    ) {
+      return { status: "name_conflict" };
+    }
+    throw error;
+  }
+}
+
+export async function setItemQuantity(
+  userId: string,
+  id: number,
   quantity: string,
-  name?: string,
-  turnover?: Turnover,
-): Promise<Item> {
+): Promise<SetItemQuantityResult> {
   return withUserContext(userId, async (tx) => {
     const [item] = await tx<Item[]>`
       update items
-      set quantity = ${quantity}${name !== undefined ? tx`, name = ${name}` : tx``}${turnover !== undefined ? tx`, turnover = ${turnover}` : tx``}
+      set quantity = ${quantity}
       where id = ${id} and user_id = ${userId}
       returning *
     `;
-    return item;
+    return item
+      ? { status: "updated", item }
+      : { status: "not_found" };
   });
 }
 

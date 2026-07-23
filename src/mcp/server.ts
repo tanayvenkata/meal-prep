@@ -82,11 +82,10 @@ const setPantryItemQuantityInputSchema = z.object({
 }).strict();
 
 const setPantryItemQuantityOutputSchema = z.object({
-  status: z.enum(["updated", "unchanged", "not_found", "ambiguous"]),
+  status: z.enum(["updated", "unchanged", "not_found"]),
   name: z.string(),
   beforeQuantity: z.string().optional(),
   quantity: z.string().optional(),
-  matchCount: z.number().int().min(2).optional(),
 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -165,7 +164,7 @@ export async function createMiseServer(
     { name: "mise", version: "0.1.0" },
     {
       instructions:
-        "Use get_kitchen_context when current saved inventory or equipment is needed. Use set_pantry_item_quantity only when the user clearly asks to set an exact quantity for an existing pantry item. Never infer a pantry write from recipe planning. If a name is missing or ambiguous, explain the result and ask the user to resolve it instead of guessing or creating an item.",
+        "Use get_kitchen_context when current saved inventory or equipment is needed. Use set_pantry_item_quantity only when the user clearly asks to set an exact quantity for an existing pantry item. Never infer a pantry write from recipe planning. If no item matches, explain the result instead of guessing or creating an item.",
     },
   );
 
@@ -288,9 +287,6 @@ export async function createMiseServer(
           break;
         case "not_found":
           text = `No existing pantry item matched ${outcome.name}. Nothing changed.`;
-          break;
-        case "ambiguous":
-          text = `Found ${outcome.matchCount} pantry items matching ${outcome.name}. Nothing changed.`;
           break;
       }
 
