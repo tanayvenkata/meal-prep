@@ -3,8 +3,13 @@
 
 import postgres from "postgres";
 import {
+  adjustStructuredPantryQuantity,
+  isPantryQuantityUnit,
+  pantryQuantitiesEqual,
   pantryQuantityMatchesStoredFields,
   type PantryQuantity,
+  type PantryQuantityAdjustmentOperation,
+  type StructuredPantryQuantity,
 } from "@/lib/pantry-quantity";
 
 // DATABASE_URL must point at the dedicated `mise_app` login role (issue #64):
@@ -50,6 +55,35 @@ export type UpdateItemChanges = {
 export type SetItemQuantityResult =
   | { status: "updated" | "unchanged"; item: Item; beforeQuantity: string }
   | { status: "not_found" };
+
+export type AdjustItemQuantityResult =
+  | {
+      status: "applied";
+      item: Item;
+      beforeQuantity: string;
+      afterQuantity: string;
+      before: StructuredPantryQuantity;
+      after: StructuredPantryQuantity;
+    }
+  | { status: "not_found" }
+  | {
+      status: "unsupported_quantity";
+      currentDisplay: string;
+    }
+  | {
+      status: "conflict";
+      current: StructuredPantryQuantity;
+    }
+  | {
+      status: "insufficient_quantity" | "amount_exceeded";
+      current: StructuredPantryQuantity;
+      delta: StructuredPantryQuantity;
+    }
+  | {
+      status: "unit_mismatch";
+      expectedUnit: StructuredPantryQuantity["unit"];
+      deltaUnit: StructuredPantryQuantity["unit"];
+    };
 
 type PantryQuantityColumns = {
   text: string;
@@ -340,6 +374,120 @@ export async function setItemQuantityByCanonicalName(
     `;
     if (!item) return { status: "not_found" };
     return { status: "updated", item, beforeQuantity };
+  });
+}
+
+/**
+ * Apply one relative inventory change under the owned row's lock.
+ *
+ * The expected quantity is the retry/concurrency token: once one caller
+ * applies, another caller carrying the same expectation observes the updated
+ * row after waiting for the lock and returns `conflict`. Arithmetic uses the
+ * shared fixed-scale BigInt domain helper; JavaScript never converts an amount
+ * to a Number.
+ */
+export async function adjustItemQuantityByCanonicalName(
+  userId: string,
+  name: string,
+  adjustment: PantryQuantityAdjustmentOperation,
+  expected: StructuredPantryQuantity,
+  delta: StructuredPantryQuantity,
+): Promise<AdjustItemQuantityResult> {
+  if (expected.unit !== delta.unit) {
+    return {
+      status: "unit_mismatch",
+      expectedUnit: expected.unit,
+      deltaUnit: delta.unit,
+    };
+  }
+
+  return withUserContext(userId, async (tx) => {
+    const [current] = await tx<Item[]>`
+      select *
+      from items
+      where user_id = ${userId}
+        and name_key = public.canonical_pantry_name(${name})
+      for update
+    `;
+    if (!current) return { status: "not_found" };
+
+    if (
+      current.quantity_value === null
+      || current.quantity_unit === null
+      || !isPantryQuantityUnit(current.quantity_unit)
+    ) {
+      return {
+        status: "unsupported_quantity",
+        currentDisplay: current.quantity,
+      };
+    }
+
+    const currentQuantity: StructuredPantryQuantity = {
+      mode: "structured",
+      amount: current.quantity_value,
+      unit: current.quantity_unit,
+      text: null,
+    };
+    if (!pantryQuantitiesEqual(currentQuantity, expected)) {
+      return {
+        status: "conflict",
+        current: currentQuantity,
+      };
+    }
+
+    const calculation = adjustStructuredPantryQuantity(
+      currentQuantity,
+      delta,
+      adjustment,
+    );
+    if (!calculation.ok) {
+      if (calculation.code === "invalid_delta") {
+        throw new RangeError("pantry quantity adjustment must be positive");
+      }
+      if (calculation.code === "invalid_current") {
+        return {
+          status: "unsupported_quantity",
+          currentDisplay: current.quantity,
+        };
+      }
+      if (calculation.code === "unit_mismatch") {
+        return {
+          status: "unit_mismatch",
+          expectedUnit: expected.unit,
+          deltaUnit: delta.unit,
+        };
+      }
+      if (calculation.code === "insufficient_quantity") {
+        return {
+          status: "insufficient_quantity",
+          current: currentQuantity,
+          delta,
+        };
+      }
+      return {
+        status: "amount_exceeded",
+        current: currentQuantity,
+        delta,
+      };
+    }
+
+    const [item] = await tx<Item[]>`
+      update items
+      set quantity_value = ${calculation.value.amount}::numeric
+      where id = ${current.id}
+        and user_id = ${userId}
+      returning *
+    `;
+    if (!item) return { status: "not_found" };
+
+    return {
+      status: "applied",
+      item,
+      beforeQuantity: current.quantity,
+      afterQuantity: item.quantity,
+      before: currentQuantity,
+      after: calculation.value,
+    };
   });
 }
 

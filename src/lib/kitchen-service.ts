@@ -1,6 +1,7 @@
 // Server-only domain service. Trusted HTTP/MCP transports resolve user identity
 // before calling it; browser components never import this module.
 import {
+  adjustItemQuantityByCanonicalName,
   addItem,
   addKitchenTool,
   deleteItem as deleteItemRecord,
@@ -17,10 +18,13 @@ import {
   type Turnover,
 } from "@/lib/db";
 import {
+  isPositiveStructuredPantryQuantity,
   pantryQuantityMatchesStoredFields,
   parsePantryQuantity,
   UNKNOWN_PANTRY_QUANTITY,
   type PantryQuantity,
+  type PantryQuantityAdjustmentOperation,
+  type StructuredPantryQuantity,
 } from "@/lib/pantry-quantity";
 
 const MAX_ITEM_NAME_LENGTH = 100;
@@ -63,6 +67,49 @@ export type SetPantryItemQuantityOutcome =
   | {
       status: "not_found";
       name: string;
+    };
+
+export type AdjustPantryItemQuantityInput = {
+  name?: unknown;
+  operation?: unknown;
+  expectedQuantity?: unknown;
+  deltaQuantity?: unknown;
+};
+
+export type AdjustPantryItemQuantityOutcome =
+  | {
+      status: "applied";
+      operation: PantryQuantityAdjustmentOperation;
+      name: string;
+      beforeQuantity: string;
+      quantity: string;
+      before: StructuredPantryQuantity;
+      delta: StructuredPantryQuantity;
+      after: StructuredPantryQuantity;
+    }
+  | { status: "not_found"; name: string }
+  | {
+      status: "unsupported_quantity";
+      name: string;
+      currentQuantity: string;
+    }
+  | {
+      status: "conflict";
+      name: string;
+      expected: StructuredPantryQuantity;
+      current: StructuredPantryQuantity;
+    }
+  | {
+      status: "unit_mismatch";
+      name: string;
+      expectedUnit: StructuredPantryQuantity["unit"];
+      deltaUnit: StructuredPantryQuantity["unit"];
+    }
+  | {
+      status: "insufficient_quantity" | "amount_exceeded";
+      name: string;
+      current: StructuredPantryQuantity;
+      delta: StructuredPantryQuantity;
     };
 
 export type CreatePantryItemOutcome =
@@ -129,6 +176,20 @@ function normalizeRequiredQuantity(
 
   const result = parsePantryQuantity(value);
   return result.ok ? valid(result.value) : invalid(result.error);
+}
+
+function normalizeRequiredStructuredQuantity(
+  value: unknown,
+  field: "expected quantity" | "delta quantity",
+): KitchenServiceResult<StructuredPantryQuantity> {
+  const quantity = normalizeRequiredQuantity(value);
+  if (!quantity.ok) return quantity;
+  if (quantity.value.mode !== "structured") {
+    return invalid(
+      `${field} must include a recognized unit, such as 2 count or 0.5 lb`,
+    );
+  }
+  return valid(quantity.value);
 }
 
 function normalizePantryItemId(value: unknown): KitchenServiceResult<number> {
@@ -300,6 +361,97 @@ export async function setPantryItemQuantity(
     beforeQuantity: updated.beforeQuantity,
     quantity: updated.item.quantity,
   });
+}
+
+export async function adjustPantryItemQuantity(
+  userId: string,
+  input: AdjustPantryItemQuantityInput,
+): Promise<KitchenServiceResult<AdjustPantryItemQuantityOutcome>> {
+  const name = normalizeRequiredText(
+    input.name,
+    "name",
+    MAX_ITEM_NAME_LENGTH,
+  );
+  if (!name.ok) return name;
+
+  if (input.operation !== "consume" && input.operation !== "restock") {
+    return invalid("operation must be consume or restock");
+  }
+
+  const expected = normalizeRequiredStructuredQuantity(
+    input.expectedQuantity,
+    "expected quantity",
+  );
+  if (!expected.ok) return expected;
+
+  const delta = normalizeRequiredStructuredQuantity(
+    input.deltaQuantity,
+    "delta quantity",
+  );
+  if (!delta.ok) return delta;
+  if (!isPositiveStructuredPantryQuantity(delta.value)) {
+    return invalid("delta quantity must be greater than zero");
+  }
+
+  if (expected.value.unit !== delta.value.unit) {
+    return valid({
+      status: "unit_mismatch",
+      name: name.value,
+      expectedUnit: expected.value.unit,
+      deltaUnit: delta.value.unit,
+    });
+  }
+
+  const result = await adjustItemQuantityByCanonicalName(
+    userId,
+    name.value,
+    input.operation,
+    expected.value,
+    delta.value,
+  );
+  switch (result.status) {
+    case "not_found":
+      return valid({ status: "not_found", name: name.value });
+    case "unsupported_quantity":
+      return valid({
+        status: "unsupported_quantity",
+        name: name.value,
+        currentQuantity: result.currentDisplay,
+      });
+    case "conflict":
+      return valid({
+        status: "conflict",
+        name: name.value,
+        expected: expected.value,
+        current: result.current,
+      });
+    case "unit_mismatch":
+      return valid({
+        status: "unit_mismatch",
+        name: name.value,
+        expectedUnit: result.expectedUnit,
+        deltaUnit: result.deltaUnit,
+      });
+    case "insufficient_quantity":
+    case "amount_exceeded":
+      return valid({
+        status: result.status,
+        name: name.value,
+        current: result.current,
+        delta: result.delta,
+      });
+    case "applied":
+      return valid({
+        status: "applied",
+        operation: input.operation,
+        name: result.item.name,
+        beforeQuantity: result.beforeQuantity,
+        quantity: result.afterQuantity,
+        before: result.before,
+        delta: delta.value,
+        after: result.after,
+      });
+  }
 }
 
 export async function listKitchenTools(userId: string): Promise<KitchenTool[]> {

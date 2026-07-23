@@ -51,6 +51,29 @@ export type PantryQuantity =
       text: string;
     };
 
+export type StructuredPantryQuantity = Extract<
+  PantryQuantity,
+  { mode: "structured" }
+>;
+
+export type PantryQuantityAdjustmentOperation = "consume" | "restock";
+
+export type PantryQuantityAdjustmentResult =
+  | {
+      ok: true;
+      code: "applied";
+      value: StructuredPantryQuantity;
+    }
+  | {
+      ok: false;
+      code:
+        | "invalid_current"
+        | "invalid_delta"
+        | "unit_mismatch"
+        | "insufficient_quantity"
+        | "amount_exceeded";
+    };
+
 export type PantryQuantityParseResult =
   | { ok: true; value: PantryQuantity }
   | {
@@ -166,6 +189,15 @@ function formatScaledAmount(scaled: bigint): string {
     .replace(/0+$/, "");
 
   return fraction === "" ? integer.toString() : `${integer}.${fraction}`;
+}
+
+function scaledAmountFromCanonicalDecimal(amount: string): bigint | null {
+  const parsed = parseDecimal(amount);
+  if (typeof parsed !== "string") return null;
+
+  const [integer, fraction = ""] = parsed.split(".");
+  return BigInt(integer) * NUMERIC_SCALE_FACTOR
+    + BigInt(fraction.padEnd(NUMERIC_SCALE, "0") || "0");
 }
 
 function validateScaledAmount(
@@ -375,6 +407,56 @@ export function pantryQuantitiesEqual(
         && amountsEqual(left.amount, right.amount)
         && left.unit === right.unit;
   }
+}
+
+export function adjustStructuredPantryQuantity(
+  current: StructuredPantryQuantity,
+  delta: StructuredPantryQuantity,
+  operation: PantryQuantityAdjustmentOperation,
+): PantryQuantityAdjustmentResult {
+  const deltaAmount = scaledAmountFromCanonicalDecimal(delta.amount);
+  if (deltaAmount === null || deltaAmount <= ZERO) {
+    return { ok: false, code: "invalid_delta" };
+  }
+
+  if (current.unit !== delta.unit) {
+    return { ok: false, code: "unit_mismatch" };
+  }
+
+  const currentAmount = scaledAmountFromCanonicalDecimal(current.amount);
+  if (currentAmount === null) {
+    return { ok: false, code: "invalid_current" };
+  }
+
+  if (operation === "consume" && deltaAmount > currentAmount) {
+    return { ok: false, code: "insufficient_quantity" };
+  }
+
+  const adjustedAmount = operation === "consume"
+    ? currentAmount - deltaAmount
+    : currentAmount + deltaAmount;
+
+  if (adjustedAmount > MAX_SCALED_AMOUNT) {
+    return { ok: false, code: "amount_exceeded" };
+  }
+
+  return {
+    ok: true,
+    code: "applied",
+    value: {
+      mode: "structured",
+      amount: formatScaledAmount(adjustedAmount),
+      unit: current.unit,
+      text: null,
+    },
+  };
+}
+
+export function isPositiveStructuredPantryQuantity(
+  quantity: StructuredPantryQuantity,
+): boolean {
+  const amount = scaledAmountFromCanonicalDecimal(quantity.amount);
+  return amount !== null && amount > ZERO;
 }
 
 export function pantryQuantityMatchesStoredFields(
