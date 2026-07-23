@@ -27,7 +27,7 @@ import {
   MCP_SCOPES,
 } from "./auth";
 import { kitchenWidgetResource as generatedKitchenWidgetResource } from "./kitchen-widget.generated";
-import { getKitchenContext } from "@/lib/kitchen-service";
+import { getKitchenContext as loadKitchenContext } from "@/lib/kitchen-service";
 import type { KitchenWidgetResource } from "./build-widget";
 
 const MCP_PATH = "/mcp";
@@ -36,11 +36,22 @@ const KITCHEN_CONTEXT_SECURITY_SCHEMES = [
   { type: "oauth2", scopes: MCP_SCOPES },
 ];
 const LEGACY_KITCHEN_WIDGET_URIS = [
+  // Historical ChatGPT messages can re-read the resource URI captured in their
+  // original tool result. Keep these aliases until production evidence shows
+  // those retries no longer need compatibility support.
   "ui://widget/kitchen-context-v1.html",
   "ui://widget/kitchen-context-v2.html",
   "ui://widget/kitchen-context-v3.html",
   "ui://widget/kitchen-context-v4.html",
 ] as const;
+
+type KitchenContext = Awaited<ReturnType<typeof loadKitchenContext>>;
+type KitchenContextLoader = (userId: string) => Promise<KitchenContext>;
+
+type MiseServerOptions = {
+  kitchenWidgetResource?: KitchenWidgetResource;
+  loadKitchenContext?: KitchenContextLoader;
+};
 
 const kitchenContextSchema = z.object({
   pantry: z.array(
@@ -111,13 +122,18 @@ class OpenAiCompatibleWebStandardStreamableHTTPServerTransport extends WebStanda
 }
 
 export async function createMiseServer(
-  kitchenWidgetResource: KitchenWidgetResource =
-    generatedKitchenWidgetResource,
+  {
+    kitchenWidgetResource = generatedKitchenWidgetResource,
+    loadKitchenContext: getKitchenContext = loadKitchenContext,
+  }: MiseServerOptions = {},
 ) {
   const kitchenWidgetUris = [
     ...LEGACY_KITCHEN_WIDGET_URIS,
     kitchenWidgetResource.uri,
   ];
+  // Server-level instructions are intentionally deferred while Mise exposes
+  // one tool. Its descriptor contains the complete discovery guidance; shared
+  // instructions become useful once cross-tool sequencing exists.
   const server = new McpServer({ name: "mise", version: "0.1.0" });
 
   for (const [index, widgetUri] of kitchenWidgetUris.entries()) {
@@ -133,7 +149,13 @@ export async function createMiseServer(
               mimeType: RESOURCE_MIME_TYPE,
               text: kitchenWidgetResource.html,
               _meta: {
-                ui: { prefersBorder: true },
+                ui: {
+                  prefersBorder: true,
+                  csp: {
+                    connectDomains: [],
+                    resourceDomains: [],
+                  },
+                },
                 "openai/widgetDescription":
                   "Displays a compact snapshot of the user's Mise kitchen context.",
               },
@@ -148,7 +170,8 @@ export async function createMiseServer(
     KITCHEN_CONTEXT_TOOL,
     {
       title: "Show kitchen context",
-      description: "Returns the user's pantry and kitchen tools for cooking suggestions.",
+      description:
+        "Use this when the user asks what ingredients or kitchen equipment they have, or when cooking advice should account for their saved Mise kitchen. Returns only the signed-in user's pantry and kitchen tools.",
       outputSchema: kitchenContextSchema,
       annotations: {
         readOnlyHint: true,
@@ -189,6 +212,7 @@ type VerifyAccessToken = (token: string) => Promise<AuthInfo>;
 type MiseHttpServerOptions = {
   verifyAccessToken?: VerifyAccessToken;
   kitchenWidgetResource?: KitchenWidgetResource;
+  loadKitchenContext?: KitchenContextLoader;
 };
 
 function invalidTokenResponse(authConfig = getMcpAuthConfig()) {
@@ -218,7 +242,11 @@ export async function handleMiseMcpRequest(
   request: Request,
   {
     verifyAccessToken = verifyMcpAccessToken,
-  }: Pick<MiseHttpServerOptions, "verifyAccessToken"> = {},
+    loadKitchenContext: getKitchenContext = loadKitchenContext,
+  }: Pick<
+    MiseHttpServerOptions,
+    "verifyAccessToken" | "loadKitchenContext"
+  > = {},
 ) {
   const startedAt = performance.now();
   const requestId = randomUUID();
@@ -271,7 +299,9 @@ export async function handleMiseMcpRequest(
     return invalidTokenResponse(authConfig);
   }
 
-  const server = await createMiseServer();
+  const server = await createMiseServer({
+    loadKitchenContext: getKitchenContext,
+  });
   const transport =
     new OpenAiCompatibleWebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
@@ -309,6 +339,7 @@ export async function handleMiseMcpRequest(
 export function createMiseHttpServer({
   verifyAccessToken = verifyMcpAccessToken,
   kitchenWidgetResource = generatedKitchenWidgetResource,
+  loadKitchenContext: getKitchenContext = loadKitchenContext,
 }: MiseHttpServerOptions = {}) {
   const authConfig = getMcpAuthConfig();
   const app = createMcpExpressApp({
@@ -380,7 +411,10 @@ export function createMiseHttpServer({
   app.post(MCP_PATH, async (req, res) => {
     // This server is deliberately stateless: every MCP request gets a
     // short-lived server and transport.
-    const server = await createMiseServer(kitchenWidgetResource);
+    const server = await createMiseServer({
+      kitchenWidgetResource,
+      loadKitchenContext: getKitchenContext,
+    });
     const transport = new OpenAiCompatibleStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

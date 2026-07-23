@@ -2,20 +2,23 @@ import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@/lib/kitchen-service", () => ({
-  getKitchenContext: vi.fn(),
-}));
-
 import {
   createMiseHttpServer,
   handleMiseMcpRequest,
 } from "@/mcp/server";
-import { getKitchenContext } from "@/lib/kitchen-service";
+import { kitchenWidgetResource } from "@/mcp/kitchen-widget.generated";
 
 let httpServer: Server;
 let mcpUrl: string;
-const mockGetKitchenContext = vi.mocked(getKitchenContext);
+const mockLoadKitchenContext = vi.fn(
+  async (userId: string) => {
+    void userId;
+    return {
+      pantry: [{ name: "Rice", quantity: "2 cups", turnover: "high" as const }],
+      tools: [{ name: "Dutch oven", kind: "cookware" }],
+    };
+  },
+);
 const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalMcpPublicUrl = process.env.MCP_PUBLIC_URL;
 
@@ -54,14 +57,15 @@ async function postMcp(body: Record<string, unknown>, token?: string) {
 beforeEach(async () => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://project.supabase.co";
   process.env.MCP_PUBLIC_URL = "https://mcp.mise.example/mcp";
-  mockGetKitchenContext.mockReset();
-  mockGetKitchenContext.mockResolvedValue({
+  mockLoadKitchenContext.mockReset();
+  mockLoadKitchenContext.mockResolvedValue({
     pantry: [{ name: "Rice", quantity: "2 cups", turnover: "high" }],
     tools: [{ name: "Dutch oven", kind: "cookware" }],
   });
 
   httpServer = createMiseHttpServer({
     verifyAccessToken: verifyTestAccessToken,
+    loadKitchenContext: mockLoadKitchenContext,
   });
   await new Promise<void>((resolve, reject) => {
     httpServer.once("error", reject);
@@ -112,6 +116,31 @@ describe("Mise MCP OAuth wire contract", () => {
     });
   });
 
+  it("initializes an authenticated stateless MCP request", async () => {
+    const response = await postMcp({
+      jsonrpc: "2.0",
+      id: 0,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "mise-contract-test", version: "1.0.0" },
+      },
+    }, "test-token");
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      result: {
+        protocolVersion: "2025-11-25",
+        serverInfo: { name: "mise", version: "0.1.0" },
+        capabilities: {
+          tools: {},
+          resources: {},
+        },
+      },
+    });
+  });
+
   it("publishes OAuth security schemes at the top level and in the compatibility mirror", async () => {
     const httpResponse = await postMcp({
       jsonrpc: "2.0",
@@ -126,10 +155,26 @@ describe("Mise MCP OAuth wire contract", () => {
     const expectedSchemes = [{ type: "oauth2", scopes: ["openid"] }];
 
     expect(tool).toBeDefined();
+    expect(tool?.description).toContain("Use this when");
+    expect(tool?.annotations).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
+    expect(tool?.outputSchema).toMatchObject({
+      type: "object",
+      properties: {
+        pantry: { type: "array" },
+        tools: { type: "array" },
+      },
+      required: ["pantry", "tools"],
+    });
     expect(tool?.securitySchemes).toEqual(expectedSchemes);
-    expect((tool?._meta as Record<string, unknown>).securitySchemes).toEqual(
-      expectedSchemes,
-    );
+    expect(tool?._meta).toMatchObject({
+      securitySchemes: expectedSchemes,
+      ui: { resourceUri: kitchenWidgetResource.uri },
+    });
   });
 
   it("calls the shared kitchen service with the authenticated user ID", async () => {
@@ -144,7 +189,15 @@ describe("Mise MCP OAuth wire contract", () => {
     }, "test-token");
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
+    const body = await response.json() as {
+      result: {
+        structuredContent: {
+          pantry: Array<Record<string, unknown>>;
+          tools: Array<Record<string, unknown>>;
+        };
+      };
+    };
+    expect(body).toMatchObject({
       result: {
         content: [
           { type: "text", text: "Returned your Mise kitchen context." },
@@ -157,7 +210,63 @@ describe("Mise MCP OAuth wire contract", () => {
         },
       },
     });
-    expect(mockGetKitchenContext).toHaveBeenCalledWith("user-123");
+    expect(mockLoadKitchenContext).toHaveBeenCalledWith("user-123");
+    expect(Object.keys(body.result.structuredContent.pantry[0])).toEqual([
+      "name",
+      "quantity",
+      "turnover",
+    ]);
+    expect(Object.keys(body.result.structuredContent.tools[0])).toEqual([
+      "name",
+      "kind",
+    ]);
+  });
+
+  it("delivers the widget resource with an explicit no-network CSP", async () => {
+    const response = await postMcp({
+      jsonrpc: "2.0",
+      id: 8,
+      method: "resources/read",
+      params: { uri: kitchenWidgetResource.uri },
+    }, "test-token");
+    const body = await response.json() as {
+      result: {
+        contents: Array<{
+          uri: string;
+          mimeType: string;
+          text: string;
+          _meta: {
+            ui: {
+              csp: {
+                connectDomains: string[];
+                resourceDomains: string[];
+              };
+            };
+          };
+        }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.result.contents[0]).toMatchObject({
+      uri: kitchenWidgetResource.uri,
+      mimeType: "text/html;profile=mcp-app",
+      _meta: {
+        ui: {
+          csp: {
+            connectDomains: [],
+            resourceDomains: [],
+          },
+        },
+      },
+    });
+    expect(body.result.contents[0].text).toContain('<div id="root"></div>');
+    expect(body.result.contents[0].text).toContain(
+      "No pantry items saved yet.",
+    );
+    expect(body.result.contents[0].text).toContain(
+      "No kitchen tools saved yet.",
+    );
   });
 
   it("serves the same authenticated tool contract through the Web-standard hosted transport", async () => {
@@ -177,6 +286,7 @@ describe("Mise MCP OAuth wire contract", () => {
     });
     const response = await handleMiseMcpRequest(request, {
       verifyAccessToken: verifyTestAccessToken,
+      loadKitchenContext: mockLoadKitchenContext,
     });
     const body = (await response.json()) as {
       result: { tools: Array<Record<string, unknown>> };
