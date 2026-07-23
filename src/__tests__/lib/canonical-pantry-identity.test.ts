@@ -40,7 +40,7 @@ afterAll(async () => {
 describe("canonical pantry identity migration", () => {
   it("generates an NFKC, whitespace-collapsed, case-normalized key", async () => {
     const [item] = await sql<{ name: string; name_key: string }[]>`
-      insert into items (user_id, name, quantity)
+      insert into items (user_id, name, quantity_text)
       values (${USER_A}, ${"\t\nＣａｆｅ\u0301\t  Beans\n\t"}, '1 bag')
       returning name, name_key
     `;
@@ -53,20 +53,20 @@ describe("canonical pantry identity migration", () => {
 
   it("rejects a canonical duplicate for one user but permits it for another", async () => {
     await sql`
-      insert into items (user_id, name, quantity)
+      insert into items (user_id, name, quantity_text)
       values (${USER_A}, '  Duck Eggs  ', '12')
     `;
 
     await expect(
       sql`
-        insert into items (user_id, name, quantity)
+        insert into items (user_id, name, quantity_text)
         values (${USER_A}, ${"duck\t eggs"}, '6')
       `,
     ).rejects.toThrow(/items_user_id_name_key_key|duplicate key/i);
 
     await expect(
       sql`
-        insert into items (user_id, name, quantity)
+        insert into items (user_id, name, quantity_text)
         values (${USER_B}, 'DUCK EGGS', '6')
         returning id
       `,
@@ -75,7 +75,7 @@ describe("canonical pantry identity migration", () => {
 
   it("rejects ownerless pantry rows", async () => {
     await expect(
-      sql`insert into items (name, quantity) values ('Ownerless', '1')`,
+      sql`insert into items (name, quantity_text) values ('Ownerless', '1')`,
     ).rejects.toThrow(/user_id|null value/i);
   });
 

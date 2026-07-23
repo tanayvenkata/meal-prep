@@ -9,16 +9,21 @@ import {
   getItemById,
   getItems,
   getKitchenTools,
-  setItemQuantity,
+  setItemQuantityByCanonicalName,
   updateItem as updateItemRecord,
   updateKitchenTool as updateKitchenToolRecord,
   type Item,
   type KitchenTool,
   type Turnover,
 } from "@/lib/db";
+import {
+  pantryQuantityMatchesStoredFields,
+  parsePantryQuantity,
+  UNKNOWN_PANTRY_QUANTITY,
+  type PantryQuantity,
+} from "@/lib/pantry-quantity";
 
 const MAX_ITEM_NAME_LENGTH = 100;
-const MAX_ITEM_QUANTITY_LENGTH = 100;
 const MAX_TOOL_NAME_LENGTH = 100;
 const MAX_TOOL_KIND_LENGTH = 50;
 
@@ -109,37 +114,21 @@ function normalizeRequiredText(
 
 function normalizeOptionalQuantity(
   value: unknown,
-): KitchenServiceResult<string | undefined> {
+): KitchenServiceResult<PantryQuantity | undefined> {
   if (value === undefined) return valid(undefined);
-  if (typeof value !== "string") {
-    return invalid("quantity must be a string");
-  }
-
-  const trimmed = value.trim();
-  if (trimmed.length > MAX_ITEM_QUANTITY_LENGTH) {
-    return invalid(
-      `quantity must be ${MAX_ITEM_QUANTITY_LENGTH} characters or fewer`,
-    );
-  }
-
-  return valid(trimmed);
+  const result = parsePantryQuantity(value);
+  return result.ok ? valid(result.value) : invalid(result.error);
 }
 
 function normalizeRequiredQuantity(
   value: unknown,
-): KitchenServiceResult<string> {
+): KitchenServiceResult<PantryQuantity> {
   if (typeof value !== "string" || value.trim() === "") {
     return invalid("quantity is required");
   }
 
-  const trimmed = value.trim();
-  if (trimmed.length > MAX_ITEM_QUANTITY_LENGTH) {
-    return invalid(
-      `quantity must be ${MAX_ITEM_QUANTITY_LENGTH} characters or fewer`,
-    );
-  }
-
-  return valid(trimmed);
+  const result = parsePantryQuantity(value);
+  return result.ok ? valid(result.value) : invalid(result.error);
 }
 
 function normalizePantryItemId(value: unknown): KitchenServiceResult<number> {
@@ -178,7 +167,7 @@ export async function createPantryItem(
   const result = await addItem(
     userId,
     name.value,
-    quantity.value ?? "",
+    quantity.value ?? UNKNOWN_PANTRY_QUANTITY,
     turnover.value,
   );
   return valid(result);
@@ -233,7 +222,7 @@ export async function updatePantryItem(
 
   const nameChanged = name !== undefined && name !== current.name;
   const quantityChanged = quantity.value !== undefined
-    && quantity.value !== current.quantity;
+    && !pantryQuantityMatchesStoredFields(quantity.value, current);
   const turnoverChanged = turnover !== undefined && turnover !== current.turnover;
   if (
     !nameChanged
@@ -296,26 +285,9 @@ export async function setPantryItemQuantity(
   const quantity = normalizeRequiredQuantity(input.quantity);
   if (!quantity.ok) return quantity;
 
-  const match = await getItemByCanonicalName(
+  const updated = await setItemQuantityByCanonicalName(
     userId,
     name.value,
-  );
-  if (!match) {
-    return valid({ status: "not_found", name: name.value });
-  }
-
-  if (match.quantity === quantity.value) {
-    return valid({
-      status: "unchanged",
-      name: match.name,
-      beforeQuantity: match.quantity,
-      quantity: quantity.value,
-    });
-  }
-
-  const updated = await setItemQuantity(
-    userId,
-    match.id,
     quantity.value,
   );
   if (updated.status === "not_found") {
@@ -323,9 +295,9 @@ export async function setPantryItemQuantity(
   }
 
   return valid({
-    status: "updated",
+    status: updated.status,
     name: updated.item.name,
-    beforeQuantity: match.quantity,
+    beforeQuantity: updated.beforeQuantity,
     quantity: updated.item.quantity,
   });
 }

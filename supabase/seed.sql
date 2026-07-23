@@ -61,9 +61,9 @@ begin
 
   -- Sample pantry for that user (idempotent: only seed if they have none).
   if not exists (select 1 from public.items where user_id = uid) then
-    insert into public.items (user_id, name, quantity) values
+    insert into public.items (user_id, name, quantity_text) values
       (uid, 'chicken thighs', '2 lbs'),
-      (uid, 'paprika',        null),
+      (uid, 'paprika',        ''),
       (uid, 'olive oil',      '1 bottle'),
       (uid, 'rice',           '5 lbs');
   end if;

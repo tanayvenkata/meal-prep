@@ -2,6 +2,10 @@
 // Only file that imports the postgres driver. Swap DB/driver/host = change this file only.
 
 import postgres from "postgres";
+import {
+  pantryQuantityMatchesStoredFields,
+  type PantryQuantity,
+} from "@/lib/pantry-quantity";
 
 // DATABASE_URL must point at the dedicated `mise_app` login role (issue #64):
 // non-owner, NOBYPASSRLS, no direct table DML. Owner/`BYPASSRLS` credentials
@@ -20,6 +24,9 @@ export type Item = {
   name: string;
   name_key: string;
   quantity: string;
+  quantity_text: string;
+  quantity_value: string | null;
+  quantity_unit: string | null;
   turnover: Turnover;
   created_at: string;
   user_id: string;
@@ -36,13 +43,32 @@ export type UpdateItemResult =
 
 export type UpdateItemChanges = {
   name?: string;
-  quantity?: string;
+  quantity?: PantryQuantity;
   turnover?: Turnover;
 };
 
 export type SetItemQuantityResult =
-  | { status: "updated"; item: Item }
+  | { status: "updated" | "unchanged"; item: Item; beforeQuantity: string }
   | { status: "not_found" };
+
+type PantryQuantityColumns = {
+  text: string;
+  value: string | null;
+  unit: string | null;
+};
+
+function pantryQuantityColumns(
+  quantity: PantryQuantity,
+): PantryQuantityColumns {
+  switch (quantity.mode) {
+    case "unknown":
+      return { text: "", value: null, unit: null };
+    case "text":
+      return { text: quantity.text, value: null, unit: null };
+    case "structured":
+      return { text: "", value: quantity.amount, unit: quantity.unit };
+  }
+}
 
 export type KitchenTool = {
   id: string;
@@ -185,13 +211,28 @@ export async function getItemByCanonicalName(
 export async function addItem(
   userId: string,
   name: string,
-  quantity: string,
+  quantity: PantryQuantity,
   turnover: Turnover = "high",
 ): Promise<AddItemResult> {
   return withUserContext(userId, async (tx) => {
+    const columns = pantryQuantityColumns(quantity);
     const [item] = await tx<Item[]>`
-      insert into items (user_id, name, quantity, turnover)
-      values (${userId}, ${name}, ${quantity}, ${turnover})
+      insert into items (
+        user_id,
+        name,
+        quantity_text,
+        quantity_value,
+        quantity_unit,
+        turnover
+      )
+      values (
+        ${userId},
+        ${name},
+        ${columns.text},
+        ${columns.value}::numeric,
+        ${columns.unit},
+        ${turnover}
+      )
       on conflict (user_id, name_key) do nothing
       returning *
     `;
@@ -216,12 +257,25 @@ export async function updateItem(
 ): Promise<UpdateItemResult> {
   try {
     return await withUserContext(userId, async (tx) => {
+      const quantity = changes.quantity === undefined
+        ? null
+        : pantryQuantityColumns(changes.quantity);
       const [item] = await tx<Item[]>`
         update items
-        set quantity = case
-              when ${changes.quantity !== undefined}
-                then ${changes.quantity ?? ""}
-              else quantity
+        set quantity_text = case
+              when ${quantity !== null}
+                then ${quantity?.text ?? ""}
+              else quantity_text
+            end,
+            quantity_value = case
+              when ${quantity !== null}
+                then ${quantity?.value ?? null}::numeric
+              else quantity_value
+            end,
+            quantity_unit = case
+              when ${quantity !== null}
+                then ${quantity?.unit ?? null}
+              else quantity_unit
             end,
             name = case
               when ${changes.name !== undefined}
@@ -255,21 +309,37 @@ export async function updateItem(
   }
 }
 
-export async function setItemQuantity(
+export async function setItemQuantityByCanonicalName(
   userId: string,
-  id: number,
-  quantity: string,
+  name: string,
+  quantity: PantryQuantity,
 ): Promise<SetItemQuantityResult> {
   return withUserContext(userId, async (tx) => {
+    const [current] = await tx<Item[]>`
+      select *
+      from items
+      where user_id = ${userId}
+        and name_key = public.canonical_pantry_name(${name})
+      for update
+    `;
+    if (!current) return { status: "not_found" };
+
+    const beforeQuantity = current.quantity;
+    if (pantryQuantityMatchesStoredFields(quantity, current)) {
+      return { status: "unchanged", item: current, beforeQuantity };
+    }
+
+    const columns = pantryQuantityColumns(quantity);
     const [item] = await tx<Item[]>`
       update items
-      set quantity = ${quantity}
-      where id = ${id} and user_id = ${userId}
+      set quantity_text = ${columns.text},
+          quantity_value = ${columns.value}::numeric,
+          quantity_unit = ${columns.unit}
+      where id = ${current.id} and user_id = ${userId}
       returning *
     `;
-    return item
-      ? { status: "updated", item }
-      : { status: "not_found" };
+    if (!item) return { status: "not_found" };
+    return { status: "updated", item, beforeQuantity };
   });
 }
 
