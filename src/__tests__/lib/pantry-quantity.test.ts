@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  adjustStructuredPantryQuantity,
   formatPantryQuantity,
   isPantryQuantityUnit,
   pantryQuantitiesEqual,
   pantryQuantityMatchesStoredFields,
   parsePantryQuantity,
+  type StructuredPantryQuantity,
 } from "@/lib/pantry-quantity";
 
 function expectStructured(
@@ -188,5 +190,152 @@ describe("quantity presentation and equality", () => {
       quantity_value: "2.000000",
       quantity_unit: "lb",
     })).toBe(true);
+  });
+});
+
+function structured(
+  amount: string,
+  unit: StructuredPantryQuantity["unit"] = "count",
+): StructuredPantryQuantity {
+  return {
+    mode: "structured",
+    amount,
+    unit,
+    text: null,
+  };
+}
+
+describe("adjustStructuredPantryQuantity", () => {
+  it("consumes an exact same-unit decimal amount without using floats", () => {
+    expect(
+      adjustStructuredPantryQuantity(
+        structured("0.3", "kg"),
+        structured("0.1", "kg"),
+        "consume",
+      ),
+    ).toEqual({
+      ok: true,
+      code: "applied",
+      value: structured("0.2", "kg"),
+    });
+  });
+
+  it("allows consuming the full quantity and returns canonical zero", () => {
+    expect(
+      adjustStructuredPantryQuantity(
+        structured("2.500000", "lb"),
+        structured("2.5", "lb"),
+        "consume",
+      ),
+    ).toEqual({
+      ok: true,
+      code: "applied",
+      value: structured("0", "lb"),
+    });
+  });
+
+  it("restocks same-unit quantities and removes insignificant zeroes", () => {
+    expect(
+      adjustStructuredPantryQuantity(
+        structured("1.250000", "l"),
+        structured("0.750000", "l"),
+        "restock",
+      ),
+    ).toEqual({
+      ok: true,
+      code: "applied",
+      value: structured("2", "l"),
+    });
+  });
+
+  it("preserves exact six-place precision", () => {
+    expect(
+      adjustStructuredPantryQuantity(
+        structured("0.000001", "g"),
+        structured("0.000001", "g"),
+        "restock",
+      ),
+    ).toEqual({
+      ok: true,
+      code: "applied",
+      value: structured("0.000002", "g"),
+    });
+  });
+
+  it.each(["0", "0.000000", "-1", "0.0000001", "not-a-number"])(
+    "rejects invalid delta amount %s",
+    (amount) => {
+      expect(
+        adjustStructuredPantryQuantity(
+          structured("10", "count"),
+          structured(amount, "count"),
+          "consume",
+        ),
+      ).toEqual({ ok: false, code: "invalid_delta" });
+    },
+  );
+
+  it("rejects mismatched units instead of converting them", () => {
+    expect(
+      adjustStructuredPantryQuantity(
+        structured("1", "kg"),
+        structured("100", "g"),
+        "consume",
+      ),
+    ).toEqual({ ok: false, code: "unit_mismatch" });
+  });
+
+  it("does not let consumption take inventory below zero", () => {
+    expect(
+      adjustStructuredPantryQuantity(
+        structured("1.5", "cup"),
+        structured("1.500001", "cup"),
+        "consume",
+      ),
+    ).toEqual({ ok: false, code: "insufficient_quantity" });
+  });
+
+  it("distinguishes an invalid stored amount from a valid overflow", () => {
+    expect(
+      adjustStructuredPantryQuantity(
+        structured("not-a-number", "cup"),
+        structured("1", "cup"),
+        "consume",
+      ),
+    ).toEqual({ ok: false, code: "invalid_current" });
+  });
+
+  it("accepts a restock exactly at the maximum amount", () => {
+    expect(
+      adjustStructuredPantryQuantity(
+        structured("999999999.999998", "ml"),
+        structured("0.000001", "ml"),
+        "restock",
+      ),
+    ).toEqual({
+      ok: true,
+      code: "applied",
+      value: structured("999999999.999999", "ml"),
+    });
+  });
+
+  it("does not let restocking exceed the maximum amount", () => {
+    expect(
+      adjustStructuredPantryQuantity(
+        structured("999999999.999999", "ml"),
+        structured("0.000001", "ml"),
+        "restock",
+      ),
+    ).toEqual({ ok: false, code: "amount_exceeded" });
+  });
+
+  it("does not mutate either input quantity", () => {
+    const current = structured("5", "can");
+    const delta = structured("2", "can");
+
+    adjustStructuredPantryQuantity(current, delta, "consume");
+
+    expect(current).toEqual(structured("5", "can"));
+    expect(delta).toEqual(structured("2", "can"));
   });
 });

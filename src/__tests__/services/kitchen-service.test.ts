@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeItem } from "@/__tests__/helpers/fixtures";
 
 vi.mock("@/lib/db", () => ({
+  adjustItemQuantityByCanonicalName: vi.fn(),
   addItem: vi.fn(),
   addKitchenTool: vi.fn(),
   deleteItem: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock("@/lib/db", () => ({
 }));
 
 import {
+  adjustItemQuantityByCanonicalName,
   addItem,
   addKitchenTool,
   deleteItem,
@@ -29,6 +31,7 @@ import {
   updateKitchenTool as updateKitchenToolRecord,
 } from "@/lib/db";
 import {
+  adjustPantryItemQuantity,
   createKitchenTool,
   createPantryItem,
   deleteKitchenTool,
@@ -41,6 +44,7 @@ import {
   updatePantryItem,
 } from "@/lib/kitchen-service";
 
+const mockAdjustItemQuantity = vi.mocked(adjustItemQuantityByCanonicalName);
 const mockAddItem = vi.mocked(addItem);
 const mockAddKitchenTool = vi.mocked(addKitchenTool);
 const mockDeleteItem = vi.mocked(deleteItem);
@@ -483,6 +487,148 @@ describe("pantry commands", () => {
     ).resolves.toEqual({ ok: false, error });
     expect(mockGetItemByCanonicalName).not.toHaveBeenCalled();
     expect(mockSetItemQuantity).not.toHaveBeenCalled();
+  });
+});
+
+describe("pantry quantity adjustments", () => {
+  const expected = {
+    mode: "structured" as const,
+    amount: "12",
+    unit: "count" as const,
+    text: null,
+  };
+  const delta = {
+    mode: "structured" as const,
+    amount: "2",
+    unit: "count" as const,
+    text: null,
+  };
+
+  it("normalizes and delegates an applied consume command", async () => {
+    const item = fakeItem({
+      name: "Duck Eggs",
+      quantity: "10",
+      quantity_text: "",
+      quantity_value: "10",
+      quantity_unit: "count",
+    });
+    mockAdjustItemQuantity.mockResolvedValue({
+      status: "applied",
+      item,
+      beforeQuantity: "12",
+      afterQuantity: "10",
+      before: expected,
+      after: { ...expected, amount: "10" },
+    });
+
+    await expect(adjustPantryItemQuantity("user-123", {
+      name: "  duck eggs ",
+      operation: "consume",
+      expectedQuantity: "12 counts",
+      deltaQuantity: "2 count",
+    })).resolves.toEqual({
+      ok: true,
+      value: {
+        status: "applied",
+        operation: "consume",
+        name: "Duck Eggs",
+        beforeQuantity: "12",
+        quantity: "10",
+        before: expected,
+        delta,
+        after: { ...expected, amount: "10" },
+      },
+    });
+    expect(mockAdjustItemQuantity).toHaveBeenCalledWith(
+      "user-123",
+      "duck eggs",
+      "consume",
+      expected,
+      delta,
+    );
+  });
+
+  it("returns a structured conflict without another lookup", async () => {
+    mockAdjustItemQuantity.mockResolvedValue({
+      status: "conflict",
+      current: { ...expected, amount: "10" },
+    });
+
+    await expect(adjustPantryItemQuantity("user-123", {
+      name: "Eggs",
+      operation: "consume",
+      expectedQuantity: "12 count",
+      deltaQuantity: "2 count",
+    })).resolves.toEqual({
+      ok: true,
+      value: {
+        status: "conflict",
+        name: "Eggs",
+        expected,
+        current: { ...expected, amount: "10" },
+      },
+    });
+  });
+
+  it("returns unit mismatch before touching the database", async () => {
+    await expect(adjustPantryItemQuantity("user-123", {
+      name: "Flour",
+      operation: "consume",
+      expectedQuantity: "2 lb",
+      deltaQuantity: "1 oz",
+    })).resolves.toMatchObject({
+      ok: true,
+      value: {
+        status: "unit_mismatch",
+        expectedUnit: "lb",
+        deltaUnit: "oz",
+      },
+    });
+    expect(mockAdjustItemQuantity).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      {
+        name: "Eggs",
+        operation: "consume",
+        expectedQuantity: "12",
+        deltaQuantity: "2 count",
+      },
+      "expected quantity must include a recognized unit, such as 2 count or 0.5 lb",
+    ],
+    [
+      {
+        name: "Eggs",
+        operation: "consume",
+        expectedQuantity: "12 count",
+        deltaQuantity: "2",
+      },
+      "delta quantity must include a recognized unit, such as 2 count or 0.5 lb",
+    ],
+    [
+      {
+        name: "Eggs",
+        operation: "consume",
+        expectedQuantity: "12 count",
+        deltaQuantity: "0 count",
+      },
+      "delta quantity must be greater than zero",
+    ],
+    [
+      {
+        name: "Eggs",
+        operation: "set",
+        expectedQuantity: "12 count",
+        deltaQuantity: "2 count",
+      },
+      "operation must be consume or restock",
+    ],
+  ])("rejects an unsafe adjustment input %#", async (input, error) => {
+    await expect(
+      adjustPantryItemQuantity("user-123", input),
+    ).resolves.toEqual({ ok: false, error });
+    expect(mockAdjustItemQuantity).not.toHaveBeenCalled();
   });
 });
 
