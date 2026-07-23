@@ -93,9 +93,12 @@ in, send a message in the chat to get a recipe reply.
 
 Mise also has an experimental MCP Apps surface for ChatGPT. Supabase OAuth 2.1 identifies
 the connected Mise user. `get_kitchen_context` returns only that user's pantry and kitchen
-tools in an inline widget, without row IDs. The narrow `set_pantry_item_quantity` action can
-set the exact quantity of one unambiguous existing item; it cannot create, rename, delete,
-or bulk-edit pantry data. Missing or duplicate normalized names leave the pantry unchanged.
+tools in an inline widget, without row IDs. Narrow actions can set, consume, or restock the
+structured quantity of one unambiguous existing item. They cannot create, rename, delete,
+convert units, or bulk-edit pantry data. Missing or ambiguous names, unsupported quantities,
+stale expectations, and unsafe arithmetic leave the pantry unchanged. The shared backend
+also supports transactional multi-item consume/restock changes, but that command is not yet
+exposed through MCP or the website.
 
 The hosted ChatGPT connector uses:
 

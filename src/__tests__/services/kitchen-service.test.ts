@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeItem } from "@/__tests__/helpers/fixtures";
 
 vi.mock("@/lib/db", () => ({
+  adjustItemQuantitiesByCanonicalName: vi.fn(),
   adjustItemQuantityByCanonicalName: vi.fn(),
   addItem: vi.fn(),
   addKitchenTool: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock("@/lib/db", () => ({
 }));
 
 import {
+  adjustItemQuantitiesByCanonicalName,
   adjustItemQuantityByCanonicalName,
   addItem,
   addKitchenTool,
@@ -31,6 +33,7 @@ import {
   updateKitchenTool as updateKitchenToolRecord,
 } from "@/lib/db";
 import {
+  adjustPantryItemQuantities,
   adjustPantryItemQuantity,
   createKitchenTool,
   createPantryItem,
@@ -44,6 +47,9 @@ import {
   updatePantryItem,
 } from "@/lib/kitchen-service";
 
+const mockAdjustItemQuantities = vi.mocked(
+  adjustItemQuantitiesByCanonicalName,
+);
 const mockAdjustItemQuantity = vi.mocked(adjustItemQuantityByCanonicalName);
 const mockAddItem = vi.mocked(addItem);
 const mockAddKitchenTool = vi.mocked(addKitchenTool);
@@ -709,6 +715,203 @@ describe("pantry quantity adjustments", () => {
       adjustPantryItemQuantity("user-123", input),
     ).resolves.toEqual({ ok: false, error });
     expect(mockAdjustItemQuantity).not.toHaveBeenCalled();
+  });
+});
+
+describe("pantry quantity adjustment batches", () => {
+  const count12 = {
+    mode: "structured" as const,
+    amount: "12",
+    unit: "count" as const,
+    text: null,
+  };
+  const count2 = {
+    mode: "structured" as const,
+    amount: "2",
+    unit: "count" as const,
+    text: null,
+  };
+  const lb3 = {
+    mode: "structured" as const,
+    amount: "3",
+    unit: "lb" as const,
+    text: null,
+  };
+  const lb1 = {
+    mode: "structured" as const,
+    amount: "1",
+    unit: "lb" as const,
+    text: null,
+  };
+
+  it("normalizes a bounded batch and returns public before/after results", async () => {
+    mockAdjustItemQuantities.mockResolvedValue({
+      status: "applied",
+      changes: [
+        {
+          index: 0,
+          operation: "consume",
+          item: fakeItem({
+            name: "Eggs",
+            quantity: "10",
+            quantity_value: "10",
+          }),
+          beforeQuantity: "12",
+          afterQuantity: "10",
+          before: count12,
+          delta: count2,
+          after: { ...count12, amount: "10" },
+        },
+        {
+          index: 1,
+          operation: "restock",
+          item: fakeItem({
+            id: 2,
+            name: "Flour",
+            name_key: "flour",
+            quantity: "4 lb",
+            quantity_value: "4",
+            quantity_unit: "lb",
+          }),
+          beforeQuantity: "3 lb",
+          afterQuantity: "4 lb",
+          before: lb3,
+          delta: lb1,
+          after: { ...lb3, amount: "4" },
+        },
+      ],
+    });
+
+    await expect(adjustPantryItemQuantities("user-123", {
+      changes: [
+        {
+          name: " Eggs ",
+          operation: "consume",
+          expectedQuantity: "12 counts",
+          deltaQuantity: "2 count",
+        },
+        {
+          name: "Flour",
+          operation: "restock",
+          expectedQuantity: "3 lb",
+          deltaQuantity: "1 lb",
+        },
+      ],
+    })).resolves.toEqual({
+      ok: true,
+      value: {
+        status: "applied",
+        changes: [
+          {
+            index: 0,
+            operation: "consume",
+            name: "Eggs",
+            beforeQuantity: "12",
+            quantity: "10",
+            before: count12,
+            delta: count2,
+            after: { ...count12, amount: "10" },
+          },
+          {
+            index: 1,
+            operation: "restock",
+            name: "Flour",
+            beforeQuantity: "3 lb",
+            quantity: "4 lb",
+            before: lb3,
+            delta: lb1,
+            after: { ...lb3, amount: "4" },
+          },
+        ],
+      },
+    });
+    expect(mockAdjustItemQuantities).toHaveBeenCalledWith("user-123", [
+      {
+        name: "Eggs",
+        operation: "consume",
+        expected: count12,
+        delta: count2,
+      },
+      {
+        name: "Flour",
+        operation: "restock",
+        expected: lb3,
+        delta: lb1,
+      },
+    ]);
+  });
+
+  it("adds the reviewed expectation to a rejected conflict", async () => {
+    mockAdjustItemQuantities.mockResolvedValue({
+      status: "rejected",
+      failures: [{
+        index: 0,
+        name: "Eggs",
+        status: "conflict",
+        current: { ...count12, amount: "10" },
+      }],
+    });
+
+    await expect(adjustPantryItemQuantities("user-123", {
+      changes: [{
+        name: "Eggs",
+        operation: "consume",
+        expectedQuantity: "12 count",
+        deltaQuantity: "2 count",
+      }],
+    })).resolves.toEqual({
+      ok: true,
+      value: {
+        status: "rejected",
+        failures: [{
+          index: 0,
+          name: "Eggs",
+          status: "conflict",
+          expected: count12,
+          current: { ...count12, amount: "10" },
+        }],
+      },
+    });
+  });
+
+  it.each([
+    [{}, "changes must be an array"],
+    [{ changes: [] }, "changes must include at least one item"],
+    [
+      { changes: Array.from({ length: 26 }, () => ({})) },
+      "changes must include 25 items or fewer",
+    ],
+    [
+      { changes: ["Eggs"] },
+      "changes[0] must be an object",
+    ],
+    [
+      {
+        changes: [{
+          name: "Eggs",
+          operation: "set",
+          expectedQuantity: "12 count",
+          deltaQuantity: "2 count",
+        }],
+      },
+      "changes[0].operation must be consume or restock",
+    ],
+    [
+      {
+        changes: [{
+          name: "Eggs",
+          operation: "consume",
+          expectedQuantity: "12 count",
+          deltaQuantity: "0 count",
+        }],
+      },
+      "changes[0].delta quantity must be greater than zero",
+    ],
+  ])("rejects an unsafe batch input %#", async (input, error) => {
+    await expect(
+      adjustPantryItemQuantities("user-123", input),
+    ).resolves.toEqual({ ok: false, error });
+    expect(mockAdjustItemQuantities).not.toHaveBeenCalled();
   });
 });
 
