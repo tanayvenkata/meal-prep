@@ -16,6 +16,9 @@ import {
   parsePantryQuantity,
   type PantryQuantity,
 } from "@/lib/pantry-quantity";
+import {
+  updateKitchenTool as updateKitchenToolCommand,
+} from "@/lib/kitchen-service";
 import postgres from "postgres";
 
 // Owner connection for fixture setup only — app code under test uses mise_app via DATABASE_URL.
@@ -147,23 +150,114 @@ describe("kitchen tools", () => {
     });
   });
 
+  it("uses one canonical identity per user under concurrent creation", async () => {
+    const [first, second] = await Promise.all([
+      addKitchenTool(TEST_USER_A, " Café   press ", "appliance"),
+      addKitchenTool(TEST_USER_A, "CAFE\u0301 PRESS", "appliance"),
+    ]);
+
+    expect([first.status, second.status].sort()).toEqual([
+      "already_exists",
+      "created",
+    ]);
+    expect(first.tool.id).toBe(second.tool.id);
+    expect(first.tool.name_key).toBe("café press");
+    expect(await getKitchenTools(TEST_USER_A)).toHaveLength(1);
+  });
+
+  it("allows the same canonical tool name for different users", async () => {
+    const [first, second] = await Promise.all([
+      addKitchenTool(TEST_USER_A, "Dutch oven", "cookware"),
+      addKitchenTool(TEST_USER_B, " DUTCH   OVEN ", "cookware"),
+    ]);
+
+    expect(first.status).toBe("created");
+    expect(second.status).toBe("created");
+    expect(first.tool.id).not.toBe(second.tool.id);
+  });
+
+  it("preserves the display name across canonical-equivalent service edits", async () => {
+    const created = await addKitchenTool(
+      TEST_USER_A,
+      "Café press",
+      "appliance",
+    );
+
+    await expect(updateKitchenToolCommand(TEST_USER_A, {
+      id: created.tool.id,
+      name: " CAFE\u0301   PRESS ",
+      kind: "appliance",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "unchanged", tool: created.tool },
+    });
+
+    const changedKind = await updateKitchenToolCommand(TEST_USER_A, {
+      id: created.tool.id,
+      name: " CAFE\u0301   PRESS ",
+      kind: "cookware",
+    });
+    expect(changedKind).toMatchObject({
+      ok: true,
+      value: {
+        status: "updated",
+        tool: { name: "Café press", kind: "cookware" },
+      },
+    });
+    expect((await getKitchenTools(TEST_USER_A))[0]).toMatchObject({
+      name: "Café press",
+      kind: "cookware",
+    });
+  });
+
   it("updates a user's tool", async () => {
-    const tool = await addKitchenTool(TEST_USER_A, "Frying pan", "cookware");
+    const created = await addKitchenTool(TEST_USER_A, "Frying pan", "cookware");
+    const tool = created.tool;
 
     const updated = await updateKitchenTool(TEST_USER_A, tool.id, "12-inch skillet", "cookware");
 
-    expect(updated).toMatchObject({ name: "12-inch skillet", kind: "cookware" });
+    expect(updated).toMatchObject({
+      status: "updated",
+      tool: { name: "12-inch skillet", kind: "cookware" },
+    });
   });
 
   it("cannot update or delete another user's tool", async () => {
-    const tool = await addKitchenTool(TEST_USER_B, "Oven", "appliance");
+    const created = await addKitchenTool(TEST_USER_B, "Oven", "appliance");
+    const tool = created.tool;
 
     const updated = await updateKitchenTool(TEST_USER_A, tool.id, "My oven", "appliance");
     await deleteKitchenTool(TEST_USER_A, tool.id);
 
-    expect(updated).toBeUndefined();
+    expect(updated).toEqual({ status: "not_found" });
     const remaining = await sql`select * from kitchen_tools where id = ${tool.id}`;
     expect(remaining).toHaveLength(1);
+  });
+
+  it("reports canonical update conflicts without changing either row", async () => {
+    const skillet = (await addKitchenTool(
+      TEST_USER_A,
+      "Skillet",
+      "cookware",
+    )).tool;
+    const oven = (await addKitchenTool(
+      TEST_USER_A,
+      "Dutch oven",
+      "cookware",
+    )).tool;
+
+    await expect(updateKitchenTool(
+      TEST_USER_A,
+      skillet.id,
+      " DUTCH   OVEN ",
+      "cookware",
+    )).resolves.toEqual({ status: "name_conflict" });
+    await expect(getKitchenTools(TEST_USER_A)).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: skillet.id, name: "Skillet" }),
+        expect.objectContaining({ id: oven.id, name: "Dutch oven" }),
+      ]),
+    );
   });
 
   it("RLS hides another user's tool from an unfiltered query", async () => {
@@ -179,12 +273,32 @@ describe("kitchen tools", () => {
   });
 
   it("deletes the given tool", async () => {
-    const tool = await addKitchenTool(TEST_USER_A, "Baking sheet", "bakeware");
+    const created = await addKitchenTool(
+      TEST_USER_A,
+      "Baking sheet",
+      "bakeware",
+    );
+    const tool = created.tool;
 
-    await deleteKitchenTool(TEST_USER_A, tool.id);
+    await expect(deleteKitchenTool(TEST_USER_A, tool.id)).resolves.toEqual({
+      status: "deleted",
+    });
+    await expect(deleteKitchenTool(TEST_USER_A, tool.id)).resolves.toEqual({
+      status: "not_found",
+    });
 
     const remaining = await sql`select * from kitchen_tools where id = ${tool.id}`;
     expect(remaining).toHaveLength(0);
+  });
+
+  it("rejects unsupported kinds at the database boundary", async () => {
+    await expect(sql`
+      insert into kitchen_tools (user_id, name, kind)
+      values (${TEST_USER_A}, 'Mystery tool', 'other')
+    `).rejects.toMatchObject({
+      code: "23514",
+      constraint_name: "kitchen_tools_kind_check",
+    });
   });
 });
 

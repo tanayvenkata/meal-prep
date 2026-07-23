@@ -269,9 +269,25 @@ export type KitchenTool = {
   id: string;
   user_id: string;
   name: string;
-  kind: string;
+  name_key: string;
+  kind: KitchenToolKind;
   created_at: string;
 };
+
+export type KitchenToolKind = "appliance" | "cookware" | "bakeware";
+
+export type AddKitchenToolResult =
+  | { status: "created"; tool: KitchenTool }
+  | { status: "already_exists"; tool: KitchenTool };
+
+export type UpdateKitchenToolResult =
+  | { status: "updated"; tool: KitchenTool }
+  | { status: "not_found" }
+  | { status: "name_conflict" };
+
+export type DeleteKitchenToolResult =
+  | { status: "deleted" }
+  | { status: "not_found" };
 
 export type DatabaseConnectionSafety = {
   currentUser: string;
@@ -1210,14 +1226,56 @@ export async function getKitchenTools(userId: string): Promise<KitchenTool[]> {
   );
 }
 
-export async function addKitchenTool(userId: string, name: string, kind: string): Promise<KitchenTool> {
+export async function getKitchenToolById(
+  userId: string,
+  id: string,
+): Promise<KitchenTool | null> {
+  return withUserContext(userId, async (tx) => {
+    const [tool] = await tx<KitchenTool[]>`
+      select * from kitchen_tools
+      where user_id = ${userId} and id = ${id}
+    `;
+    return tool ?? null;
+  });
+}
+
+export async function getKitchenToolByCanonicalName(
+  userId: string,
+  name: string,
+): Promise<KitchenTool | null> {
+  return withUserContext(userId, async (tx) => {
+    const [tool] = await tx<KitchenTool[]>`
+      select * from kitchen_tools
+      where user_id = ${userId}
+        and name_key = public.canonical_inventory_name(${name})
+    `;
+    return tool ?? null;
+  });
+}
+
+export async function addKitchenTool(
+  userId: string,
+  name: string,
+  kind: KitchenToolKind,
+): Promise<AddKitchenToolResult> {
   return withUserContext(userId, async (tx) => {
     const [tool] = await tx<KitchenTool[]>`
       insert into kitchen_tools (user_id, name, kind)
       values (${userId}, ${name}, ${kind})
+      on conflict (user_id, name_key) do nothing
       returning *
     `;
-    return tool;
+    if (tool) return { status: "created", tool };
+
+    const [existing] = await tx<KitchenTool[]>`
+      select * from kitchen_tools
+      where user_id = ${userId}
+        and name_key = public.canonical_inventory_name(${name})
+    `;
+    if (!existing) {
+      throw new Error("kitchen tool conflict disappeared before lookup");
+    }
+    return { status: "already_exists", tool: existing };
   });
 }
 
@@ -1225,26 +1283,47 @@ export async function updateKitchenTool(
   userId: string,
   id: string,
   name: string,
-  kind: string,
-): Promise<KitchenTool> {
-  return withUserContext(userId, async (tx) => {
-    const [tool] = await tx<KitchenTool[]>`
-      update kitchen_tools
-      set name = ${name}, kind = ${kind}
-      where id = ${id} and user_id = ${userId}
-      returning *
-    `;
-    return tool;
-  });
+  kind: KitchenToolKind,
+): Promise<UpdateKitchenToolResult> {
+  try {
+    return await withUserContext(userId, async (tx) => {
+      const [tool] = await tx<KitchenTool[]>`
+        update kitchen_tools
+        set name = ${name}, kind = ${kind}
+        where id = ${id} and user_id = ${userId}
+        returning *
+      `;
+      return tool
+        ? { status: "updated", tool }
+        : { status: "not_found" };
+    });
+  } catch (error) {
+    if (
+      typeof error === "object"
+      && error !== null
+      && "code" in error
+      && error.code === "23505"
+      && "constraint_name" in error
+      && error.constraint_name === "kitchen_tools_user_id_name_key_key"
+    ) {
+      return { status: "name_conflict" };
+    }
+    throw error;
+  }
 }
 
-export async function deleteKitchenTool(userId: string, id: string): Promise<void> {
-  await withUserContext(userId, (tx) =>
-    tx`
+export async function deleteKitchenTool(
+  userId: string,
+  id: string,
+): Promise<DeleteKitchenToolResult> {
+  return withUserContext(userId, async (tx) => {
+    const [deleted] = await tx<{ id: string }[]>`
       delete from kitchen_tools
       where id = ${id} and user_id = ${userId}
-    `,
-  );
+      returning id
+    `;
+    return deleted ? { status: "deleted" } : { status: "not_found" };
+  });
 }
 
 export type Conversation = {

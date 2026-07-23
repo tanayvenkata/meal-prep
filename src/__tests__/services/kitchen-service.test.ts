@@ -12,6 +12,8 @@ vi.mock("@/lib/db", () => ({
   getItemById: vi.fn(),
   getItemByCanonicalName: vi.fn(),
   getItems: vi.fn(),
+  getKitchenToolByCanonicalName: vi.fn(),
+  getKitchenToolById: vi.fn(),
   getKitchenTools: vi.fn(),
   setItemQuantityByCanonicalName: vi.fn(),
   updateItem: vi.fn(),
@@ -29,6 +31,8 @@ import {
   getItemById,
   getItemByCanonicalName,
   getItems,
+  getKitchenToolByCanonicalName,
+  getKitchenToolById,
   getKitchenTools,
   setItemQuantityByCanonicalName,
   updateItem,
@@ -64,6 +68,10 @@ const mockDeleteKitchenTool = vi.mocked(deleteKitchenToolRecord);
 const mockGetItemById = vi.mocked(getItemById);
 const mockGetItemByCanonicalName = vi.mocked(getItemByCanonicalName);
 const mockGetItems = vi.mocked(getItems);
+const mockGetKitchenToolByCanonicalName = vi.mocked(
+  getKitchenToolByCanonicalName,
+);
+const mockGetKitchenToolById = vi.mocked(getKitchenToolById);
 const mockGetKitchenTools = vi.mocked(getKitchenTools);
 const mockSetItemQuantity = vi.mocked(setItemQuantityByCanonicalName);
 const mockUpdateItem = vi.mocked(updateItem);
@@ -73,7 +81,8 @@ const tool = {
   id: "00000000-0000-0000-0000-000000000001",
   user_id: "user-123",
   name: "Air fryer",
-  kind: "appliance",
+  name_key: "air fryer",
+  kind: "appliance" as const,
   created_at: "2026-07-22T00:00:00Z",
 };
 
@@ -1044,15 +1053,38 @@ describe("reviewed receipt imports", () => {
 
 describe("kitchen-tool commands", () => {
   it("normalizes creation input and delegates as the user", async () => {
-    mockAddKitchenTool.mockResolvedValue(tool);
+    mockAddKitchenTool.mockResolvedValue({ status: "created", tool });
 
     await expect(createKitchenTool("user-123", {
       name: " Air fryer ",
       kind: " appliance ",
-    })).resolves.toEqual({ ok: true, value: tool });
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "created", tool },
+    });
     expect(mockAddKitchenTool).toHaveBeenCalledWith(
       "user-123",
       "Air fryer",
+      "appliance",
+    );
+  });
+
+  it("returns an existing canonical duplicate without creating another tool", async () => {
+    mockAddKitchenTool.mockResolvedValue({
+      status: "already_exists",
+      tool,
+    });
+
+    await expect(createKitchenTool("user-123", {
+      name: "  AIR   FRYER  ",
+      kind: " APPLIANCE ",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "already_exists", tool },
+    });
+    expect(mockAddKitchenTool).toHaveBeenCalledWith(
+      "user-123",
+      "AIR   FRYER",
       "appliance",
     );
   });
@@ -1065,8 +1097,8 @@ describe("kitchen-tool commands", () => {
       "name must be 100 characters or fewer",
     ],
     [
-      { name: "Air fryer", kind: "a".repeat(51) },
-      "kind must be 50 characters or fewer",
+      { name: "Air fryer", kind: "countertop" },
+      "kind must be appliance, cookware, or bakeware",
     ],
   ])("rejects invalid tool creation input %#", async (input, error) => {
     await expect(createKitchenTool("user-123", input)).resolves.toEqual({
@@ -1077,14 +1109,23 @@ describe("kitchen-tool commands", () => {
   });
 
   it("normalizes and delegates tool updates as the user", async () => {
-    const updated = { ...tool, name: "Convection oven" };
-    mockUpdateKitchenTool.mockResolvedValue(updated);
+    const updated = {
+      ...tool,
+      name: "Convection oven",
+      name_key: "convection oven",
+    };
+    mockGetKitchenToolById.mockResolvedValue(tool);
+    mockGetKitchenToolByCanonicalName.mockResolvedValue(null);
+    mockUpdateKitchenTool.mockResolvedValue({ status: "updated", tool: updated });
 
     await expect(updateKitchenTool("user-123", {
       id: tool.id,
       name: " Convection oven ",
       kind: " appliance ",
-    })).resolves.toEqual({ ok: true, value: updated });
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "updated", tool: updated },
+    });
     expect(mockUpdateKitchenTool).toHaveBeenCalledWith(
       "user-123",
       tool.id,
@@ -1093,14 +1134,155 @@ describe("kitchen-tool commands", () => {
     );
   });
 
+  it("returns unchanged without writing an equivalent edit", async () => {
+    mockGetKitchenToolById.mockResolvedValue(tool);
+    mockGetKitchenToolByCanonicalName.mockResolvedValue(tool);
+
+    await expect(updateKitchenTool("user-123", {
+      id: tool.id.toUpperCase(),
+      name: "  AIR   FRYER  ",
+      kind: " APPLIANCE ",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "unchanged", tool },
+    });
+    expect(mockUpdateKitchenTool).not.toHaveBeenCalled();
+  });
+
+  it("preserves the display name when only kind changes canonically", async () => {
+    mockGetKitchenToolById.mockResolvedValue(tool);
+    mockGetKitchenToolByCanonicalName.mockResolvedValue(tool);
+    const updated = { ...tool, kind: "cookware" as const };
+    mockUpdateKitchenTool.mockResolvedValue({ status: "updated", tool: updated });
+
+    await expect(updateKitchenTool("user-123", {
+      id: tool.id,
+      name: "  AIR   FRYER  ",
+      kind: "cookware",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "updated", tool: updated },
+    });
+    expect(mockUpdateKitchenTool).toHaveBeenCalledWith(
+      "user-123",
+      tool.id,
+      "Air fryer",
+      "cookware",
+    );
+  });
+
+  it("treats Unicode-composition variants as the same unchanged identity", async () => {
+    const unicodeTool = {
+      ...tool,
+      name: "Café press",
+      name_key: "café press",
+    };
+    mockGetKitchenToolById.mockResolvedValue(unicodeTool);
+    mockGetKitchenToolByCanonicalName.mockResolvedValue(unicodeTool);
+
+    await expect(updateKitchenTool("user-123", {
+      id: tool.id,
+      name: "CAFE\u0301   PRESS",
+      kind: "appliance",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "unchanged", tool: unicodeTool },
+    });
+    expect(mockUpdateKitchenTool).not.toHaveBeenCalled();
+  });
+
+  it("keeps missing and foreign tool IDs indistinguishable", async () => {
+    mockGetKitchenToolById.mockResolvedValue(null);
+
+    await expect(updateKitchenTool("user-123", {
+      id: tool.id,
+      name: "Air fryer",
+      kind: "appliance",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "not_found", id: tool.id },
+    });
+    expect(mockGetKitchenToolByCanonicalName).not.toHaveBeenCalled();
+    expect(mockUpdateKitchenTool).not.toHaveBeenCalled();
+  });
+
+  it("returns canonical conflicts without exposing another user's rows", async () => {
+    const conflictingTool = {
+      ...tool,
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Dutch oven",
+      name_key: "dutch oven",
+      kind: "cookware" as const,
+    };
+    mockGetKitchenToolById.mockResolvedValue(tool);
+    mockGetKitchenToolByCanonicalName.mockResolvedValue(conflictingTool);
+
+    await expect(updateKitchenTool("user-123", {
+      id: tool.id,
+      name: " DUTCH   OVEN ",
+      kind: "cookware",
+    })).resolves.toEqual({
+      ok: true,
+      value: {
+        status: "name_conflict",
+        id: tool.id,
+        conflictingTool,
+      },
+    });
+    expect(mockUpdateKitchenTool).not.toHaveBeenCalled();
+  });
+
+  it("maps a database race conflict after the preflight check", async () => {
+    const conflictingTool = {
+      ...tool,
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Dutch oven",
+      name_key: "dutch oven",
+      kind: "cookware" as const,
+    };
+    mockGetKitchenToolById.mockResolvedValue(tool);
+    mockGetKitchenToolByCanonicalName
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(conflictingTool);
+    mockUpdateKitchenTool.mockResolvedValue({ status: "name_conflict" });
+
+    await expect(updateKitchenTool("user-123", {
+      id: tool.id,
+      name: "Dutch oven",
+      kind: "cookware",
+    })).resolves.toEqual({
+      ok: true,
+      value: {
+        status: "name_conflict",
+        id: tool.id,
+        conflictingTool,
+      },
+    });
+  });
+
   it("validates then delegates tool deletion as the user", async () => {
     await expect(deleteKitchenTool("user-123", {})).resolves.toEqual({
       ok: false,
-      error: "id is required",
+      error: "id must be a UUID",
     });
+    mockDeleteKitchenTool.mockResolvedValue({ status: "deleted" });
     await expect(deleteKitchenTool("user-123", {
       id: tool.id,
-    })).resolves.toEqual({ ok: true, value: null });
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "deleted", id: tool.id },
+    });
     expect(mockDeleteKitchenTool).toHaveBeenCalledWith("user-123", tool.id);
+  });
+
+  it("truthfully reports a missing tool deletion", async () => {
+    mockDeleteKitchenTool.mockResolvedValue({ status: "not_found" });
+
+    await expect(deleteKitchenTool("user-123", {
+      id: tool.id,
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "not_found", id: tool.id },
+    });
   });
 });

@@ -26,8 +26,15 @@ const tool = {
   id: "00000000-0000-0000-0000-000000000001",
   user_id: "user-123",
   name: "Air fryer",
-  kind: "appliance",
+  name_key: "air fryer",
+  kind: "appliance" as const,
   created_at: "2024-01-01",
+};
+const toolResponse = {
+  id: tool.id,
+  name: tool.name,
+  kind: tool.kind,
+  created_at: tool.created_at,
 };
 
 beforeEach(() => vi.clearAllMocks());
@@ -49,7 +56,7 @@ describe("GET /api/tools", () => {
     const response = await GET(new Request("http://localhost/api/tools"));
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual([tool]);
+    await expect(response.json()).resolves.toEqual([toolResponse]);
     expect(mockListKitchenTools).toHaveBeenCalledWith("user-123");
   });
 });
@@ -77,7 +84,10 @@ describe("POST /api/tools", () => {
     });
     mockCreateKitchenTool
       .mockResolvedValueOnce({ ok: false, error: "kind is required" })
-      .mockResolvedValueOnce({ ok: true, value: tool });
+      .mockResolvedValueOnce({
+        ok: true,
+        value: { status: "created", tool },
+      });
 
     const invalid = await POST(new Request("http://localhost/api/tools", {
       method: "POST",
@@ -91,7 +101,29 @@ describe("POST /api/tools", () => {
     expect(invalid.status).toBe(400);
     expect((await invalid.json()).error).toBe("kind is required");
     expect(valid.status).toBe(201);
-    await expect(valid.json()).resolves.toEqual(tool);
+    await expect(valid.json()).resolves.toEqual(toolResponse);
+  });
+
+  it("maps a canonical duplicate to 409", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockCreateKitchenTool.mockResolvedValue({
+      ok: true,
+      value: { status: "already_exists", tool },
+    });
+
+    const response = await POST(new Request("http://localhost/api/tools", {
+      method: "POST",
+      body: JSON.stringify({ name: " AIR FRYER ", kind: "appliance" }),
+    }));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "already_exists",
+      existingTool: toolResponse,
+    });
   });
 });
 
@@ -127,8 +159,14 @@ describe("PUT and DELETE /api/tools", () => {
       userId: "user-123",
       oauthClientId: null,
     });
-    mockUpdateKitchenTool.mockResolvedValue({ ok: true, value: updated });
-    mockDeleteKitchenTool.mockResolvedValue({ ok: true, value: null });
+    mockUpdateKitchenTool.mockResolvedValue({
+      ok: true,
+      value: { status: "updated", tool: updated },
+    });
+    mockDeleteKitchenTool.mockResolvedValue({
+      ok: true,
+      value: { status: "deleted", id: tool.id },
+    });
 
     const updateResponse = await PUT(new Request("http://localhost/api/tools", {
       method: "PUT",
@@ -144,8 +182,70 @@ describe("PUT and DELETE /api/tools", () => {
     }));
 
     expect(updateResponse.status).toBe(200);
-    await expect(updateResponse.json()).resolves.toEqual(updated);
+    await expect(updateResponse.json()).resolves.toEqual({
+      ...toolResponse,
+      name: "Convection oven",
+    });
     expect(deleteResponse.status).toBe(200);
     await expect(deleteResponse.json()).resolves.toEqual({ success: true });
+  });
+
+  it("maps missing and conflicting mutation outcomes", async () => {
+    const conflictingTool = {
+      ...tool,
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Dutch oven",
+      name_key: "dutch oven",
+      kind: "cookware" as const,
+    };
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockUpdateKitchenTool
+      .mockResolvedValueOnce({
+        ok: true,
+        value: { status: "not_found", id: tool.id },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        value: {
+          status: "name_conflict",
+          id: tool.id,
+          conflictingTool,
+        },
+      });
+    mockDeleteKitchenTool.mockResolvedValue({
+      ok: true,
+      value: { status: "not_found", id: tool.id },
+    });
+
+    const request = (name: string) => new Request(
+      "http://localhost/api/tools",
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          id: tool.id,
+          name,
+          kind: "appliance",
+        }),
+      },
+    );
+    const missingUpdate = await PUT(request("Missing"));
+    const conflictingUpdate = await PUT(request("Dutch oven"));
+    const missingDelete = await DELETE(new Request(
+      "http://localhost/api/tools",
+      {
+        method: "DELETE",
+        body: JSON.stringify({ id: tool.id }),
+      },
+    ));
+
+    expect(missingUpdate.status).toBe(404);
+    expect((await missingUpdate.json()).code).toBe("not_found");
+    expect(conflictingUpdate.status).toBe(409);
+    expect((await conflictingUpdate.json()).code).toBe("name_conflict");
+    expect(missingDelete.status).toBe(404);
+    expect((await missingDelete.json()).code).toBe("not_found");
   });
 });

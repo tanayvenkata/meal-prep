@@ -171,6 +171,21 @@ describe("RLS ownership across all four user-data tables", () => {
     ).rejects.toThrow();
   });
 
+  it("database constraints reject unsupported tool kinds under authenticated", async () => {
+    await expect(
+      asUser(
+        USER_A,
+        (tx) => tx`
+          insert into kitchen_tools (user_id, name, kind)
+          values (${USER_A}, 'Mystery tool', 'other')
+        `,
+      ),
+    ).rejects.toMatchObject({
+      code: "23514",
+      constraint_name: "kitchen_tools_kind_check",
+    });
+  });
+
   it("database policies hide cross-user updates under authenticated", async () => {
     const convo = await createConversation(USER_B, "milk chat", id());
     const message = await addMessage(USER_B, convo.id, "user", "starter");
@@ -323,7 +338,8 @@ describe("RLS ownership across all four user-data tables", () => {
 
   it("OAuth clients cannot update or delete owned rows directly", async () => {
     const item = (await addItem(USER_A, "eggs", quantity("12"))).item;
-    const tool = await addKitchenTool(USER_A, "Skillet", "cookware");
+    const created = await addKitchenTool(USER_A, "Skillet", "cookware");
+    const tool = created.tool;
     const convo = await createConversation(USER_A, "private chat", id());
     const message = await addMessage(USER_A, convo.id, "user", "private message");
 
