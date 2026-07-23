@@ -41,6 +41,10 @@ transitive dependencies.
 - Keep server data access separate from widget rendering. Demo fixtures may
   remain in `server.ts`; real user data belongs behind an authenticated service
   boundary.
+- `src/lib/kitchen-service.ts` is the shared server-side kitchen boundary.
+  HTTP and MCP transports authenticate and supply the trusted user ID; the
+  service validates and orchestrates pantry/tool operations; `src/lib/db.ts`
+  remains the only Postgres-driver and ownership-enforcement boundary.
 - Enforce authentication at the MCP HTTP boundary for account-specific data,
   verify token validity and required claims server-side, and retain per-tool
   `securitySchemes` as defense in depth and host-facing metadata.

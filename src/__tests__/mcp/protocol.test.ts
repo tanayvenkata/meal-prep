@@ -1,14 +1,21 @@
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/kitchen-service", () => ({
+  getKitchenContext: vi.fn(),
+}));
+
 import {
   createMiseHttpServer,
   handleMiseMcpRequest,
 } from "@/mcp/server";
+import { getKitchenContext } from "@/lib/kitchen-service";
 
 let httpServer: Server;
 let mcpUrl: string;
+const mockGetKitchenContext = vi.mocked(getKitchenContext);
 const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalMcpPublicUrl = process.env.MCP_PUBLIC_URL;
 
@@ -47,6 +54,11 @@ async function postMcp(body: Record<string, unknown>, token?: string) {
 beforeEach(async () => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://project.supabase.co";
   process.env.MCP_PUBLIC_URL = "https://mcp.mise.example/mcp";
+  mockGetKitchenContext.mockReset();
+  mockGetKitchenContext.mockResolvedValue({
+    pantry: [{ name: "Rice", quantity: "2 cups", turnover: "high" }],
+    tools: [{ name: "Dutch oven", kind: "cookware" }],
+  });
 
   httpServer = createMiseHttpServer({
     verifyAccessToken: verifyTestAccessToken,
@@ -118,6 +130,34 @@ describe("Mise MCP OAuth wire contract", () => {
     expect((tool?._meta as Record<string, unknown>).securitySchemes).toEqual(
       expectedSchemes,
     );
+  });
+
+  it("calls the shared kitchen service with the authenticated user ID", async () => {
+    const response = await postMcp({
+      jsonrpc: "2.0",
+      id: 7,
+      method: "tools/call",
+      params: {
+        name: "get_kitchen_context",
+        arguments: {},
+      },
+    }, "test-token");
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      result: {
+        content: [
+          { type: "text", text: "Returned your Mise kitchen context." },
+        ],
+        structuredContent: {
+          pantry: [
+            { name: "Rice", quantity: "2 cups", turnover: "high" },
+          ],
+          tools: [{ name: "Dutch oven", kind: "cookware" }],
+        },
+      },
+    });
+    expect(mockGetKitchenContext).toHaveBeenCalledWith("user-123");
   });
 
   it("serves the same authenticated tool contract through the Web-standard hosted transport", async () => {

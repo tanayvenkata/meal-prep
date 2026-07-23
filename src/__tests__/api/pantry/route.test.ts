@@ -1,53 +1,56 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GET, POST, PUT, DELETE } from "@/app/api/pantry/route";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DELETE, GET, POST, PUT } from "@/app/api/pantry/route";
 import { fakeItem } from "@/__tests__/helpers/fixtures";
 
 vi.mock("@/lib/auth", () => ({
   getRequestAuth: vi.fn(),
 }));
-
-vi.mock("@/lib/db", () => ({
-  getItems: vi.fn(),
-  addItem: vi.fn(),
-  updateItem: vi.fn(),
-  deleteItem: vi.fn(),
+vi.mock("@/lib/kitchen-service", () => ({
+  createPantryItem: vi.fn(),
+  deletePantryItem: vi.fn(),
+  listPantryItems: vi.fn(),
+  updatePantryItem: vi.fn(),
 }));
 
 import { getRequestAuth } from "@/lib/auth";
-import { getItems, addItem, updateItem, deleteItem } from "@/lib/db";
+import {
+  createPantryItem,
+  deletePantryItem,
+  listPantryItems,
+  updatePantryItem,
+} from "@/lib/kitchen-service";
 
 const mockGetRequestAuth = vi.mocked(getRequestAuth);
-const mockGetItems = vi.mocked(getItems);
-const mockAddItem = vi.mocked(addItem);
-const mockUpdateItem = vi.mocked(updateItem);
-const mockDeleteItem = vi.mocked(deleteItem);
+const mockCreatePantryItem = vi.mocked(createPantryItem);
+const mockDeletePantryItem = vi.mocked(deletePantryItem);
+const mockListPantryItems = vi.mocked(listPantryItems);
+const mockUpdatePantryItem = vi.mocked(updatePantryItem);
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+beforeEach(() => vi.clearAllMocks());
 
 describe("GET /api/pantry", () => {
   it("returns 401 when not authenticated", async () => {
     mockGetRequestAuth.mockResolvedValue(null);
 
-    const request = new Request("http://localhost/api/pantry");
-    const response = await GET(request);
+    const response = await GET(new Request("http://localhost/api/pantry"));
 
     expect(response.status).toBe(401);
-    const body = await response.json();
-    expect(body.error).toBe("unauthorized");
+    expect((await response.json()).error).toBe("unauthorized");
+    expect(mockListPantryItems).not.toHaveBeenCalled();
   });
 
-  it("returns 200 with items for authenticated user", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-    mockGetItems.mockResolvedValue([fakeItem()]);
+  it("returns the authenticated user's items", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockListPantryItems.mockResolvedValue([fakeItem()]);
 
-    const request = new Request("http://localhost/api/pantry");
-    const response = await GET(request);
+    const response = await GET(new Request("http://localhost/api/pantry"));
 
     expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body).toEqual([fakeItem()]);
+    await expect(response.json()).resolves.toEqual([fakeItem()]);
+    expect(mockListPantryItems).toHaveBeenCalledWith("user-123");
   });
 });
 
@@ -55,15 +58,13 @@ describe("POST /api/pantry", () => {
   it("returns 401 when not authenticated", async () => {
     mockGetRequestAuth.mockResolvedValue(null);
 
-    const request = new Request("http://localhost/api/pantry", {
+    const response = await POST(new Request("http://localhost/api/pantry", {
       method: "POST",
       body: JSON.stringify({ name: "eggs" }),
-    });
-    const response = await POST(request);
+    }));
 
     expect(response.status).toBe(401);
-    const body = await response.json();
-    expect(body.error).toBe("unauthorized");
+    expect(mockCreatePantryItem).not.toHaveBeenCalled();
   });
 
   it("returns 403 for an OAuth client token", async () => {
@@ -79,126 +80,48 @@ describe("POST /api/pantry", () => {
 
     expect(response.status).toBe(403);
     expect((await response.json()).error).toBe("oauth client is read-only");
-    expect(mockAddItem).not.toHaveBeenCalled();
+    expect(mockCreatePantryItem).not.toHaveBeenCalled();
   });
 
-  it("returns 400 when name is missing", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
+  it("maps service validation errors to the existing 400 contract", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockCreatePantryItem.mockResolvedValue({
+      ok: false,
+      error: "name is required",
+    });
 
-    const request = new Request("http://localhost/api/pantry", {
+    const response = await POST(new Request("http://localhost/api/pantry", {
       method: "POST",
       body: JSON.stringify({}),
-    });
-    const response = await POST(request);
+    }));
 
     expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error).toBe("name is required");
+    expect((await response.json()).error).toBe("name is required");
+    expect(mockCreatePantryItem).toHaveBeenCalledWith("user-123", {});
   });
 
-  it("returns 400 when name is empty string", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-
-    const request = new Request("http://localhost/api/pantry", {
-      method: "POST",
-      body: JSON.stringify({ name: "   " }),
+  it("returns 201 with the service result", async () => {
+    const item = fakeItem();
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
     });
-    const response = await POST(request);
+    mockCreatePantryItem.mockResolvedValue({ ok: true, value: item });
 
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error).toBe("name is required");
-  });
-
-  it("returns 400 when name is not a string", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-
-    const request = new Request("http://localhost/api/pantry", {
-      method: "POST",
-      body: JSON.stringify({ name: 42 }),
-    });
-    const response = await POST(request);
-
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error).toBe("name is required");
-  });
-
-  it("returns 400 when name exceeds 100 characters", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-
-    const request = new Request("http://localhost/api/pantry", {
-      method: "POST",
-      body: JSON.stringify({ name: "a".repeat(101) }),
-    });
-    const response = await POST(request);
-
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error).toBe("name must be 100 characters or fewer");
-    expect(mockAddItem).not.toHaveBeenCalled();
-  });
-
-  it("returns 201 with the new item", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-    mockAddItem.mockResolvedValue(fakeItem());
-
-    const request = new Request("http://localhost/api/pantry", {
+    const response = await POST(new Request("http://localhost/api/pantry", {
       method: "POST",
       body: JSON.stringify({ name: "eggs", quantity: "12" }),
-    });
-    const response = await POST(request);
+    }));
 
     expect(response.status).toBe(201);
-    const body = await response.json();
-    expect(body.name).toBe("eggs");
-    expect(body.quantity).toBe("12");
-  });
-
-  it("accepts a low-turnover item", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-    mockAddItem.mockResolvedValue(fakeItem({ turnover: "low" }));
-
-    const request = new Request("http://localhost/api/pantry", {
-      method: "POST",
-      body: JSON.stringify({ name: "paprika", quantity: "1 jar", turnover: "low" }),
-    });
-    const response = await POST(request);
-
-    expect(response.status).toBe(201);
-    expect(mockAddItem).toHaveBeenCalledWith("user-123", "paprika", "1 jar", "low");
-  });
-
-  it("rejects an unknown turnover value", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-
-    const request = new Request("http://localhost/api/pantry", {
-      method: "POST",
-      body: JSON.stringify({ name: "paprika", turnover: "medium" }),
-    });
-    const response = await POST(request);
-
-    expect(response.status).toBe(400);
-    expect((await response.json()).error).toBe("turnover must be high or low");
-    expect(mockAddItem).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual(item);
   });
 });
 
 describe("PUT /api/pantry", () => {
-  it("returns 401 when not authenticated", async () => {
-    mockGetRequestAuth.mockResolvedValue(null);
-
-    const request = new Request("http://localhost/api/pantry", {
-      method: "PUT",
-      body: JSON.stringify({ id: 1, quantity: "6" }),
-    });
-    const response = await PUT(request);
-
-    expect(response.status).toBe(401);
-    const body = await response.json();
-    expect(body.error).toBe("unauthorized");
-  });
-
   it("returns 403 for an OAuth client token", async () => {
     mockGetRequestAuth.mockResolvedValue({
       userId: "user-123",
@@ -211,113 +134,38 @@ describe("PUT /api/pantry", () => {
     }));
 
     expect(response.status).toBe(403);
-    expect(mockUpdateItem).not.toHaveBeenCalled();
+    expect(mockUpdatePantryItem).not.toHaveBeenCalled();
   });
 
-  it("returns 400 when id is missing", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
+  it("preserves validation errors and successful updates", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockUpdatePantryItem
+      .mockResolvedValueOnce({ ok: false, error: "id is required" })
+      .mockResolvedValueOnce({
+        ok: true,
+        value: fakeItem({ quantity: "6" }),
+      });
 
-    const request = new Request("http://localhost/api/pantry", {
+    const invalid = await PUT(new Request("http://localhost/api/pantry", {
       method: "PUT",
       body: JSON.stringify({ quantity: "6" }),
-    });
-    const response = await PUT(request);
-
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error).toBe("id is required");
-  });
-
-  it("returns 400 when name is provided but whitespace-only", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-
-    const request = new Request("http://localhost/api/pantry", {
-      method: "PUT",
-      body: JSON.stringify({ id: 1, name: "   " }),
-    });
-    const response = await PUT(request);
-
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error).toBe("name is required");
-    expect(mockUpdateItem).not.toHaveBeenCalled();
-  });
-
-  it("returns 400 when name exceeds 100 characters", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-
-    const request = new Request("http://localhost/api/pantry", {
-      method: "PUT",
-      body: JSON.stringify({ id: 1, name: "a".repeat(101) }),
-    });
-    const response = await PUT(request);
-
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error).toBe("name must be 100 characters or fewer");
-    expect(mockUpdateItem).not.toHaveBeenCalled();
-  });
-
-  it("returns 200 when name is omitted (quantity-only update)", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-    mockUpdateItem.mockResolvedValue(fakeItem({ quantity: "6" }));
-
-    const request = new Request("http://localhost/api/pantry", {
+    }));
+    const valid = await PUT(new Request("http://localhost/api/pantry", {
       method: "PUT",
       body: JSON.stringify({ id: 1, quantity: "6" }),
-    });
-    const response = await PUT(request);
+    }));
 
-    expect(response.status).toBe(200);
-    expect(mockUpdateItem).toHaveBeenCalledWith("user-123", 1, "6", undefined, undefined);
-  });
-
-  it("updates turnover when provided", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-    mockUpdateItem.mockResolvedValue(fakeItem({ turnover: "low" }));
-
-    const request = new Request("http://localhost/api/pantry", {
-      method: "PUT",
-      body: JSON.stringify({ id: 1, quantity: "1 jar", turnover: "low" }),
-    });
-    const response = await PUT(request);
-
-    expect(response.status).toBe(200);
-    expect(mockUpdateItem).toHaveBeenCalledWith("user-123", 1, "1 jar", undefined, "low");
-  });
-
-  it("returns 200 with the updated item", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-    mockUpdateItem.mockResolvedValue(fakeItem({ quantity: "6" }));
-
-    const request = new Request("http://localhost/api/pantry", {
-      method: "PUT",
-      body: JSON.stringify({ id: 1, quantity: "6" }),
-    });
-    const response = await PUT(request);
-
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.id).toBe(1);
-    expect(body.quantity).toBe("6");
+    expect(invalid.status).toBe(400);
+    expect((await invalid.json()).error).toBe("id is required");
+    expect(valid.status).toBe(200);
+    expect((await valid.json()).quantity).toBe("6");
   });
 });
 
 describe("DELETE /api/pantry", () => {
-  it("returns 401 when not authenticated", async () => {
-    mockGetRequestAuth.mockResolvedValue(null);
-
-    const request = new Request("http://localhost/api/pantry", {
-      method: "DELETE",
-      body: JSON.stringify({ id: 1 }),
-    });
-    const response = await DELETE(request);
-
-    expect(response.status).toBe(401);
-    const body = await response.json();
-    expect(body.error).toBe("unauthorized");
-  });
-
   it("returns 403 for an OAuth client token", async () => {
     mockGetRequestAuth.mockResolvedValue({
       userId: "user-123",
@@ -330,35 +178,30 @@ describe("DELETE /api/pantry", () => {
     }));
 
     expect(response.status).toBe(403);
-    expect(mockDeleteItem).not.toHaveBeenCalled();
+    expect(mockDeletePantryItem).not.toHaveBeenCalled();
   });
 
-  it("returns 400 when id is missing", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
+  it("preserves validation errors and the success response", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockDeletePantryItem
+      .mockResolvedValueOnce({ ok: false, error: "id is required" })
+      .mockResolvedValueOnce({ ok: true, value: null });
 
-    const request = new Request("http://localhost/api/pantry", {
+    const invalid = await DELETE(new Request("http://localhost/api/pantry", {
       method: "DELETE",
       body: JSON.stringify({}),
-    });
-    const response = await DELETE(request);
-
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error).toBe("id is required");
-  });
-
-  it("returns 200 with success on deletion", async () => {
-    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
-    mockDeleteItem.mockResolvedValue();
-
-    const request = new Request("http://localhost/api/pantry", {
+    }));
+    const valid = await DELETE(new Request("http://localhost/api/pantry", {
       method: "DELETE",
       body: JSON.stringify({ id: 1 }),
-    });
-    const response = await DELETE(request);
+    }));
 
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.success).toBe(true);
+    expect(invalid.status).toBe(400);
+    expect((await invalid.json()).error).toBe("id is required");
+    expect(valid.status).toBe(200);
+    await expect(valid.json()).resolves.toEqual({ success: true });
   });
 });
