@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeItem } from "@/__tests__/helpers/fixtures";
 
 vi.mock("@/lib/db", () => ({
+  applyReviewedReceiptImport: vi.fn(),
   adjustItemQuantitiesByCanonicalName: vi.fn(),
   adjustItemQuantityByCanonicalName: vi.fn(),
   addItem: vi.fn(),
@@ -18,6 +19,7 @@ vi.mock("@/lib/db", () => ({
 }));
 
 import {
+  applyReviewedReceiptImport as applyReviewedReceiptImportRecord,
   adjustItemQuantitiesByCanonicalName,
   adjustItemQuantityByCanonicalName,
   addItem,
@@ -33,6 +35,7 @@ import {
   updateKitchenTool as updateKitchenToolRecord,
 } from "@/lib/db";
 import {
+  applyReviewedReceiptImport,
   adjustPantryItemQuantities,
   adjustPantryItemQuantity,
   createKitchenTool,
@@ -47,6 +50,9 @@ import {
   updatePantryItem,
 } from "@/lib/kitchen-service";
 
+const mockApplyReviewedReceiptImport = vi.mocked(
+  applyReviewedReceiptImportRecord,
+);
 const mockAdjustItemQuantities = vi.mocked(
   adjustItemQuantitiesByCanonicalName,
 );
@@ -912,6 +918,127 @@ describe("pantry quantity adjustment batches", () => {
       adjustPantryItemQuantities("user-123", input),
     ).resolves.toEqual({ ok: false, error });
     expect(mockAdjustItemQuantities).not.toHaveBeenCalled();
+  });
+});
+
+describe("reviewed receipt imports", () => {
+  const requestId = "b9b98fd0-c4b6-4de7-8a9d-1d05be0d6ac1";
+
+  it("normalizes explicit create/restock decisions and delegates once", async () => {
+    mockApplyReviewedReceiptImport.mockResolvedValue({
+      status: "applied",
+      requestId,
+      replayed: false,
+      changes: [],
+    });
+
+    await expect(applyReviewedReceiptImport("user-123", {
+      requestId: requestId.toUpperCase(),
+      lines: [
+        {
+          decision: "create",
+          name: "  Black beans ",
+          quantity: "2 cans",
+        },
+        {
+          decision: "restock",
+          name: " Rice ",
+          expectedQuantity: "2 cups",
+          deltaQuantity: "1 cup",
+        },
+      ],
+    })).resolves.toEqual({
+      ok: true,
+      value: {
+        status: "applied",
+        requestId,
+        replayed: false,
+        changes: [],
+      },
+    });
+    expect(mockApplyReviewedReceiptImport).toHaveBeenCalledTimes(1);
+    expect(mockApplyReviewedReceiptImport).toHaveBeenCalledWith(
+      "user-123",
+      requestId,
+      [
+        {
+          decision: "create",
+          name: "Black beans",
+          quantity: {
+            mode: "structured",
+            amount: "2",
+            unit: "can",
+            text: null,
+          },
+          turnover: "high",
+        },
+        {
+          decision: "restock",
+          name: "Rice",
+          expected: {
+            mode: "structured",
+            amount: "2",
+            unit: "cup",
+            text: null,
+          },
+          delta: {
+            mode: "structured",
+            amount: "1",
+            unit: "cup",
+            text: null,
+          },
+        },
+      ],
+    );
+  });
+
+  it.each([
+    [{}, "requestId must be a UUID"],
+    [{ requestId }, "lines must be an array"],
+    [{ requestId, lines: [] }, "lines must include at least one item"],
+    [
+      { requestId, lines: Array.from({ length: 26 }, () => ({})) },
+      "lines must include 25 items or fewer",
+    ],
+    [
+      { requestId, lines: ["Eggs"] },
+      "lines[0] must be an object",
+    ],
+    [
+      { requestId, lines: [{ decision: "merge", name: "Eggs" }] },
+      "lines[0].decision must be create or restock",
+    ],
+    [
+      {
+        requestId,
+        lines: [{ decision: "create", name: "Eggs", quantity: "12" }],
+      },
+      "lines[0].quantity must include a recognized unit, such as 2 count or 0.5 lb",
+    ],
+    [
+      {
+        requestId,
+        lines: [{ decision: "create", name: "Eggs", quantity: "0 count" }],
+      },
+      "lines[0].quantity must be greater than zero",
+    ],
+    [
+      {
+        requestId,
+        lines: [{
+          decision: "restock",
+          name: "Eggs",
+          expectedQuantity: "12 count",
+          deltaQuantity: "0 count",
+        }],
+      },
+      "lines[0].delta quantity must be greater than zero",
+    ],
+  ])("rejects invalid reviewed receipt input %#", async (input, error) => {
+    await expect(
+      applyReviewedReceiptImport("user-123", input),
+    ).resolves.toEqual({ ok: false, error });
+    expect(mockApplyReviewedReceiptImport).not.toHaveBeenCalled();
   });
 });
 

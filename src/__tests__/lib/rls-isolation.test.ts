@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import {
+  applyReviewedReceiptImport,
   addItem,
   addKitchenTool,
   createConversation,
@@ -57,6 +58,7 @@ function asOAuthUser<T>(
 }
 
 beforeAll(async () => {
+  await sql`delete from private.pantry_operation_receipts where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from conversations where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from kitchen_tools where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from items where user_id in (${USER_A}, ${USER_B})`;
@@ -70,6 +72,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await sql`delete from private.pantry_operation_receipts where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from conversations where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from kitchen_tools where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from items where user_id in (${USER_A}, ${USER_B})`;
@@ -79,12 +82,14 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  await sql`delete from private.pantry_operation_receipts where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from conversations where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from kitchen_tools where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from items where user_id in (${USER_A}, ${USER_B})`;
 });
 
 afterEach(async () => {
+  await sql`delete from private.pantry_operation_receipts where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from conversations where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from kitchen_tools where user_id in (${USER_A}, ${USER_B})`;
   await sql`delete from items where user_id in (${USER_A}, ${USER_B})`;
@@ -532,6 +537,177 @@ describe("RLS ownership across all four user-data tables", () => {
   });
 });
 
+describe("private pantry operation receipt isolation", () => {
+  it("shows receipts only to the direct owning user context", async () => {
+    await applyReviewedReceiptImport(USER_A, id(), [{
+      decision: "create",
+      name: "Black beans",
+      quantity: {
+        mode: "structured",
+        amount: "2",
+        unit: "can",
+        text: null,
+      },
+      turnover: "high",
+    }]);
+
+    const owned = await asUser(
+      USER_A,
+      (tx) => tx`select request_id from private.pantry_operation_receipts`,
+    );
+    const other = await asUser(
+      USER_B,
+      (tx) => tx`select request_id from private.pantry_operation_receipts`,
+    );
+    const oauth = await asOAuthUser(
+      USER_A,
+      (tx) => tx`select request_id from private.pantry_operation_receipts`,
+    );
+
+    expect(owned).toHaveLength(1);
+    expect(other).toHaveLength(0);
+    expect(oauth).toHaveLength(0);
+  });
+
+  it("rejects cross-user inserts and exposes no delete capability", async () => {
+    await expect(
+      asUser(
+        USER_A,
+        (tx) => tx`
+          insert into private.pantry_operation_receipts (
+            user_id,
+            request_id,
+            operation_kind,
+            request_hash,
+            status
+          )
+          values (
+            ${USER_B},
+            ${id()}::uuid,
+            'reviewed_receipt_import',
+            ${"a".repeat(64)},
+            'processing'
+          )
+        `,
+      ),
+    ).rejects.toThrow();
+
+    await expect(
+      asUser(
+        USER_A,
+        (tx) => tx`delete from private.pantry_operation_receipts`,
+      ),
+    ).rejects.toThrow(/permission denied/i);
+  });
+
+  it("rejects OAuth receipt inserts and hides receipt updates", async () => {
+    const requestId = id();
+    await applyReviewedReceiptImport(USER_A, requestId, [{
+      decision: "create",
+      name: "Black beans",
+      quantity: {
+        mode: "structured",
+        amount: "2",
+        unit: "can",
+        text: null,
+      },
+      turnover: "high",
+    }]);
+
+    await expect(
+      asOAuthUser(
+        USER_A,
+        (tx) => tx`
+          insert into private.pantry_operation_receipts (
+            user_id,
+            request_id,
+            operation_kind,
+            request_hash,
+            status
+          )
+          values (
+            ${USER_A},
+            ${id()}::uuid,
+            'reviewed_receipt_import',
+            ${"a".repeat(64)},
+            'processing'
+          )
+        `,
+      ),
+    ).rejects.toThrow();
+
+    const updated = await asOAuthUser(
+      USER_A,
+      (tx) => tx`
+        update private.pantry_operation_receipts
+        set request_hash = ${"b".repeat(64)}
+        where request_id = ${requestId}::uuid
+        returning request_id
+      `,
+    );
+    expect(updated).toHaveLength(0);
+  });
+
+  it("has exactly the owner-scoped non-OAuth policies and minimal grants", async () => {
+    const policies = await sql<{
+      cmd: string;
+      roles: string;
+      qual: string | null;
+      with_check: string | null;
+    }[]>`
+      select cmd, roles::text as roles, qual, with_check
+      from pg_policies
+      where schemaname = 'private'
+        and tablename = 'pantry_operation_receipts'
+      order by cmd
+    `;
+    expect(policies).toHaveLength(3);
+    for (const policy of policies) {
+      expect(policy.roles).toContain("authenticated");
+      const expression = [policy.qual, policy.with_check]
+        .filter((value): value is string => value !== null)
+        .join(" ");
+      expect(expression).toContain("( SELECT auth.uid()");
+      expect(expression).toContain("client_id");
+    }
+
+    const [grants] = await sql<{
+      can_select: boolean;
+      can_insert: boolean;
+      can_update: boolean;
+      can_delete: boolean;
+    }[]>`
+      select
+        has_table_privilege(
+          'authenticated',
+          'private.pantry_operation_receipts',
+          'SELECT'
+        ) as can_select,
+        has_table_privilege(
+          'authenticated',
+          'private.pantry_operation_receipts',
+          'INSERT'
+        ) as can_insert,
+        has_table_privilege(
+          'authenticated',
+          'private.pantry_operation_receipts',
+          'UPDATE'
+        ) as can_update,
+        has_table_privilege(
+          'authenticated',
+          'private.pantry_operation_receipts',
+          'DELETE'
+        ) as can_delete
+    `;
+    expect(grants).toEqual({
+      can_select: true,
+      can_insert: true,
+      can_update: true,
+      can_delete: false,
+    });
+  });
+});
+
 describe("fail-closed application connection (mise_app)", () => {
   it("connects as a non-owner role that cannot bypass RLS", async () => {
     const safety = await getDatabaseConnectionSafety();
@@ -555,6 +731,9 @@ describe("fail-closed application connection (mise_app)", () => {
     await expect(appSql`select * from items`).rejects.toThrow(/permission denied|must be owner/i);
     await expect(
       appSql`insert into items (user_id, name, quantity_text) values (${USER_A}, 'eggs', '12')`,
+    ).rejects.toThrow(/permission denied|must be owner/i);
+    await expect(
+      appSql`select * from private.pantry_operation_receipts`,
     ).rejects.toThrow(/permission denied|must be owner/i);
   });
 

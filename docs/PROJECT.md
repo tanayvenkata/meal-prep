@@ -128,6 +128,12 @@ are in git (commits + PRs); these are the patterns worth carrying to the next pr
   kitchen-service tests mock DB functions; DB tests hit real local Postgres. No overlap —
   routes prove transport behavior, the service proves normalization/orchestration, and DB
   tests prove SQL. User-isolation is tested explicitly on write ops that take a row id.
+- **Retry safety belongs to the mutation boundary.** Fresh expected quantities prevent
+  immediate duplicate adjustments, but asynchronous receipt/import confirmation needs a
+  durable operation identity. Reviewed receipt additions therefore store only a private
+  user-scoped request fingerprint and terminal result in the same transaction as the
+  pantry changes. This is effect-once command evidence, not a general inventory history
+  ledger or permission for OCR/model output to mutate data directly.
 - **Defense in depth for process.** Husky pre-commit (lint) + pre-push (build + unit tests)
   catch errors before CI does; CI re-checks remotely; the default-branch ruleset requires
   the PR + CI path, while `.husky/pre-push` gives immediate local feedback.
@@ -166,9 +172,9 @@ didn't know them — the architectural truths a tracker title can't carry.
   keeps its own auth declaration and challenge as defense in depth. Supabase's standard OAuth
   scopes control OIDC identity data rather than database permissions, so RLS and Mise's API
   auth boundary independently enforce the connection's kitchen capability. Direct token and
-  website API access remains read-only for OAuth clients; the one MCP write action is a
-  server-side exact-quantity command with its own schema, annotations, match policy, and
-  regression tests. An ngrok URL remains public reachability, not authentication.
+  website API access remains read-only for OAuth clients; narrow MCP write actions route
+  through server-side kitchen commands with exact schemas, annotations, match policies,
+  and regression tests. An ngrok URL remains public reachability, not authentication.
 
 ## Commands & setup
 
