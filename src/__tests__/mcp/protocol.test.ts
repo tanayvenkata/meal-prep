@@ -2,7 +2,10 @@ import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createMiseHttpServer } from "@/mcp/server";
+import {
+  createMiseHttpServer,
+  handleMiseMcpRequest,
+} from "@/mcp/server";
 
 let httpServer: Server;
 let mcpUrl: string;
@@ -12,6 +15,18 @@ const originalMcpPublicUrl = process.env.MCP_PUBLIC_URL;
 function restoreEnvironmentVariable(name: string, value: string | undefined) {
   if (value === undefined) delete process.env[name];
   else process.env[name] = value;
+}
+
+async function verifyTestAccessToken(token: string): Promise<AuthInfo> {
+  if (token !== "test-token") throw new Error("Invalid test token.");
+  return {
+    token,
+    clientId: "chatgpt-test-client",
+    scopes: ["openid"],
+    expiresAt: Math.floor(Date.now() / 1000) + 3600,
+    resource: new URL("https://mcp.mise.example/mcp"),
+    extra: { userId: "user-123" },
+  };
 }
 
 async function postMcp(body: Record<string, unknown>, token?: string) {
@@ -34,17 +49,7 @@ beforeEach(async () => {
   process.env.MCP_PUBLIC_URL = "https://mcp.mise.example/mcp";
 
   httpServer = createMiseHttpServer({
-    verifyAccessToken: async (token): Promise<AuthInfo> => {
-      if (token !== "test-token") throw new Error("Invalid test token.");
-      return {
-        token,
-        clientId: "chatgpt-test-client",
-        scopes: ["openid"],
-        expiresAt: Math.floor(Date.now() / 1000) + 3600,
-        resource: new URL("https://mcp.mise.example/mcp"),
-        extra: { userId: "user-123" },
-      };
-    },
+    verifyAccessToken: verifyTestAccessToken,
   });
   await new Promise<void>((resolve, reject) => {
     httpServer.once("error", reject);
@@ -112,6 +117,80 @@ describe("Mise MCP OAuth wire contract", () => {
     expect(tool?.securitySchemes).toEqual(expectedSchemes);
     expect((tool?._meta as Record<string, unknown>).securitySchemes).toEqual(
       expectedSchemes,
+    );
+  });
+
+  it("serves the same authenticated tool contract through the Web-standard hosted transport", async () => {
+    const request = new Request("https://mcp.mise.example/mcp", {
+      method: "POST",
+      headers: {
+        accept: "application/json, text/event-stream",
+        authorization: "Bearer test-token",
+        "content-type": "application/json",
+        "mcp-protocol-version": "2025-11-25",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 4,
+        method: "tools/list",
+      }),
+    });
+    const response = await handleMiseMcpRequest(request, {
+      verifyAccessToken: verifyTestAccessToken,
+    });
+    const body = (await response.json()) as {
+      result: { tools: Array<Record<string, unknown>> };
+    };
+    const tool = body.result.tools.find(
+      ({ name }) => name === "get_kitchen_context",
+    );
+
+    expect(response.status).toBe(200);
+    expect(tool?.securitySchemes).toEqual([
+      { type: "oauth2", scopes: ["openid"] },
+    ]);
+  });
+
+  it("keeps OAuth discovery fail-closed on the hosted transport", async () => {
+    const response = await handleMiseMcpRequest(
+      new Request("https://mcp.mise.example/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 5,
+          method: "initialize",
+        }),
+      }),
+      { verifyAccessToken: verifyTestAccessToken },
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toContain(
+      'resource_metadata="https://mcp.mise.example/.well-known/oauth-protected-resource/mcp"',
+    );
+  });
+
+  it("rejects invalid tokens through the hosted transport", async () => {
+    const response = await handleMiseMcpRequest(
+      new Request("https://mcp.mise.example/mcp", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer expired-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 6,
+          method: "initialize",
+        }),
+      }),
+      { verifyAccessToken: verifyTestAccessToken },
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toContain(
+      'error="invalid_token"',
     );
   });
 

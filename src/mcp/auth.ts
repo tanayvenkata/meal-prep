@@ -1,7 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { getOAuthProtectedResourceMetadataUrl } from "@modelcontextprotocol/sdk/server/auth/router.js";
-import type { OAuthMetadata } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type {
+  OAuthMetadata,
+  OAuthProtectedResourceMetadata,
+} from "@modelcontextprotocol/sdk/shared/auth.js";
 
 export const MCP_SCOPES = ["openid"];
 
@@ -31,6 +34,19 @@ export function getMcpAuthConfig(): McpAuthConfig {
 
 export function getResourceMetadataUrl(config = getMcpAuthConfig()) {
   return new URL(getOAuthProtectedResourceMetadataUrl(config.resource));
+}
+
+export function getMcpProtectedResourceMetadata(
+  config = getMcpAuthConfig(),
+): OAuthProtectedResourceMetadata {
+  return {
+    resource: config.resource.href,
+    authorization_servers: [
+      config.authorizationServer.href.replace(/\/$/, ""),
+    ],
+    scopes_supported: MCP_SCOPES,
+    resource_name: "Mise",
+  };
 }
 
 /**
