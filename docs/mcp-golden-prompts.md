@@ -26,6 +26,11 @@ conversation proves real tool selection, account linking, and rendering.
 | Auth failure | Disconnect Mise or use an expired/invalid token, then request the kitchen. | The MCP endpoint returns the OAuth challenge; ChatGPT offers account linking or reconnection and no kitchen data leaks. |
 | Mobile/widget | Run the direct prompt in a narrow host viewport and inspect light and dark themes. | Content stays readable without horizontal clipping; host typography/colors apply; loading, result, and empty text remain legible. |
 | Two-user isolation | Connect account A, record a distinctive safe item, then repeat with account B. | Each account sees only its own pantry/tools. Account A's distinctive item never appears for B. |
+| Exact quantity | With one Eggs item: “Set my Eggs quantity to 6.” | Calls `set_pantry_item_quantity` once with no identity field; returns the safe before/after result; a fresh read and the Mise pantry page show `6`. |
+| Retry | Repeat the exact same quantity request. | Returns `unchanged`; the final quantity remains `6` and no duplicate item or cumulative change appears. |
+| Missing write target | “Set my Saffron quantity to 1 jar” when Saffron does not exist. | Returns `not_found`; nothing is created or mutated. |
+| Ambiguous write target | With two normalized Eggs matches, request a new Eggs quantity. | Returns `ambiguous` with the match count; nothing mutates and ChatGPT asks the user to resolve the duplicate instead of guessing. |
+| No inferred write | Ask for a recipe that uses six eggs. | A kitchen read may occur, but the quantity tool does not run because the user did not ask to change saved inventory. |
 
 ## Generic MCP Apps bridge check
 
@@ -40,10 +45,10 @@ In MCP Inspector:
 5. Confirm the resource CSP has empty `connectDomains` and `resourceDomains`; the widget needs
    no browser network access.
 
-Server-level discovery instructions remain intentionally deferred while Mise exposes one tool.
-The tool descriptor carries the complete “when to use” guidance. Add shared server instructions
-only when multiple tools create real sequencing or selection guidance that cannot live clearly
-on one descriptor.
+With both read and write tools present, server-level instructions define their shared boundary:
+read when saved context is needed; write only after a clear exact-quantity request; never infer a
+write from recipe planning; and never guess after a missing or ambiguous match. Each descriptor
+still carries its own narrow “when to use” guidance.
 
 The older `ui://widget/kitchen-context-v*.html` resources are compatibility aliases for historical
 ChatGPT messages that may re-read their original resource URI. Remove them only after production

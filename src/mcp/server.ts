@@ -27,14 +27,22 @@ import {
   MCP_SCOPES,
 } from "./auth";
 import { kitchenWidgetResource as generatedKitchenWidgetResource } from "./kitchen-widget.generated";
-import { getKitchenContext as loadKitchenContext } from "@/lib/kitchen-service";
+import {
+  getKitchenContext as loadKitchenContext,
+  setPantryItemQuantity as updatePantryItemQuantity,
+} from "@/lib/kitchen-service";
 import type { KitchenWidgetResource } from "./build-widget";
 
 const MCP_PATH = "/mcp";
 const KITCHEN_CONTEXT_TOOL = "get_kitchen_context";
-const KITCHEN_CONTEXT_SECURITY_SCHEMES = [
+const SET_PANTRY_ITEM_QUANTITY_TOOL = "set_pantry_item_quantity";
+const MISE_OAUTH_SECURITY_SCHEMES = [
   { type: "oauth2", scopes: MCP_SCOPES },
 ];
+const AUTHENTICATED_MISE_TOOLS = new Set([
+  KITCHEN_CONTEXT_TOOL,
+  SET_PANTRY_ITEM_QUANTITY_TOOL,
+]);
 const LEGACY_KITCHEN_WIDGET_URIS = [
   // Historical ChatGPT messages can re-read the resource URI captured in their
   // original tool result. Keep these aliases until production evidence shows
@@ -47,10 +55,12 @@ const LEGACY_KITCHEN_WIDGET_URIS = [
 
 type KitchenContext = Awaited<ReturnType<typeof loadKitchenContext>>;
 type KitchenContextLoader = (userId: string) => Promise<KitchenContext>;
+type PantryQuantityUpdater = typeof updatePantryItemQuantity;
 
 type MiseServerOptions = {
   kitchenWidgetResource?: KitchenWidgetResource;
   loadKitchenContext?: KitchenContextLoader;
+  setPantryItemQuantity?: PantryQuantityUpdater;
 };
 
 const kitchenContextSchema = z.object({
@@ -64,6 +74,19 @@ const kitchenContextSchema = z.object({
   tools: z.array(
     z.object({ name: z.string(), kind: z.string() }),
   ),
+});
+
+const setPantryItemQuantityInputSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  quantity: z.string().trim().min(1).max(100),
+});
+
+const setPantryItemQuantityOutputSchema = z.object({
+  status: z.enum(["updated", "unchanged", "not_found", "ambiguous"]),
+  name: z.string(),
+  beforeQuantity: z.string().optional(),
+  quantity: z.string().optional(),
+  matchCount: z.number().int().min(2).optional(),
 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -87,15 +110,21 @@ export function addOpenAiToolSecuritySchemes(message: JSONRPCMessage): JSONRPCMe
     result: {
       ...message.result,
       tools: tools.map((tool) => {
-        if (!isRecord(tool) || tool.name !== KITCHEN_CONTEXT_TOOL) return tool;
+        if (
+          !isRecord(tool) ||
+          typeof tool.name !== "string" ||
+          !AUTHENTICATED_MISE_TOOLS.has(tool.name)
+        ) {
+          return tool;
+        }
 
         const meta = isRecord(tool._meta) ? tool._meta : {};
         return {
           ...tool,
-          securitySchemes: KITCHEN_CONTEXT_SECURITY_SCHEMES,
+          securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
           _meta: {
             ...meta,
-            securitySchemes: KITCHEN_CONTEXT_SECURITY_SCHEMES,
+            securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
           },
         };
       }),
@@ -125,16 +154,20 @@ export async function createMiseServer(
   {
     kitchenWidgetResource = generatedKitchenWidgetResource,
     loadKitchenContext: getKitchenContext = loadKitchenContext,
+    setPantryItemQuantity = updatePantryItemQuantity,
   }: MiseServerOptions = {},
 ) {
   const kitchenWidgetUris = [
     ...LEGACY_KITCHEN_WIDGET_URIS,
     kitchenWidgetResource.uri,
   ];
-  // Server-level instructions are intentionally deferred while Mise exposes
-  // one tool. Its descriptor contains the complete discovery guidance; shared
-  // instructions become useful once cross-tool sequencing exists.
-  const server = new McpServer({ name: "mise", version: "0.1.0" });
+  const server = new McpServer(
+    { name: "mise", version: "0.1.0" },
+    {
+      instructions:
+        "Use get_kitchen_context when current saved inventory or equipment is needed. Use set_pantry_item_quantity only when the user clearly asks to set an exact quantity for an existing pantry item. Never infer a pantry write from recipe planning. If a name is missing or ambiguous, explain the result and ask the user to resolve it instead of guessing or creating an item.",
+    },
+  );
 
   for (const [index, widgetUri] of kitchenWidgetUris.entries()) {
     registerAppResource(
@@ -180,7 +213,7 @@ export async function createMiseServer(
         openWorldHint: false,
       },
       _meta: {
-        securitySchemes: KITCHEN_CONTEXT_SECURITY_SCHEMES,
+        securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
         ui: { resourceUri: kitchenWidgetResource.uri },
         "openai/toolInvocation/invoking": "Checking your kitchen…",
         "openai/toolInvocation/invoked": "Kitchen ready.",
@@ -204,6 +237,69 @@ export async function createMiseServer(
     },
   );
 
+  registerAppTool(
+    server,
+    SET_PANTRY_ITEM_QUANTITY_TOOL,
+    {
+      title: "Set pantry item quantity",
+      description:
+        "Use this when the user wants to set the exact quantity of one pantry item that already exists in their Mise kitchen. Matches the signed-in user's pantry by normalized item name; it never creates, renames, or deletes an item.",
+      inputSchema: setPantryItemQuantityInputSchema,
+      outputSchema: setPantryItemQuantityOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: {
+        securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+        "openai/toolInvocation/invoking": "Updating pantry quantity…",
+        "openai/toolInvocation/invoked": "Pantry quantity checked.",
+      },
+    },
+    async ({ name, quantity }, extra) => {
+      const userId = extra.authInfo?.extra?.userId;
+      if (typeof userId !== "string") {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Connect your Mise account to continue." }],
+          _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+        };
+      }
+
+      const result = await setPantryItemQuantity(userId, { name, quantity });
+      if (!result.ok) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: result.error }],
+        };
+      }
+
+      const outcome = result.value;
+      let text: string;
+      switch (outcome.status) {
+        case "updated":
+          text = `Set ${outcome.name} from ${outcome.beforeQuantity} to ${outcome.quantity}.`;
+          break;
+        case "unchanged":
+          text = `${outcome.name} is already set to ${outcome.quantity}.`;
+          break;
+        case "not_found":
+          text = `No existing pantry item matched ${outcome.name}. Nothing changed.`;
+          break;
+        case "ambiguous":
+          text = `Found ${outcome.matchCount} pantry items matching ${outcome.name}. Nothing changed.`;
+          break;
+      }
+
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: outcome,
+      };
+    },
+  );
+
   return server;
 }
 
@@ -213,6 +309,7 @@ type MiseHttpServerOptions = {
   verifyAccessToken?: VerifyAccessToken;
   kitchenWidgetResource?: KitchenWidgetResource;
   loadKitchenContext?: KitchenContextLoader;
+  setPantryItemQuantity?: PantryQuantityUpdater;
 };
 
 function invalidTokenResponse(authConfig = getMcpAuthConfig()) {
@@ -243,9 +340,10 @@ export async function handleMiseMcpRequest(
   {
     verifyAccessToken = verifyMcpAccessToken,
     loadKitchenContext: getKitchenContext = loadKitchenContext,
+    setPantryItemQuantity = updatePantryItemQuantity,
   }: Pick<
     MiseHttpServerOptions,
-    "verifyAccessToken" | "loadKitchenContext"
+    "verifyAccessToken" | "loadKitchenContext" | "setPantryItemQuantity"
   > = {},
 ) {
   const startedAt = performance.now();
@@ -301,6 +399,7 @@ export async function handleMiseMcpRequest(
 
   const server = await createMiseServer({
     loadKitchenContext: getKitchenContext,
+    setPantryItemQuantity,
   });
   const transport =
     new OpenAiCompatibleWebStandardStreamableHTTPServerTransport({
@@ -340,6 +439,7 @@ export function createMiseHttpServer({
   verifyAccessToken = verifyMcpAccessToken,
   kitchenWidgetResource = generatedKitchenWidgetResource,
   loadKitchenContext: getKitchenContext = loadKitchenContext,
+  setPantryItemQuantity = updatePantryItemQuantity,
 }: MiseHttpServerOptions = {}) {
   const authConfig = getMcpAuthConfig();
   const app = createMcpExpressApp({
@@ -414,6 +514,7 @@ export function createMiseHttpServer({
     const server = await createMiseServer({
       kitchenWidgetResource,
       loadKitchenContext: getKitchenContext,
+      setPantryItemQuantity,
     });
     const transport = new OpenAiCompatibleStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
