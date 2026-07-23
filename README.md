@@ -100,6 +100,14 @@ items in one all-or-nothing MCP action. Missing or ambiguous names, unsupported 
 stale expectations, and unsafe arithmetic leave the pantry unchanged; there is no generic
 CRUD or implicit upsert tool.
 
+Reviewed receipt additions use a separate backend command because they may mix
+new-item creation with existing-item restocks. Every line must explicitly choose
+`create` or `restock`; the whole 1–25 line request commits once or not at all. A
+private user-scoped operation receipt makes identical retries effect-once and
+rejects reuse of the same request ID for changed content. OCR/image extraction,
+review UI, and MCP exposure remain separate later slices—model output never writes
+directly to the pantry.
+
 The hosted ChatGPT connector uses:
 
 - MCP endpoint: `https://meal-prep-tawny-kappa.vercel.app/mcp`

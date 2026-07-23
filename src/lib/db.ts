@@ -1,6 +1,7 @@
 // src/lib/db.ts — THE BOUNDARY (database edition).
 // Only file that imports the postgres driver. Swap DB/driver/host = change this file only.
 
+import { createHash } from "node:crypto";
 import postgres from "postgres";
 import {
   adjustStructuredPantryQuantity,
@@ -144,6 +145,91 @@ export type BatchPantryQuantityAdjustmentResult =
   | {
       status: "rejected";
       failures: BatchPantryQuantityAdjustmentFailure[];
+    };
+
+export type ReviewedReceiptImportLine =
+  | {
+      decision: "create";
+      name: string;
+      quantity: StructuredPantryQuantity;
+      turnover: Turnover;
+    }
+  | {
+      decision: "restock";
+      name: string;
+      expected: StructuredPantryQuantity;
+      delta: StructuredPantryQuantity;
+    };
+
+export type ReviewedReceiptImportFailure =
+  | {
+      index: number;
+      name: string;
+      status: "duplicate_target";
+      duplicateIndexes: number[];
+    }
+  | { index: number; name: string; status: "already_exists" | "not_found" }
+  | {
+      index: number;
+      name: string;
+      status: "unsupported_quantity";
+      currentDisplay: string;
+    }
+  | {
+      index: number;
+      name: string;
+      status: "conflict";
+      expected: StructuredPantryQuantity;
+      current: StructuredPantryQuantity;
+    }
+  | {
+      index: number;
+      name: string;
+      status: "unit_mismatch";
+      expectedUnit: StructuredPantryQuantity["unit"];
+      deltaUnit: StructuredPantryQuantity["unit"];
+    }
+  | {
+      index: number;
+      name: string;
+      status: "insufficient_quantity" | "amount_exceeded";
+      current: StructuredPantryQuantity;
+      delta: StructuredPantryQuantity;
+    };
+
+type ReviewedReceiptImportTerminalOutcome =
+  | {
+      status: "applied";
+      requestId: string;
+      changes: Array<
+        | {
+            index: number;
+            decision: "create";
+            item: Pick<Item, "name" | "quantity" | "turnover">;
+          }
+        | {
+            index: number;
+            decision: "restock";
+            item: Pick<Item, "name" | "quantity" | "turnover">;
+            beforeQuantity: string;
+            afterQuantity: string;
+            before: StructuredPantryQuantity;
+            delta: StructuredPantryQuantity;
+            after: StructuredPantryQuantity;
+          }
+      >;
+    }
+  | {
+      status: "rejected";
+      requestId: string;
+      failures: ReviewedReceiptImportFailure[];
+    };
+
+export type ReviewedReceiptImportResult =
+  | (ReviewedReceiptImportTerminalOutcome & { replayed: boolean })
+  | {
+      status: "request_id_reused";
+      requestId: string;
     };
 
 type PantryQuantityColumns = {
@@ -762,6 +848,347 @@ export async function adjustItemQuantitiesByCanonicalName(
 
     return { status: "applied", changes };
   });
+}
+
+type PantryOperationReceiptRow = {
+  request_hash: string;
+  status: "processing" | "applied" | "rejected";
+  outcome: ReviewedReceiptImportTerminalOutcome | null;
+};
+
+function reviewedReceiptRequestHash(
+  canonicalTargets: Array<{ name_key: string }>,
+  lines: ReviewedReceiptImportLine[],
+): string {
+  const normalized = lines.map((line, index) => {
+    const target = canonicalTargets[index];
+    return line.decision === "create"
+      ? {
+          decision: line.decision,
+          nameKey: target.name_key,
+          displayName: line.name,
+          quantity: {
+            amount: line.quantity.amount,
+            unit: line.quantity.unit,
+          },
+          turnover: line.turnover,
+        }
+      : {
+          decision: line.decision,
+          nameKey: target.name_key,
+          expected: {
+            amount: line.expected.amount,
+            unit: line.expected.unit,
+          },
+          delta: {
+            amount: line.delta.amount,
+            unit: line.delta.unit,
+          },
+        };
+  });
+
+  return createHash("sha256")
+    .update(JSON.stringify({
+      operationKind: "reviewed_receipt_import",
+      lines: normalized,
+    }))
+    .digest("hex");
+}
+
+async function completePantryOperationReceipt(
+  tx: postgres.TransactionSql,
+  userId: string,
+  requestId: string,
+  outcome: ReviewedReceiptImportTerminalOutcome,
+): Promise<void> {
+  const result = await tx`
+    update private.pantry_operation_receipts
+    set status = ${outcome.status},
+        outcome = ${tx.json(outcome as unknown as postgres.JSONValue)},
+        completed_at = now()
+    where user_id = ${userId}
+      and request_id = ${requestId}::uuid
+      and status = 'processing'
+  `;
+  if (result.count !== 1) {
+    throw new Error("pantry operation receipt disappeared before completion");
+  }
+}
+
+async function runReviewedReceiptImport(
+  userId: string,
+  requestId: string,
+  lines: ReviewedReceiptImportLine[],
+): Promise<ReviewedReceiptImportResult> {
+  return withUserContext(userId, async (tx) => {
+    const canonicalTargets = await tx<
+      Array<{
+        request_index: number;
+        name: string;
+        name_key: string;
+      }>
+    >`
+      select
+        (requested.ordinality - 1)::integer as request_index,
+        requested.name,
+        public.canonical_pantry_name(requested.name) as name_key
+      from unnest(${tx.array(lines.map(({ name }) => name))}::text[])
+        with ordinality as requested(name, ordinality)
+      order by requested.ordinality
+    `;
+    const requestHash = reviewedReceiptRequestHash(canonicalTargets, lines);
+
+    const [claimed] = await tx<PantryOperationReceiptRow[]>`
+      insert into private.pantry_operation_receipts (
+        user_id,
+        request_id,
+        operation_kind,
+        request_hash,
+        status
+      )
+      values (
+        ${userId},
+        ${requestId}::uuid,
+        'reviewed_receipt_import',
+        ${requestHash},
+        'processing'
+      )
+      on conflict (user_id, request_id) do nothing
+      returning request_hash, status, outcome
+    `;
+    if (!claimed) {
+      const [existing] = await tx<PantryOperationReceiptRow[]>`
+        select request_hash, status, outcome
+        from private.pantry_operation_receipts
+        where user_id = ${userId}
+          and request_id = ${requestId}::uuid
+      `;
+      if (!existing) {
+        throw new Error("pantry operation receipt conflict disappeared");
+      }
+      if (existing.request_hash !== requestHash) {
+        return { status: "request_id_reused", requestId };
+      }
+      if (existing.status === "processing" || existing.outcome === null) {
+        throw new Error("committed pantry operation receipt is not terminal");
+      }
+      return { ...existing.outcome, replayed: true };
+    }
+
+    const indexesByNameKey = new Map<string, number[]>();
+    for (const target of canonicalTargets) {
+      const indexes = indexesByNameKey.get(target.name_key) ?? [];
+      indexes.push(target.request_index);
+      indexesByNameKey.set(target.name_key, indexes);
+    }
+    const duplicateFailures: ReviewedReceiptImportFailure[] =
+      canonicalTargets.flatMap((target) => {
+        const duplicateIndexes = indexesByNameKey.get(target.name_key) ?? [];
+        return duplicateIndexes.length > 1
+          ? [{
+              index: target.request_index,
+              name: target.name,
+              status: "duplicate_target" as const,
+              duplicateIndexes,
+            }]
+          : [];
+      });
+    const uniqueTargets = canonicalTargets.filter(
+      ({ name_key }) => (indexesByNameKey.get(name_key)?.length ?? 0) === 1,
+    );
+    const sortedNameKeys = uniqueTargets
+      .map(({ name_key }) => name_key)
+      .sort();
+    for (const nameKey of sortedNameKeys) {
+      await tx`
+        select pg_advisory_xact_lock(
+          hashtextextended(${`${userId}:${nameKey}`}, 0)
+        )
+      `;
+    }
+
+    const lockedItems = await tx<Item[]>`
+      select *
+      from items
+      where user_id = ${userId}
+        and name_key = any(${tx.array(sortedNameKeys)}::text[])
+      order by name_key
+      for update
+    `;
+    const itemByNameKey = new Map(
+      lockedItems.map((item) => [item.name_key, item]),
+    );
+
+    const failures: ReviewedReceiptImportFailure[] = [...duplicateFailures];
+    const restockEvaluations = new Map<
+      number,
+      {
+        item: Item;
+        evaluation: Extract<AdjustmentEvaluation, { ok: true }>;
+      }
+    >();
+    for (const target of uniqueTargets) {
+      const line = lines[target.request_index];
+      const item = itemByNameKey.get(target.name_key);
+      if (line.decision === "create") {
+        if (item) {
+          failures.push({
+            index: target.request_index,
+            name: line.name,
+            status: "already_exists",
+          });
+        }
+        continue;
+      }
+      if (!item) {
+        failures.push({
+          index: target.request_index,
+          name: line.name,
+          status: "not_found",
+        });
+        continue;
+      }
+
+      const evaluation = evaluateStructuredAdjustment(
+        item,
+        "restock",
+        line.expected,
+        line.delta,
+      );
+      if (!evaluation.ok) {
+        failures.push(evaluation.failure.status === "conflict"
+          ? {
+              index: target.request_index,
+              name: line.name,
+              expected: line.expected,
+              ...evaluation.failure,
+            }
+          : {
+              index: target.request_index,
+              name: line.name,
+              ...evaluation.failure,
+            });
+        continue;
+      }
+      restockEvaluations.set(target.request_index, { item, evaluation });
+    }
+
+    if (failures.length > 0) {
+      const outcome: ReviewedReceiptImportTerminalOutcome = {
+        status: "rejected",
+        requestId,
+        failures: failures.sort((left, right) => left.index - right.index),
+      };
+      await completePantryOperationReceipt(tx, userId, requestId, outcome);
+      return { ...outcome, replayed: false };
+    }
+
+    const changes: Extract<
+      ReviewedReceiptImportTerminalOutcome,
+      { status: "applied" }
+    >["changes"] = [];
+    for (const [index, line] of lines.entries()) {
+      if (line.decision === "create") {
+        const columns = pantryQuantityColumns(line.quantity);
+        const [item] = await tx<Item[]>`
+          insert into items (
+            user_id,
+            name,
+            quantity_text,
+            quantity_value,
+            quantity_unit,
+            turnover
+          )
+          values (
+            ${userId},
+            ${line.name},
+            ${columns.text},
+            ${columns.value}::numeric,
+            ${columns.unit},
+            ${line.turnover}
+          )
+          returning *
+        `;
+        changes.push({
+          index,
+          decision: line.decision,
+          item: {
+            name: item.name,
+            quantity: item.quantity,
+            turnover: item.turnover,
+          },
+        });
+        continue;
+      }
+
+      const prepared = restockEvaluations.get(index);
+      if (!prepared) {
+        throw new Error("validated receipt restock lost its evaluation");
+      }
+      const [item] = await tx<Item[]>`
+        update items
+        set quantity_value = ${prepared.evaluation.after.amount}::numeric
+        where id = ${prepared.item.id}
+          and user_id = ${userId}
+        returning *
+      `;
+      if (!item) {
+        throw new Error("locked pantry item disappeared before receipt restock");
+      }
+      changes.push({
+        index,
+        decision: line.decision,
+        item: {
+          name: item.name,
+          quantity: item.quantity,
+          turnover: item.turnover,
+        },
+        beforeQuantity: prepared.item.quantity,
+        afterQuantity: item.quantity,
+        before: prepared.evaluation.before,
+        delta: line.delta,
+        after: prepared.evaluation.after,
+      });
+    }
+
+    const outcome: ReviewedReceiptImportTerminalOutcome = {
+      status: "applied",
+      requestId,
+      changes,
+    };
+    await completePantryOperationReceipt(tx, userId, requestId, outcome);
+    return { ...outcome, replayed: false };
+  });
+}
+
+function shouldRetryReviewedReceiptImport(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return false;
+  }
+  if (error.code === "40001" || error.code === "40P01") return true;
+  return error.code === "23505"
+    && "constraint_name" in error
+    && error.constraint_name === "items_user_id_name_key_key";
+}
+
+/**
+ * Apply an already-reviewed receipt decision exactly once.
+ *
+ * The receipt row, every create/restock, and the terminal outcome commit in one
+ * transaction. An identical retry returns the historical result with
+ * `replayed: true`; it never performs the mutations a second time.
+ */
+export async function applyReviewedReceiptImport(
+  userId: string,
+  requestId: string,
+  lines: ReviewedReceiptImportLine[],
+): Promise<ReviewedReceiptImportResult> {
+  try {
+    return await runReviewedReceiptImport(userId, requestId, lines);
+  } catch (error) {
+    if (!shouldRetryReviewedReceiptImport(error)) throw error;
+    return runReviewedReceiptImport(userId, requestId, lines);
+  }
 }
 
 export async function deleteItem(userId: string, id: number): Promise<void> {

@@ -1,6 +1,7 @@
 // Server-only domain service. Trusted HTTP/MCP transports resolve user identity
 // before calling it; browser components never import this module.
 import {
+  applyReviewedReceiptImport as applyReviewedReceiptImportRecord,
   adjustItemQuantitiesByCanonicalName,
   adjustItemQuantityByCanonicalName,
   addItem,
@@ -16,6 +17,7 @@ import {
   updateKitchenTool as updateKitchenToolRecord,
   type Item,
   type KitchenTool,
+  type ReviewedReceiptImportResult,
   type Turnover,
 } from "@/lib/db";
 import {
@@ -81,6 +83,11 @@ export type AdjustPantryItemQuantityInput = {
 
 export type AdjustPantryItemQuantityBatchInput = {
   changes?: unknown;
+};
+
+export type ApplyReviewedReceiptImportInput = {
+  requestId?: unknown;
+  lines?: unknown;
 };
 
 export type AdjustPantryItemQuantityOutcome =
@@ -173,6 +180,8 @@ export type AdjustPantryItemQuantityBatchOutcome =
       >;
     };
 
+export type ApplyReviewedReceiptImportOutcome = ReviewedReceiptImportResult;
+
 export type CreatePantryItemOutcome =
   | { status: "created"; item: Item }
   | { status: "already_exists"; item: Item };
@@ -253,7 +262,7 @@ function normalizeRequiredQuantity(
 
 function normalizeRequiredStructuredQuantity(
   value: unknown,
-  field: "expected quantity" | "delta quantity",
+  field: "quantity" | "expected quantity" | "delta quantity",
 ): KitchenServiceResult<StructuredPantryQuantity> {
   const quantity = normalizeRequiredQuantity(value);
   if (!quantity.ok) return quantity;
@@ -274,6 +283,17 @@ function normalizePantryItemId(value: unknown): KitchenServiceResult<number> {
     return invalid("id must be a positive integer");
   }
   return valid(value);
+}
+
+function normalizeRequestId(value: unknown): KitchenServiceResult<string> {
+  if (
+    typeof value !== "string"
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      .test(value)
+  ) {
+    return invalid("requestId must be a UUID");
+  }
+  return valid(value.toLowerCase());
 }
 
 function normalizeTurnover(value: unknown): KitchenServiceResult<Turnover> {
@@ -644,6 +664,110 @@ export async function adjustPantryItemQuantities(
       }
     }),
   });
+}
+
+export async function applyReviewedReceiptImport(
+  userId: string,
+  input: ApplyReviewedReceiptImportInput,
+): Promise<KitchenServiceResult<ApplyReviewedReceiptImportOutcome>> {
+  const requestId = normalizeRequestId(input.requestId);
+  if (!requestId.ok) return requestId;
+
+  if (!Array.isArray(input.lines)) {
+    return invalid("lines must be an array");
+  }
+  if (input.lines.length === 0) {
+    return invalid("lines must include at least one item");
+  }
+  if (input.lines.length > MAX_PANTRY_ADJUSTMENT_BATCH_SIZE) {
+    return invalid(
+      `lines must include ${MAX_PANTRY_ADJUSTMENT_BATCH_SIZE} items or fewer`,
+    );
+  }
+
+  const normalizedLines: Parameters<
+    typeof applyReviewedReceiptImportRecord
+  >[2] = [];
+  for (const [index, rawLine] of input.lines.entries()) {
+    if (
+      typeof rawLine !== "object"
+      || rawLine === null
+      || Array.isArray(rawLine)
+    ) {
+      return invalid(`lines[${index}] must be an object`);
+    }
+    const line = rawLine as Record<string, unknown>;
+    const name = normalizeRequiredText(
+      line.name,
+      "name",
+      MAX_ITEM_NAME_LENGTH,
+    );
+    if (!name.ok) return invalid(`lines[${index}].${name.error}`);
+
+    if (line.decision === "create") {
+      const quantity = normalizeRequiredStructuredQuantity(
+        line.quantity,
+        "quantity",
+      );
+      if (!quantity.ok) {
+        return invalid(`lines[${index}].${quantity.error}`);
+      }
+      if (!isPositiveStructuredPantryQuantity(quantity.value)) {
+        return invalid(
+          `lines[${index}].quantity must be greater than zero`,
+        );
+      }
+      const turnover = normalizeTurnover(line.turnover ?? "high");
+      if (!turnover.ok) {
+        return invalid(`lines[${index}].${turnover.error}`);
+      }
+      normalizedLines.push({
+        decision: line.decision,
+        name: name.value,
+        quantity: quantity.value,
+        turnover: turnover.value,
+      });
+      continue;
+    }
+
+    if (line.decision === "restock") {
+      const expected = normalizeRequiredStructuredQuantity(
+        line.expectedQuantity,
+        "expected quantity",
+      );
+      if (!expected.ok) {
+        return invalid(`lines[${index}].${expected.error}`);
+      }
+      const delta = normalizeRequiredStructuredQuantity(
+        line.deltaQuantity,
+        "delta quantity",
+      );
+      if (!delta.ok) {
+        return invalid(`lines[${index}].${delta.error}`);
+      }
+      if (!isPositiveStructuredPantryQuantity(delta.value)) {
+        return invalid(
+          `lines[${index}].delta quantity must be greater than zero`,
+        );
+      }
+      normalizedLines.push({
+        decision: line.decision,
+        name: name.value,
+        expected: expected.value,
+        delta: delta.value,
+      });
+      continue;
+    }
+
+    return invalid(`lines[${index}].decision must be create or restock`);
+  }
+
+  const result = await applyReviewedReceiptImportRecord(
+    userId,
+    requestId.value,
+    normalizedLines,
+  );
+  return valid(result);
 }
 
 export async function listKitchenTools(userId: string): Promise<KitchenTool[]> {
