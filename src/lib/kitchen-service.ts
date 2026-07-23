@@ -7,6 +7,7 @@ import {
   addItem,
   addKitchenTool,
   deleteItem as deleteItemRecord,
+  deleteItems as deleteItemsRecords,
   deleteKitchenTool as deleteKitchenToolRecord,
   getItemByCanonicalName,
   getItemById,
@@ -37,6 +38,7 @@ import {
 const MAX_ITEM_NAME_LENGTH = 100;
 const MAX_TOOL_NAME_LENGTH = 100;
 const MAX_PANTRY_ADJUSTMENT_BATCH_SIZE = 25;
+const MAX_PANTRY_DELETE_BATCH_SIZE = 100;
 
 export type KitchenServiceResult<T> =
   | { ok: true; value: T }
@@ -57,6 +59,10 @@ export type UpdatePantryItemInput = {
 
 export type PantryItemIdInput = {
   id?: unknown;
+};
+
+export type PantryItemIdsInput = {
+  ids?: unknown;
 };
 
 export type SetPantryItemQuantityInput = {
@@ -192,6 +198,10 @@ export type UpdatePantryItemOutcome =
   | { status: "updated" | "unchanged"; item: Item }
   | { status: "not_found"; id: number }
   | { status: "name_conflict"; id: number; conflictingItem: Item };
+
+export type DeletePantryItemsOutcome =
+  | { status: "deleted"; ids: number[] }
+  | { status: "not_found"; ids: number[] };
 
 export type CreateKitchenToolOutcome =
   | { status: "created"; tool: KitchenTool }
@@ -469,6 +479,35 @@ export async function deletePantryItem(
 
   await deleteItemRecord(userId, id.value);
   return valid(null);
+}
+
+export async function deletePantryItems(
+  userId: string,
+  input: PantryItemIdsInput,
+): Promise<KitchenServiceResult<DeletePantryItemsOutcome>> {
+  if (!Array.isArray(input.ids)) {
+    return invalid("ids must be an array");
+  }
+  if (input.ids.length < 2) {
+    return invalid("select at least two pantry items");
+  }
+  if (input.ids.length > MAX_PANTRY_DELETE_BATCH_SIZE) {
+    return invalid(
+      `ids must contain ${MAX_PANTRY_DELETE_BATCH_SIZE} items or fewer`,
+    );
+  }
+
+  const ids: number[] = [];
+  for (const value of input.ids) {
+    const id = normalizePantryItemId(value);
+    if (!id.ok) return invalid("every id must be a positive integer");
+    ids.push(id.value);
+  }
+  if (new Set(ids).size !== ids.length) {
+    return invalid("ids must not contain duplicates");
+  }
+
+  return valid(await deleteItemsRecords(userId, ids));
 }
 
 export async function setPantryItemQuantity(

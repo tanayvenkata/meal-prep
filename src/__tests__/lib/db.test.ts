@@ -7,6 +7,7 @@ import {
   setItemQuantityByCanonicalName,
   updateItem,
   deleteItem,
+  deleteItems,
   getKitchenTools,
   addKitchenTool,
   updateKitchenTool,
@@ -429,5 +430,50 @@ describe("deleteItem", () => {
 
     const remaining = await sql`select * from items where id = ${inserted.id}`;
     expect(remaining).toHaveLength(1);
+  });
+});
+
+describe("deleteItems", () => {
+  it("deletes an owned batch atomically", async () => {
+    const inserted = await sql`
+      insert into items (user_id, name, quantity_text)
+      values
+        (${TEST_USER_A}, 'batch eggs', '12'),
+        (${TEST_USER_A}, 'batch milk', '1 gallon')
+      returning id
+    `;
+    const ids = inserted.map(({ id }) => Number(id));
+
+    await expect(deleteItems(TEST_USER_A, ids)).resolves.toEqual({
+      status: "deleted",
+      ids,
+    });
+    const remaining = await sql`
+      select id from items where id = any(${sql.array(ids)}::bigint[])
+    `;
+    expect(remaining).toHaveLength(0);
+  });
+
+  it("does not partially delete when an id is missing or belongs to another user", async () => {
+    const [owned] = await sql`
+      insert into items (user_id, name, quantity_text)
+      values (${TEST_USER_A}, 'owned batch item', '1')
+      returning id
+    `;
+    const [foreign] = await sql`
+      insert into items (user_id, name, quantity_text)
+      values (${TEST_USER_B}, 'foreign batch item', '1')
+      returning id
+    `;
+    const ids = [Number(owned.id), Number(foreign.id)];
+
+    await expect(deleteItems(TEST_USER_A, ids)).resolves.toEqual({
+      status: "not_found",
+      ids: [Number(foreign.id)],
+    });
+    const remaining = await sql`
+      select id from items where id = any(${sql.array(ids)}::bigint[])
+    `;
+    expect(remaining).toHaveLength(2);
   });
 });

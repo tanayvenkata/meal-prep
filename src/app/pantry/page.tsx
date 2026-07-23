@@ -25,6 +25,8 @@ export default function PantryPage() {
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<InventoryListSort>('recent')
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [editQuantity, setEditQuantity] = useState('')
@@ -99,6 +101,37 @@ export default function PantryPage() {
     if (saved) setEditingId(null)
   }
 
+  function startSelecting() {
+    setEditingId(null)
+    setSelectedIds(new Set())
+    setSelecting(true)
+  }
+
+  function stopSelecting() {
+    setSelectedIds(new Set())
+    setSelecting(false)
+  }
+
+  function toggleSelected(id: number) {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function deleteSelected() {
+    if (selectedIds.size < 2) return
+    const confirmed = window.confirm(
+      `Delete ${selectedIds.size} selected pantry items? This cannot be undone.`,
+    )
+    if (!confirmed) return
+
+    const deleted = await mutate(() => pantryApi.removeMany([...selectedIds]))
+    if (deleted) stopSelecting()
+  }
+
   const visibleItems = filterAndSortInventory(items, { query, sort })
   const highTurnover = visibleItems.filter((item) => item.turnover === 'high')
   const lowTurnover = visibleItems.filter((item) => item.turnover === 'low')
@@ -123,14 +156,27 @@ export default function PantryPage() {
               </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-base text-text-primary">{item.name}</p>
-                  {item.quantity && <p className="text-sm text-text-secondary">{item.quantity}</p>}
+                <div className="flex min-w-0 items-center gap-3">
+                  {selecting && (
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${item.name}`}
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => toggleSelected(item.id)}
+                      className="size-4 shrink-0 accent-text-primary"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-base text-text-primary">{item.name}</p>
+                    {item.quantity && <p className="text-sm text-text-secondary">{item.quantity}</p>}
+                  </div>
                 </div>
-                <div className="flex shrink-0 gap-3 text-sm">
-                  <button onClick={() => startEdit(item)} className="text-text-secondary underline underline-offset-4">Edit</button>
-                  <button onClick={() => mutate(() => pantryApi.remove(item.id))} className="text-text-secondary underline underline-offset-4">Delete</button>
-                </div>
+                {!selecting && (
+                  <div className="flex shrink-0 gap-3 text-sm">
+                    <button onClick={() => startEdit(item)} className="text-text-secondary underline underline-offset-4">Edit</button>
+                    <button onClick={() => mutate(() => pantryApi.remove(item.id))} className="text-text-secondary underline underline-offset-4">Delete</button>
+                  </div>
+                )}
               </div>
             )}
           </li>
@@ -141,11 +187,18 @@ export default function PantryPage() {
 
   return (
     <main className="mx-auto w-full max-w-xl flex-1 overflow-y-auto px-4 py-5 sm:py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-text-primary">Pantry</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          {loading ? 'Loading…' : query.trim() ? `${visibleItems.length} of ${items.length} items` : `${items.length} items`}
-        </p>
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-text-primary">Pantry</h1>
+          <p className="mt-1 text-sm text-text-secondary">
+            {loading ? 'Loading…' : query.trim() ? `${visibleItems.length} of ${items.length} items` : `${items.length} items`}
+          </p>
+        </div>
+        {!loading && items.length > 1 && !selecting && (
+          <button onClick={startSelecting} className="text-sm text-text-secondary underline underline-offset-4">
+            Select items
+          </button>
+        )}
       </header>
 
       <section aria-label="Organize pantry" className="mb-6 grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem]">
@@ -155,6 +208,24 @@ export default function PantryPage() {
           <option value="name">A–Z</option>
         </select>
       </section>
+
+      {selecting && (
+        <section aria-label="Bulk pantry actions" className="mb-6 flex flex-wrap items-center justify-between gap-3 border-y border-outline py-3">
+          <p className="text-sm text-text-secondary">{selectedIds.size} selected</p>
+          <div className="flex items-center gap-3">
+            <button onClick={stopSelecting} className="text-sm text-text-secondary underline underline-offset-4">
+              Cancel
+            </button>
+            <button
+              onClick={deleteSelected}
+              disabled={selectedIds.size < 2}
+              className="border border-text-danger px-3 py-2 text-sm text-text-danger disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Delete selected
+            </button>
+          </div>
+        </section>
+      )}
 
       <section aria-labelledby="add-item-heading" className="mb-8">
         <SectionHeading><span id="add-item-heading">Add an item</span></SectionHeading>

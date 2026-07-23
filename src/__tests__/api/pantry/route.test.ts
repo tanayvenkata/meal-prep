@@ -8,6 +8,7 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/kitchen-service", () => ({
   createPantryItem: vi.fn(),
   deletePantryItem: vi.fn(),
+  deletePantryItems: vi.fn(),
   listPantryItems: vi.fn(),
   updatePantryItem: vi.fn(),
 }));
@@ -16,6 +17,7 @@ import { getRequestAuth } from "@/lib/auth";
 import {
   createPantryItem,
   deletePantryItem,
+  deletePantryItems,
   listPantryItems,
   updatePantryItem,
 } from "@/lib/kitchen-service";
@@ -23,6 +25,7 @@ import {
 const mockGetRequestAuth = vi.mocked(getRequestAuth);
 const mockCreatePantryItem = vi.mocked(createPantryItem);
 const mockDeletePantryItem = vi.mocked(deletePantryItem);
+const mockDeletePantryItems = vi.mocked(deletePantryItems);
 const mockListPantryItems = vi.mocked(listPantryItems);
 const mockUpdatePantryItem = vi.mocked(updatePantryItem);
 
@@ -305,6 +308,18 @@ describe("PUT /api/pantry", () => {
 });
 
 describe("DELETE /api/pantry", () => {
+  it("returns 401 when not authenticated", async () => {
+    mockGetRequestAuth.mockResolvedValue(null);
+
+    const response = await DELETE(new Request("http://localhost/api/pantry", {
+      method: "DELETE",
+      body: JSON.stringify({ ids: [1, 2] }),
+    }));
+
+    expect(response.status).toBe(401);
+    expect(mockDeletePantryItems).not.toHaveBeenCalled();
+  });
+
   it("returns 403 for an OAuth client token", async () => {
     mockGetRequestAuth.mockResolvedValue({
       userId: "user-123",
@@ -318,6 +333,23 @@ describe("DELETE /api/pantry", () => {
 
     expect(response.status).toBe(403);
     expect(mockDeletePantryItem).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for malformed JSON", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+
+    const response = await DELETE(new Request("http://localhost/api/pantry", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: "{",
+    }));
+
+    expect(response.status).toBe(400);
+    expect(mockDeletePantryItem).not.toHaveBeenCalled();
+    expect(mockDeletePantryItems).not.toHaveBeenCalled();
   });
 
   it("preserves validation errors and the success response", async () => {
@@ -342,5 +374,60 @@ describe("DELETE /api/pantry", () => {
     expect((await invalid.json()).error).toBe("id is required");
     expect(valid.status).toBe(200);
     await expect(valid.json()).resolves.toEqual({ success: true });
+  });
+
+  it("validates and deletes an authenticated batch", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockDeletePantryItems
+      .mockResolvedValueOnce({
+        ok: false,
+        error: "ids must be an array",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        value: { status: "deleted", ids: [1, 2] },
+      });
+
+    const invalid = await DELETE(new Request("http://localhost/api/pantry", {
+      method: "DELETE",
+      body: JSON.stringify({ ids: "not-an-array" }),
+    }));
+    const valid = await DELETE(new Request("http://localhost/api/pantry", {
+      method: "DELETE",
+      body: JSON.stringify({ ids: [1, 2] }),
+    }));
+
+    expect(invalid.status).toBe(400);
+    expect(valid.status).toBe(200);
+    expect(mockDeletePantryItems).toHaveBeenLastCalledWith(
+      "user-123",
+      { ids: [1, 2] },
+    );
+  });
+
+  it("does not report success for a mixed owned and foreign batch", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockDeletePantryItems.mockResolvedValue({
+      ok: true,
+      value: { status: "not_found", ids: [99] },
+    });
+
+    const response = await DELETE(new Request("http://localhost/api/pantry", {
+      method: "DELETE",
+      body: JSON.stringify({ ids: [1, 99] }),
+    }));
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      code: "not_found",
+      error: "One or more pantry items no longer exist.",
+      ids: [99],
+    });
   });
 });

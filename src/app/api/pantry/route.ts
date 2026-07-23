@@ -2,6 +2,7 @@ import { getRequestAuth } from "@/lib/auth";
 import {
   createPantryItem,
   deletePantryItem,
+  deletePantryItems,
   listPantryItems,
   updatePantryItem,
 } from "@/lib/kitchen-service";
@@ -117,12 +118,34 @@ export async function DELETE(request: Request) {
     return Response.json({ error: "oauth client is read-only" }, { status: 403 });
   }
 
-  const input = await request.json();
+  let parsedInput: unknown;
+  try {
+    parsedInput = await request.json();
+  } catch {
+    return Response.json({ error: "request body must be valid JSON" }, {
+      status: 400,
+    });
+  }
+  const input = typeof parsedInput === "object" && parsedInput !== null
+    ? parsedInput
+    : {};
 
   try {
-    const result = await deletePantryItem(auth.userId, input);
+    const result = Object.prototype.hasOwnProperty.call(input, "ids")
+      ? await deletePantryItems(auth.userId, input)
+      : await deletePantryItem(auth.userId, input);
     if (!result.ok) {
       return Response.json({ error: result.error }, { status: 400 });
+    }
+    if (result.value && result.value.status === "not_found") {
+      return Response.json(
+        {
+          code: "not_found",
+          error: "One or more pantry items no longer exist.",
+          ids: result.value.ids,
+        },
+        { status: 404 },
+      );
     }
     return Response.json({ success: true });
   } catch (err) {
