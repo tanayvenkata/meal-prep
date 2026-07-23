@@ -28,6 +28,9 @@ conversation proves real tool selection, account linking, and rendering.
 | Auth failure | Disconnect Mise or use an expired/invalid token, then request the kitchen. | The MCP endpoint returns the OAuth challenge; ChatGPT offers account linking or reconnection and no kitchen data leaks. |
 | Mobile/widget | Run the direct prompt in a narrow host viewport and inspect light and dark themes. | Content stays readable without horizontal clipping; host typography/colors apply; loading, result, and empty text remain legible. |
 | Two-user isolation | Connect account A, record a distinctive safe item, then repeat with account B. | Each account sees only its own pantry/tools. Account A's distinctive item never appears for B. |
+| Add kitchen tool | “Add my cast iron skillet to Mise as cookware.” | Calls `add_kitchen_tool` once with `name: "cast iron skillet"` and `kind: "cookware"` and no identity field; returns `created`. A fresh kitchen read and the Mise tools page show the same tool. |
+| Kitchen tool retry | Repeat the same add with different case or surrounding whitespace. | Returns `already_exists` with the original display name; no duplicate tool is created. |
+| No inferred kitchen tool | “Could I use a cast iron skillet for this recipe?” | Does not call `add_kitchen_tool` because discussing equipment is not a request to save it. |
 | Exact quantity | With one Eggs item: “Set my Eggs quantity to 6 count.” | Calls `set_pantry_item_quantity` once with no identity field; returns the safe before/after result. A fresh read exposes `quantityMode: "structured"`, `quantityAmount: "6"`, and `quantityUnit: "count"` while the widget and Mise pantry page show `6`. |
 | Retry | Repeat the exact same quantity request. | Returns `unchanged`; the final quantity remains `6 count` and no duplicate item or cumulative change appears. |
 | Missing write target | “Set my Saffron quantity to 1 jar” when Saffron does not exist. | Returns `not_found`; nothing is created or mutated. |
@@ -71,6 +74,16 @@ before/after evidence:
 
 Do not replay the original consume after restoring the baseline: optimistic concurrency prevents
 immediate stale retries, but it is not a durable operation receipt across an ABA state cycle.
+
+## Reversible production kitchen-tool check
+
+Use one harmless temporary tool name:
+
+1. Ask ChatGPT to add the named tool with one exact kind.
+2. Repeat with canonical-equivalent case/whitespace and verify `already_exists`.
+3. Read the kitchen again and verify exactly one row.
+4. Delete the temporary tool through the authenticated Mise website.
+5. Read once more and verify the original equipment baseline is restored.
 
 ## Reversible production batch check
 
