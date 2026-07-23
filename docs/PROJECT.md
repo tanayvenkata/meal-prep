@@ -36,14 +36,16 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 - **Done: M1–M6.5 + pre-M7 hardening.** Streaming chat → Vercel deploy → pantry CRUD →
   pantry-aware recipes → auth → tests + CI/CD → voice → Mise redesign; plus rate limiting
   and a stop button. (Per-milestone detail: git history.)
-- **Experimental ChatGPT surface:** a Streamable HTTP MCP server exposes one read-only
-  `get_kitchen_context` tool and an MCP Apps widget. Supabase OAuth 2.1 maps the connector
-  token to a Mise user; the tool then reads only that user's pantry and kitchen tools
-  through the existing user-scoped database boundary. The complete tool → resource → widget
-  handshake works in MCP Inspector and ChatGPT Developer Mode, including light and dark
-  themes. End-to-end account linking was first proven through the ngrok development
-  connector. The same deliberately stateless server now also runs through the existing
-  Vercel app at `/mcp`; ngrok remains the loop for uncommitted local changes.
+- **Experimental ChatGPT surface:** a Streamable HTTP MCP server exposes a read-only
+  `get_kitchen_context` tool, its MCP Apps widget, and one retry-safe
+  `set_pantry_item_quantity` action for an unambiguous existing item. Supabase OAuth 2.1
+  maps the connector token to a Mise user; both tools use the same user-scoped kitchen
+  service as the website. The write action sets one exact quantity and cannot create,
+  rename, delete, or bulk-edit data. The complete tool → resource → widget handshake works
+  in MCP Inspector and ChatGPT Developer Mode, including light and dark themes. End-to-end
+  account linking was first proven through the ngrok development connector. The same
+  deliberately stateless server now also runs through the existing Vercel app at `/mcp`;
+  ngrok remains the loop for uncommitted local changes.
 - **What's next** lives on the Mise Board (sort by the Priority field), not here — M7 (OCR),
   the nav-model change, history, and gamification are all tracked issues.
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
@@ -59,9 +61,10 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 
 **Experimental third loop:**
 - **ChatGPT app:** ChatGPT → hosted Next `/mcp` route → `src/mcp/server.ts` →
-  `get_kitchen_context` → `kitchen-service.ts` → MCP Apps resource → inline React
-  widget. Local development uses ngrok as an HTTPS tunnel to the standalone process on
-  port `8787`; production uses a short-lived Web-standard MCP transport per Vercel request.
+  authenticated read or exact-quantity action → `kitchen-service.ts`; reads may continue
+  through the MCP Apps resource → inline React widget. Local development uses ngrok as an
+  HTTPS tunnel to the standalone process on port `8787`; production uses a short-lived
+  Web-standard MCP transport per Vercel request.
 
 Cross-cutting: `auth.ts` `getRequestAuth()` verifies the JWT and preserves OAuth client
 identity for every user-scoped route; `middleware.ts` gates all routes except `/login`.
@@ -141,7 +144,9 @@ didn't know them — the architectural truths a tracker title can't carry.
   Explicit application predicates remain the first layer. Supabase OAuth tokens carry a
   `client_id`; direct OAuth/Data API access is limited to owned pantry/tool reads and cannot
   mutate kitchen rows or access chat tables. Mise's own website APIs preserve that client
-  identity and reject OAuth clients outside the same read-only kitchen boundary.
+  identity and reject OAuth clients outside the same read-only website-API boundary.
+  The MCP server may expose a separately reviewed narrow action through the authenticated
+  kitchen service without widening direct OAuth/Data API permissions.
 - ⚠️ **Local dev ↔ prod are isolated by Doppler, but staging is NOT.** The `dev` config points
   the running app at the LOCAL Supabase stack (`127.0.0.1`); `prd` is prod. BUT `dev`/`stg`/
   `prd` ALL share the same prod DB at the cloud level — so a Vercel Preview reads/writes PROD.
@@ -158,8 +163,10 @@ didn't know them — the architectural truths a tracker title can't carry.
   invalid credentials receive HTTP 401 with the MCP OAuth discovery challenge. The tool also
   keeps its own auth declaration and challenge as defense in depth. Supabase's standard OAuth
   scopes control OIDC identity data rather than database permissions, so RLS and Mise's API
-  auth boundary independently enforce the connection's current read-only kitchen capability.
-  An ngrok URL remains public reachability, not authentication.
+  auth boundary independently enforce the connection's kitchen capability. Direct token and
+  website API access remains read-only for OAuth clients; the one MCP write action is a
+  server-side exact-quantity command with its own schema, annotations, match policy, and
+  regression tests. An ngrok URL remains public reachability, not authentication.
 
 ## Commands & setup
 

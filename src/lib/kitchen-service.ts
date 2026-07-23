@@ -15,6 +15,7 @@ import {
 } from "@/lib/db";
 
 const MAX_ITEM_NAME_LENGTH = 100;
+const MAX_ITEM_QUANTITY_LENGTH = 100;
 const MAX_TOOL_NAME_LENGTH = 100;
 const MAX_TOOL_KIND_LENGTH = 50;
 
@@ -38,6 +39,28 @@ export type UpdatePantryItemInput = {
 export type PantryItemIdInput = {
   id?: unknown;
 };
+
+export type SetPantryItemQuantityInput = {
+  name?: unknown;
+  quantity?: unknown;
+};
+
+export type SetPantryItemQuantityOutcome =
+  | {
+      status: "updated" | "unchanged";
+      name: string;
+      beforeQuantity: string;
+      quantity: string;
+    }
+  | {
+      status: "not_found";
+      name: string;
+    }
+  | {
+      status: "ambiguous";
+      name: string;
+      matchCount: number;
+    };
 
 export type KitchenToolInput = {
   name?: unknown;
@@ -83,6 +106,31 @@ function normalizeQuantity(value: unknown): string {
     throw new TypeError("quantity must be a string");
   }
   return value.trim();
+}
+
+function normalizeRequiredQuantity(
+  value: unknown,
+): KitchenServiceResult<string> {
+  if (typeof value !== "string" || value.trim() === "") {
+    return invalid("quantity is required");
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length > MAX_ITEM_QUANTITY_LENGTH) {
+    return invalid(
+      `quantity must be ${MAX_ITEM_QUANTITY_LENGTH} characters or fewer`,
+    );
+  }
+
+  return valid(trimmed);
+}
+
+function pantryNameKey(name: string): string {
+  return name
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("en-US");
 }
 
 function normalizeTurnover(value: unknown): KitchenServiceResult<Turnover> {
@@ -155,6 +203,64 @@ export async function deletePantryItem(
 
   await deleteItemRecord(userId, input.id as number);
   return valid(null);
+}
+
+export async function setPantryItemQuantity(
+  userId: string,
+  input: SetPantryItemQuantityInput,
+): Promise<KitchenServiceResult<SetPantryItemQuantityOutcome>> {
+  const name = normalizeRequiredText(
+    input.name,
+    "name",
+    MAX_ITEM_NAME_LENGTH,
+  );
+  if (!name.ok) return name;
+
+  const quantity = normalizeRequiredQuantity(input.quantity);
+  if (!quantity.ok) return quantity;
+
+  const requestedNameKey = pantryNameKey(name.value);
+  const matches = (await getItems(userId)).filter(
+    (item) => pantryNameKey(item.name) === requestedNameKey,
+  );
+
+  if (matches.length === 0) {
+    return valid({ status: "not_found", name: name.value });
+  }
+
+  if (matches.length > 1) {
+    return valid({
+      status: "ambiguous",
+      name: name.value,
+      matchCount: matches.length,
+    });
+  }
+
+  const [match] = matches;
+  if (match.quantity === quantity.value) {
+    return valid({
+      status: "unchanged",
+      name: match.name,
+      beforeQuantity: match.quantity,
+      quantity: quantity.value,
+    });
+  }
+
+  const updated = await updateItemRecord(
+    userId,
+    match.id,
+    quantity.value,
+  );
+  if (!updated) {
+    return valid({ status: "not_found", name: name.value });
+  }
+
+  return valid({
+    status: "updated",
+    name: updated.name,
+    beforeQuantity: match.quantity,
+    quantity: updated.quantity,
+  });
 }
 
 export async function listKitchenTools(userId: string): Promise<KitchenTool[]> {

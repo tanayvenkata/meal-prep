@@ -91,10 +91,11 @@ in, send a message in the chat to get a recipe reply.
 
 ## ChatGPT app development
 
-Mise also has an experimental MCP Apps surface for ChatGPT. Its read-only
-`get_kitchen_context` tool uses Supabase OAuth 2.1 to identify the connected Mise user,
-then returns only that user's pantry and kitchen tools in an inline widget. The tool does
-not expose row IDs or support adding, editing, or deleting data.
+Mise also has an experimental MCP Apps surface for ChatGPT. Supabase OAuth 2.1 identifies
+the connected Mise user. `get_kitchen_context` returns only that user's pantry and kitchen
+tools in an inline widget, without row IDs. The narrow `set_pantry_item_quantity` action can
+set the exact quantity of one unambiguous existing item; it cannot create, rename, delete,
+or bulk-edit pantry data. Missing or duplicate normalized names leave the pantry unchanged.
 
 The hosted ChatGPT connector uses:
 
@@ -134,14 +135,15 @@ For a real ChatGPT connection, the Supabase authorization server and consent pag
 publicly reachable: ChatGPT exchanges the authorization code from its own servers. The
 stable dogfood path is the hosted Supabase project plus the deployed Mise web and MCP
 routes. Use ngrok only when testing uncommitted MCP changes from the local checkout. Supply
-the hosted Doppler config explicitly for that local read-only test:
+the hosted Doppler config explicitly only when a test deliberately needs the hosted data:
 
 ```bash
 MCP_PUBLIC_URL=https://example.ngrok.app/mcp \
   doppler run -c prd -- npm run mcp:serve
 ```
 
-Do not use the hosted configuration for automated tests or write-tool experiments.
+Do not use the hosted configuration for automated tests. Exercise write tools against local
+fixtures first, then perform only the issue's named production dogfood action.
 
 Use a fresh tool call to test new data. Historical ChatGPT messages retain their original
 tool-result snapshot. Widget implementation and host-testing rules live in

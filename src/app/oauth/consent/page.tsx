@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { MCP_CONSENT_COPY } from "@/mcp/consent-copy";
 import { ConsentDecisionForm } from "./consent-decision-form";
 
 type ConsentPageProps = {
@@ -50,8 +51,7 @@ export default async function OAuthConsentPage({ searchParams }: ConsentPageProp
             Connect {data.client.name || "this AI client"} to Mise?
           </h1>
           <p className="mt-2 text-sm text-text-secondary">
-            It will be able to read your pantry and kitchen tools so it can give
-            kitchen-aware suggestions.
+            {MCP_CONSENT_COPY.summary}
           </p>
         </div>
 
@@ -73,8 +73,7 @@ export default async function OAuthConsentPage({ searchParams }: ConsentPageProp
         </dl>
 
         <p className="mb-6 text-xs leading-5 text-text-secondary">
-          Mise remains the permission boundary. This connection cannot add, edit,
-          or delete pantry items or tools.
+          {MCP_CONSENT_COPY.boundary}
         </p>
 
         <ConsentDecisionForm authorizationId={data.authorization_id} />

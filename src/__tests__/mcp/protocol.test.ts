@@ -19,6 +19,9 @@ const mockLoadKitchenContext = vi.fn(
     };
   },
 );
+const mockSetPantryItemQuantity = vi.fn<
+  typeof import("@/lib/kitchen-service").setPantryItemQuantity
+>();
 const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalMcpPublicUrl = process.env.MCP_PUBLIC_URL;
 
@@ -62,10 +65,21 @@ beforeEach(async () => {
     pantry: [{ name: "Rice", quantity: "2 cups", turnover: "high" }],
     tools: [{ name: "Dutch oven", kind: "cookware" }],
   });
+  mockSetPantryItemQuantity.mockReset();
+  mockSetPantryItemQuantity.mockResolvedValue({
+    ok: true,
+    value: {
+      status: "updated",
+      name: "Eggs",
+      beforeQuantity: "12",
+      quantity: "6",
+    },
+  });
 
   httpServer = createMiseHttpServer({
     verifyAccessToken: verifyTestAccessToken,
     loadKitchenContext: mockLoadKitchenContext,
+    setPantryItemQuantity: mockSetPantryItemQuantity,
   });
   await new Promise<void>((resolve, reject) => {
     httpServer.once("error", reject);
@@ -137,6 +151,9 @@ describe("Mise MCP OAuth wire contract", () => {
           tools: {},
           resources: {},
         },
+        instructions: expect.stringContaining(
+          "Never infer a pantry write from recipe planning",
+        ),
       },
     });
   });
@@ -222,6 +239,111 @@ describe("Mise MCP OAuth wire contract", () => {
     ]);
   });
 
+  it("publishes and executes the retry-safe pantry quantity tool", async () => {
+    const listResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 9,
+      method: "tools/list",
+    }, "test-token");
+    const listBody = await listResponse.json() as {
+      result: { tools: Array<Record<string, unknown>> };
+    };
+    const tool = listBody.result.tools.find(
+      ({ name }) => name === "set_pantry_item_quantity",
+    );
+    const expectedSchemes = [{ type: "oauth2", scopes: ["openid"] }];
+
+    expect(tool).toMatchObject({
+      description: expect.stringContaining("Use this when"),
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["name", "quantity"],
+      },
+      outputSchema: {
+        type: "object",
+        required: ["status", "name"],
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      securitySchemes: expectedSchemes,
+      _meta: { securitySchemes: expectedSchemes },
+    });
+    expect((tool?._meta as Record<string, unknown>).ui).toBeUndefined();
+
+    const callResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 10,
+      method: "tools/call",
+      params: {
+        name: "set_pantry_item_quantity",
+        arguments: { name: " Eggs ", quantity: " 6 " },
+      },
+    }, "test-token");
+    const callBody = await callResponse.json() as {
+      result: {
+        content: Array<{ type: string; text: string }>;
+        structuredContent: Record<string, unknown>;
+      };
+    };
+
+    expect(callResponse.status).toBe(200);
+    expect(callBody).toEqual({
+      result: {
+        content: [{ type: "text", text: "Set Eggs from 12 to 6." }],
+        structuredContent: {
+          status: "updated",
+          name: "Eggs",
+          beforeQuantity: "12",
+          quantity: "6",
+        },
+      },
+      jsonrpc: "2.0",
+      id: 10,
+    });
+    expect(mockSetPantryItemQuantity).toHaveBeenCalledWith("user-123", {
+      name: "Eggs",
+      quantity: "6",
+    });
+    expect(Object.keys(callBody.result.structuredContent)).toEqual([
+      "status",
+      "name",
+      "beforeQuantity",
+      "quantity",
+    ]);
+  });
+
+  it("never accepts caller-supplied identity for a pantry write", async () => {
+    const response = await postMcp({
+      jsonrpc: "2.0",
+      id: 11,
+      method: "tools/call",
+      params: {
+        name: "set_pantry_item_quantity",
+        arguments: {
+          name: "Eggs",
+          quantity: "6",
+          userId: "attacker-selected-user",
+        },
+      },
+    }, "test-token");
+    const body = await response.json() as {
+      result: {
+        isError?: boolean;
+        structuredContent?: Record<string, unknown>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.result.isError).toBe(true);
+    expect(mockSetPantryItemQuantity).not.toHaveBeenCalled();
+    expect(body.result.structuredContent).toBeUndefined();
+  });
+
   it("delivers the widget resource with an explicit no-network CSP", async () => {
     const response = await postMcp({
       jsonrpc: "2.0",
@@ -287,6 +409,7 @@ describe("Mise MCP OAuth wire contract", () => {
     const response = await handleMiseMcpRequest(request, {
       verifyAccessToken: verifyTestAccessToken,
       loadKitchenContext: mockLoadKitchenContext,
+      setPantryItemQuantity: mockSetPantryItemQuantity,
     });
     const body = (await response.json()) as {
       result: { tools: Array<Record<string, unknown>> };
