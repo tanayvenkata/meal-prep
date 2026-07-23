@@ -257,6 +257,7 @@ describe("Mise MCP OAuth wire contract", () => {
       description: expect.stringContaining("Use this when"),
       inputSchema: {
         type: "object",
+        additionalProperties: false,
         required: ["name", "quantity"],
       },
       outputSchema: {
@@ -314,6 +315,33 @@ describe("Mise MCP OAuth wire contract", () => {
       "beforeQuantity",
       "quantity",
     ]);
+  });
+
+  it("never accepts caller-supplied identity for a pantry write", async () => {
+    const response = await postMcp({
+      jsonrpc: "2.0",
+      id: 11,
+      method: "tools/call",
+      params: {
+        name: "set_pantry_item_quantity",
+        arguments: {
+          name: "Eggs",
+          quantity: "6",
+          userId: "attacker-selected-user",
+        },
+      },
+    }, "test-token");
+    const body = await response.json() as {
+      result: {
+        isError?: boolean;
+        structuredContent?: Record<string, unknown>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.result.isError).toBe(true);
+    expect(mockSetPantryItemQuantity).not.toHaveBeenCalled();
+    expect(body.result.structuredContent).toBeUndefined();
   });
 
   it("delivers the widget resource with an explicit no-network CSP", async () => {

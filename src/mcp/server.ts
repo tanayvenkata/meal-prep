@@ -79,7 +79,7 @@ const kitchenContextSchema = z.object({
 const setPantryItemQuantityInputSchema = z.object({
   name: z.string().trim().min(1).max(100),
   quantity: z.string().trim().min(1).max(100),
-});
+}).strict();
 
 const setPantryItemQuantityOutputSchema = z.object({
   status: z.enum(["updated", "unchanged", "not_found", "ambiguous"]),
