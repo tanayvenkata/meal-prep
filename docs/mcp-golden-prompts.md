@@ -10,6 +10,8 @@ conversation proves real tool selection, account linking, and rendering.
    commit and use the stable production `/mcp` URL.
 2. If tool metadata or the content-hashed widget URI changed, refresh or reconnect the
    ChatGPT app before testing.
+   If the available mutation capability changed, disconnect and reconnect so the updated
+   Mise consent screen is shown and explicitly approved.
 3. Use a new ChatGPT conversation so an old tool descriptor or widget resource is not cached.
 4. Record the commit, endpoint, host, account, date, and pass/fail result with the PR evidence.
    Do not record tokens, user IDs, or kitchen contents beyond the minimum needed to prove the
