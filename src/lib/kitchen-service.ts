@@ -11,12 +11,15 @@ import {
   getItemByCanonicalName,
   getItemById,
   getItems,
+  getKitchenToolByCanonicalName,
+  getKitchenToolById,
   getKitchenTools,
   setItemQuantityByCanonicalName,
   updateItem as updateItemRecord,
   updateKitchenTool as updateKitchenToolRecord,
   type Item,
   type KitchenTool,
+  type KitchenToolKind,
   type ReviewedReceiptImportResult,
   type Turnover,
 } from "@/lib/db";
@@ -33,7 +36,6 @@ import {
 
 const MAX_ITEM_NAME_LENGTH = 100;
 const MAX_TOOL_NAME_LENGTH = 100;
-const MAX_TOOL_KIND_LENGTH = 50;
 const MAX_PANTRY_ADJUSTMENT_BATCH_SIZE = 25;
 
 export type KitchenServiceResult<T> =
@@ -191,6 +193,19 @@ export type UpdatePantryItemOutcome =
   | { status: "not_found"; id: number }
   | { status: "name_conflict"; id: number; conflictingItem: Item };
 
+export type CreateKitchenToolOutcome =
+  | { status: "created"; tool: KitchenTool }
+  | { status: "already_exists"; tool: KitchenTool };
+
+export type UpdateKitchenToolOutcome =
+  | { status: "updated" | "unchanged"; tool: KitchenTool }
+  | { status: "not_found"; id: string }
+  | { status: "name_conflict"; id: string; conflictingTool: KitchenTool };
+
+export type DeleteKitchenToolOutcome =
+  | { status: "deleted"; id: string }
+  | { status: "not_found"; id: string };
+
 export type KitchenToolInput = {
   name?: unknown;
   kind?: unknown;
@@ -294,6 +309,37 @@ function normalizeRequestId(value: unknown): KitchenServiceResult<string> {
     return invalid("requestId must be a UUID");
   }
   return valid(value.toLowerCase());
+}
+
+function normalizeUuid(
+  value: unknown,
+  field: "id",
+): KitchenServiceResult<string> {
+  if (
+    typeof value !== "string"
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      .test(value)
+  ) {
+    return invalid(`${field} must be a UUID`);
+  }
+  return valid(value.toLowerCase());
+}
+
+function normalizeKitchenToolKind(
+  value: unknown,
+): KitchenServiceResult<KitchenToolKind> {
+  if (typeof value !== "string") {
+    return invalid("kind is required");
+  }
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === "appliance"
+    || normalized === "cookware"
+    || normalized === "bakeware"
+  ) {
+    return valid(normalized);
+  }
+  return invalid("kind must be appliance, cookware, or bakeware");
 }
 
 function normalizeTurnover(value: unknown): KitchenServiceResult<Turnover> {
@@ -777,7 +823,7 @@ export async function listKitchenTools(userId: string): Promise<KitchenTool[]> {
 export async function createKitchenTool(
   userId: string,
   input: KitchenToolInput,
-): Promise<KitchenServiceResult<KitchenTool>> {
+): Promise<KitchenServiceResult<CreateKitchenToolOutcome>> {
   const name = normalizeRequiredText(
     input.name,
     "name",
@@ -785,24 +831,18 @@ export async function createKitchenTool(
   );
   if (!name.ok) return name;
 
-  const kind = normalizeRequiredText(
-    input.kind,
-    "kind",
-    MAX_TOOL_KIND_LENGTH,
-  );
+  const kind = normalizeKitchenToolKind(input.kind);
   if (!kind.ok) return kind;
 
-  const tool = await addKitchenTool(userId, name.value, kind.value);
-  return valid(tool);
+  return valid(await addKitchenTool(userId, name.value, kind.value));
 }
 
 export async function updateKitchenTool(
   userId: string,
   input: UpdateKitchenToolInput,
-): Promise<KitchenServiceResult<KitchenTool>> {
-  if (typeof input.id !== "string" || input.id === "") {
-    return invalid("id is required");
-  }
+): Promise<KitchenServiceResult<UpdateKitchenToolOutcome>> {
+  const id = normalizeUuid(input.id, "id");
+  if (!id.ok) return id;
 
   const name = normalizeRequiredText(
     input.name,
@@ -811,32 +851,63 @@ export async function updateKitchenTool(
   );
   if (!name.ok) return name;
 
-  const kind = normalizeRequiredText(
-    input.kind,
-    "kind",
-    MAX_TOOL_KIND_LENGTH,
-  );
+  const kind = normalizeKitchenToolKind(input.kind);
   if (!kind.ok) return kind;
 
-  const tool = await updateKitchenToolRecord(
+  const current = await getKitchenToolById(userId, id.value);
+  if (!current) {
+    return valid({ status: "not_found", id: id.value });
+  }
+
+  const conflictingTool = await getKitchenToolByCanonicalName(
     userId,
-    input.id,
     name.value,
+  );
+  if (conflictingTool && conflictingTool.id !== current.id) {
+    return valid({
+      status: "name_conflict",
+      id: id.value,
+      conflictingTool,
+    });
+  }
+
+  const keepsCanonicalIdentity = conflictingTool?.id === current.id;
+  if (keepsCanonicalIdentity && kind.value === current.kind) {
+    return valid({ status: "unchanged", tool: current });
+  }
+
+  const result = await updateKitchenToolRecord(
+    userId,
+    id.value,
+    keepsCanonicalIdentity ? current.name : name.value,
     kind.value,
   );
-  return valid(tool);
+  if (result.status === "not_found") {
+    return valid({ status: "not_found", id: id.value });
+  }
+  if (result.status === "name_conflict") {
+    const conflict = await getKitchenToolByCanonicalName(userId, name.value);
+    if (!conflict) {
+      throw new Error("kitchen tool conflict disappeared before lookup");
+    }
+    return valid({
+      status: "name_conflict",
+      id: id.value,
+      conflictingTool: conflict,
+    });
+  }
+  return valid({ status: "updated", tool: result.tool });
 }
 
 export async function deleteKitchenTool(
   userId: string,
   input: KitchenToolIdInput,
-): Promise<KitchenServiceResult<null>> {
-  if (typeof input.id !== "string" || input.id === "") {
-    return invalid("id is required");
-  }
+): Promise<KitchenServiceResult<DeleteKitchenToolOutcome>> {
+  const id = normalizeUuid(input.id, "id");
+  if (!id.ok) return id;
 
-  await deleteKitchenToolRecord(userId, input.id);
-  return valid(null);
+  const result = await deleteKitchenToolRecord(userId, id.value);
+  return valid({ ...result, id: id.value });
 }
 
 export async function getKitchenContext(

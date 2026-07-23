@@ -24,6 +24,7 @@ export const fakeKitchenTool = (overrides: Partial<KitchenTool> = {}): KitchenTo
   id: "00000000-0000-0000-0000-000000000003",
   user_id: "user-123",
   name: "Frying pan",
+  name_key: "frying pan",
   kind: "cookware",
   created_at: "2024-01-01",
   ...overrides,

@@ -126,6 +126,12 @@ are in git (commits + PRs); these are the patterns worth carrying to the next pr
   pantry/tool operations without becoming a second SQL layer.
 - **DB is the source of truth; the screen mirrors it.** Re-fetch after every change rather
   than tracking local state. Optimise to optimistic/cached only when lag is actually felt.
+- **User-facing identity rules belong in the database.** Pantry items and kitchen tools
+  preserve the display name a user entered, while one shared Unicode-normalized canonical
+  key prevents same-user duplicates under concurrent website or future agent requests.
+  Tool kinds are the explicit V1 set (`appliance`, `cookware`, `bakeware`), and tool
+  update/delete commands distinguish a real change from unchanged, missing, or conflicting
+  state instead of reporting success by default.
 - **Each layer tests itself and mocks everything below.** Route tests mock service + auth;
   kitchen-service tests mock DB functions; DB tests hit real local Postgres. No overlap —
   routes prove transport behavior, the service proves normalization/orchestration, and DB
