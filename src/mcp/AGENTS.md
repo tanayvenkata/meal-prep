@@ -114,6 +114,30 @@ The development connector runs entirely from the local checkout:
   isolation are implemented, expose demo fixtures only and no real Supabase
   pantry data or write operations.
 
+## Hosted production loop
+
+The production connector runs through the existing Next.js deployment:
+
+`ChatGPT -> https://meal-prep-tawny-kappa.vercel.app/mcp -> Next route handler -> stateless MCP server`
+
+- `src/app/mcp/route.ts` adapts the Web-standard MCP transport to a Vercel
+  route handler. Keep each request stateless; do not rely on an in-memory MCP
+  session surviving across serverless invocations.
+- Exact OAuth well-known URLs are rewritten to the metadata route handlers
+  under `src/app/api/mcp/`. Keep those responses derived from `src/mcp/auth.ts`
+  so the standalone and hosted transports cannot drift.
+- `MCP_PUBLIC_URL` is the OAuth resource identifier, not merely a routing hint.
+  In production it must exactly match the public `/mcp` endpoint.
+- The Supabase Site URL is the deployed application origin without `/mcp`.
+  It controls the default browser redirect after auth; it is not the MCP
+  resource URL.
+- `/api/mcp/health` proves that the deployment is reachable without weakening
+  auth on `/mcp`. Logs may include request IDs, method, status, and duration,
+  but never bearer tokens, user IDs, or kitchen data.
+- A Vercel preview can prove build, routing, discovery, and fail-closed auth.
+  The production OAuth connection is only proven after the stable production
+  hostname serves the matching code and the ChatGPT app is reconnected there.
+
 ## Widget refresh and test rules
 
 - MCP Inspector is the fast inner loop for resources, tools, bridge behavior,

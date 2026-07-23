@@ -1,13 +1,26 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_ROUTES = ["/login", "/api/auth/login"];
+const PUBLIC_ROUTES = [
+  "/login",
+  "/api/auth/login",
+  "/mcp",
+  "/api/mcp",
+  "/.well-known/oauth-protected-resource",
+  "/.well-known/oauth-authorization-server",
+];
+
+function isPublicRoute(pathname: string) {
+  return PUBLIC_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   // Let public routes through unconditionally
-  if (PUBLIC_ROUTES.some((r) => pathname.startsWith(r))) {
+  if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 

@@ -19,6 +19,18 @@ const nextConfig: NextConfig = {
   // is explicit; derive it from the same canonical MCP URL to avoid a second
   // tunnel setting that can drift.
   ...(mcpDevHostname ? { allowedDevOrigins: [mcpDevHostname] } : {}),
+  async rewrites() {
+    return [
+      {
+        source: "/.well-known/oauth-protected-resource/mcp",
+        destination: "/api/mcp/oauth-protected-resource",
+      },
+      {
+        source: "/.well-known/oauth-authorization-server",
+        destination: "/api/mcp/oauth-authorization-server",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

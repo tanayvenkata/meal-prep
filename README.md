@@ -96,6 +96,18 @@ Mise also has an experimental MCP Apps surface for ChatGPT. Its read-only
 then returns only that user's pantry and kitchen tools in an inline widget. The tool does
 not expose row IDs or support adding, editing, or deleting data.
 
+The hosted ChatGPT connector uses:
+
+- MCP endpoint: `https://meal-prep-tawny-kappa.vercel.app/mcp`
+- Health check: `https://meal-prep-tawny-kappa.vercel.app/api/mcp/health`
+- Supabase Site URL: `https://meal-prep-tawny-kappa.vercel.app` (the application origin,
+  without `/mcp`)
+
+`MCP_PUBLIC_URL` is the canonical OAuth resource identifier and must equal the MCP
+endpoint exactly. It lives in Doppler `prd`, which syncs it to Vercel.
+
+For local development, run the same MCP app as a standalone process:
+
 ```bash
 # Terminal 1: Next app (login + OAuth consent screen)
 npm run dev
@@ -120,9 +132,9 @@ ngrok http 8787
 
 For a real ChatGPT connection, the Supabase authorization server and consent page must be
 publicly reachable: ChatGPT exchanges the authorization code from its own servers. The
-normal dogfood path is therefore the hosted Supabase project + deployed Mise web app, with
-the local MCP server temporarily exposed through ngrok. Supply the hosted Doppler config
-explicitly for that read-only test:
+stable dogfood path is the hosted Supabase project plus the deployed Mise web and MCP
+routes. Use ngrok only when testing uncommitted MCP changes from the local checkout. Supply
+the hosted Doppler config explicitly for that local read-only test:
 
 ```bash
 MCP_PUBLIC_URL=https://example.ngrok.app/mcp \

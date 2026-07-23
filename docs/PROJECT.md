@@ -41,8 +41,9 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
   token to a Mise user; the tool then reads only that user's pantry and kitchen tools
   through the existing user-scoped database boundary. The complete tool → resource → widget
   handshake works in MCP Inspector and ChatGPT Developer Mode, including light and dark
-  themes. End-to-end account linking has been proven through the ngrok development connector;
-  durable MCP hosting and database RLS hardening remain separate follow-up boundaries.
+  themes. End-to-end account linking was first proven through the ngrok development
+  connector. The same deliberately stateless server now also runs through the existing
+  Vercel app at `/mcp`; ngrok remains the loop for uncommitted local changes.
 - **What's next** lives on the Mise Board (sort by the Priority field), not here — M7 (OCR),
   the nav-model change, history, and gamification are all tracked issues.
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
@@ -56,9 +57,10 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 - **Pantry:** `pantry/page.tsx` → `api/pantry/route.ts` → `db.ts` → Supabase.
 
 **Experimental third loop:**
-- **ChatGPT app:** ChatGPT → HTTPS MCP endpoint → `src/mcp/server.ts` →
+- **ChatGPT app:** ChatGPT → hosted Next `/mcp` route → `src/mcp/server.ts` →
   `get_kitchen_context` → MCP Apps resource → inline React widget. Local development uses
-  ngrok only as an HTTPS tunnel to port `8787`; the laptop remains the server.
+  ngrok as an HTTPS tunnel to the standalone process on port `8787`; production uses a
+  short-lived Web-standard MCP transport per Vercel request.
 
 Cross-cutting: `auth.ts` `getUserId()` puts a JWT check on every user-scoped route;
 `middleware.ts` gates all routes except `/login`. Design = Mise system

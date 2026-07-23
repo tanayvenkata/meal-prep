@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "doppler run -- next dev",
+    "prebuild": "npm run mcp:widget",
     "build": "next build",
     "build:local": "doppler run -- next build",
     "start": "next start",
@@ -13,7 +14,8 @@
     "test:unit": "vitest --run src/__tests__/api src/__tests__/lib/auth.test.ts src/__tests__/lib/db-config.test.ts src/__tests__/lib/theme.test.ts src/__tests__/middleware.test.ts src/__tests__/mcp",
     "test:integration": "vitest --run src/__tests__/lib",
     "db:provision-app-role": "node scripts/provision-mise-app-role.mjs",
-    "mcp:serve": "tsx watch --include 'src/mcp/kitchen-widget.*' src/mcp/server.ts",
+    "mcp:widget": "tsx scripts/build-mcp-widget.ts",
+    "mcp:serve": "tsx watch --include 'src/mcp/kitchen-widget.*' src/mcp/standalone.ts",
     "mcp:dev": "doppler run -- npm run mcp:serve",
     "prepare": "husky"
   },

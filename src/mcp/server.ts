@@ -1,9 +1,5 @@
 import { createServer } from "node:http";
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
-import tailwindcss from "@tailwindcss/postcss";
+import { randomUUID } from "node:crypto";
 import { InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
 import type { OAuthTokenVerifier } from "@modelcontextprotocol/sdk/server/auth/provider.js";
@@ -15,14 +11,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import {
   registerAppResource,
   registerAppTool,
   RESOURCE_MIME_TYPE,
 } from "@modelcontextprotocol/ext-apps/server";
-import { build } from "esbuild";
-import postcss from "postcss";
 import { z } from "zod";
 import {
   getMcpAuthChallenge,
@@ -30,10 +25,11 @@ import {
   getSupabaseOAuthMetadata,
   verifyMcpAccessToken,
   MCP_SCOPES,
-} from "./auth.js";
-import { loadKitchenContext } from "./kitchen-context.js";
+} from "./auth";
+import { kitchenWidgetResource as generatedKitchenWidgetResource } from "./kitchen-widget.generated";
+import { loadKitchenContext } from "./kitchen-context";
+import type { KitchenWidgetResource } from "./build-widget";
 
-const PORT = 8787;
 const MCP_PATH = "/mcp";
 const KITCHEN_CONTEXT_TOOL = "get_kitchen_context";
 const KITCHEN_CONTEXT_SECURITY_SCHEMES = [
@@ -45,77 +41,6 @@ const LEGACY_KITCHEN_WIDGET_URIS = [
   "ui://widget/kitchen-context-v3.html",
   "ui://widget/kitchen-context-v4.html",
 ] as const;
-const kitchenWidgetTemplate = readFileSync(
-  new URL("./kitchen-widget.html", import.meta.url),
-  "utf8",
-);
-const resolveWidgetImport = createRequire(
-  new URL("./kitchen-widget.tsx", import.meta.url),
-);
-const kitchenWidgetScriptPromise = build({
-  entryPoints: [
-    fileURLToPath(new URL("./kitchen-widget.tsx", import.meta.url)),
-  ],
-  bundle: true,
-  define: {
-    "process.env.NODE_ENV": '"production"',
-  },
-  format: "iife",
-  minify: true,
-  platform: "browser",
-  target: "es2022",
-  outdir: "widget-build",
-  write: false,
-  plugins: [
-    {
-      name: "resolve-widget-packages",
-      setup(build) {
-        // A Yarn PnP manifest exists above this repository and would otherwise
-        // override this project's node_modules resolution inside esbuild.
-        build.onResolve({ filter: /^[^./]/ }, (args) => ({
-          path: resolveWidgetImport.resolve(args.path),
-        }));
-      },
-    },
-  ],
-}).then((result) => {
-  const script = result.outputFiles.find((file) => file.path.endsWith(".js"))?.text;
-  const componentStyles =
-    result.outputFiles.find((file) => file.path.endsWith(".css"))?.text ?? "";
-  if (!script) throw new Error("Kitchen widget bundle was not generated.");
-
-  return { componentStyles, script };
-});
-const kitchenWidgetCssUrl = new URL("./kitchen-widget.css", import.meta.url);
-const kitchenWidgetStylePromise = postcss([tailwindcss()])
-  .process(readFileSync(kitchenWidgetCssUrl, "utf8"), {
-    from: fileURLToPath(kitchenWidgetCssUrl),
-  })
-  .then((result) => result.css);
-const kitchenWidgetResourcePromise = Promise.all([
-  kitchenWidgetScriptPromise,
-  kitchenWidgetStylePromise,
-]).then(([bundle, styles]) => {
-  const htmlWithStyles = kitchenWidgetTemplate.replace(
-    "<!-- KITCHEN_WIDGET_STYLE -->",
-    `${styles}\n${bundle.componentStyles}`.replaceAll("</style", "<\\/style"),
-  );
-
-  const html = htmlWithStyles.replace(
-    "<!-- KITCHEN_WIDGET_SCRIPT -->",
-    () =>
-      `<script>${bundle.script.replaceAll("</script", "<\\/script")}</script>`,
-  );
-  const contentHash = createHash("sha256")
-    .update(html)
-    .digest("hex")
-    .slice(0, 12);
-
-  return {
-    html,
-    uri: `ui://widget/kitchen-context-${contentHash}.html`,
-  };
-});
 
 const kitchenContextSchema = z.object({
   pantry: z.array(
@@ -176,8 +101,19 @@ class OpenAiCompatibleStreamableHTTPServerTransport extends StreamableHTTPServer
   }
 }
 
-export async function createMiseServer() {
-  const kitchenWidgetResource = await kitchenWidgetResourcePromise;
+class OpenAiCompatibleWebStandardStreamableHTTPServerTransport extends WebStandardStreamableHTTPServerTransport {
+  override send(
+    message: JSONRPCMessage,
+    options?: Parameters<WebStandardStreamableHTTPServerTransport["send"]>[1],
+  ) {
+    return super.send(addOpenAiToolSecuritySchemes(message), options);
+  }
+}
+
+export async function createMiseServer(
+  kitchenWidgetResource: KitchenWidgetResource =
+    generatedKitchenWidgetResource,
+) {
   const kitchenWidgetUris = [
     ...LEGACY_KITCHEN_WIDGET_URIS,
     kitchenWidgetResource.uri,
@@ -252,10 +188,127 @@ type VerifyAccessToken = (token: string) => Promise<AuthInfo>;
 
 type MiseHttpServerOptions = {
   verifyAccessToken?: VerifyAccessToken;
+  kitchenWidgetResource?: KitchenWidgetResource;
 };
+
+function invalidTokenResponse(authConfig = getMcpAuthConfig()) {
+  return Response.json(
+    { error: "invalid_token" },
+    {
+      status: 401,
+      headers: {
+        "WWW-Authenticate": getMcpAuthChallenge(authConfig, {
+          error: "invalid_token",
+          errorDescription: "The Mise access token is invalid or expired.",
+        }),
+      },
+    },
+  );
+}
+
+function getBearerToken(request: Request) {
+  const authorization = request.headers.get("authorization");
+  if (!authorization) return null;
+
+  const match = /^Bearer ([^\s]+)$/i.exec(authorization);
+  return match?.[1] ?? undefined;
+}
+
+export async function handleMiseMcpRequest(
+  request: Request,
+  {
+    verifyAccessToken = verifyMcpAccessToken,
+  }: Pick<MiseHttpServerOptions, "verifyAccessToken"> = {},
+) {
+  const startedAt = performance.now();
+  const requestId = randomUUID();
+  const authConfig = getMcpAuthConfig();
+  const bearerToken = getBearerToken(request);
+
+  if (bearerToken === null) {
+    const response = Response.json(
+      { error: "authorization_required" },
+      {
+        status: 401,
+        headers: {
+          "WWW-Authenticate": getMcpAuthChallenge(authConfig, { error: null }),
+        },
+      },
+    );
+    console.info(JSON.stringify({
+      event: "mcp_request",
+      requestId,
+      method: request.method,
+      status: response.status,
+      durationMs: Math.round(performance.now() - startedAt),
+    }));
+    return response;
+  }
+
+  if (bearerToken === undefined) {
+    return invalidTokenResponse(authConfig);
+  }
+
+  let authInfo: AuthInfo;
+  try {
+    authInfo = await verifyAccessToken(bearerToken);
+    const hasRequiredScopes = MCP_SCOPES.every((scope) =>
+      authInfo.scopes.includes(scope)
+    );
+    if (
+      !hasRequiredScopes
+      || typeof authInfo.expiresAt !== "number"
+      || authInfo.expiresAt <= Date.now() / 1000
+    ) {
+      throw new Error("Token policy check failed.");
+    }
+  } catch (error) {
+    console.warn(JSON.stringify({
+      event: "mcp_auth_failed",
+      requestId,
+      errorType: error instanceof Error ? error.name : "UnknownError",
+    }));
+    return invalidTokenResponse(authConfig);
+  }
+
+  const server = await createMiseServer();
+  const transport =
+    new OpenAiCompatibleWebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    });
+
+  try {
+    await server.connect(transport);
+    const response = await transport.handleRequest(request, { authInfo });
+    console.info(JSON.stringify({
+      event: "mcp_request",
+      requestId,
+      method: request.method,
+      status: response.status,
+      durationMs: Math.round(performance.now() - startedAt),
+    }));
+    return response;
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: "mcp_request_failed",
+      requestId,
+      errorType: error instanceof Error ? error.name : "UnknownError",
+    }));
+    return Response.json(
+      {
+        jsonrpc: "2.0",
+        error: { code: -32603, message: "Internal server error." },
+        id: null,
+      },
+      { status: 500 },
+    );
+  }
+}
 
 export function createMiseHttpServer({
   verifyAccessToken = verifyMcpAccessToken,
+  kitchenWidgetResource = generatedKitchenWidgetResource,
 }: MiseHttpServerOptions = {}) {
   const authConfig = getMcpAuthConfig();
   const app = createMcpExpressApp({
@@ -327,7 +380,7 @@ export function createMiseHttpServer({
   app.post(MCP_PATH, async (req, res) => {
     // This server is deliberately stateless: every MCP request gets a
     // short-lived server and transport.
-    const server = await createMiseServer();
+    const server = await createMiseServer(kitchenWidgetResource);
     const transport = new OpenAiCompatibleStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
@@ -357,10 +410,4 @@ export function createMiseHttpServer({
   });
 
   return createServer(app);
-}
-
-if (process.env.NODE_ENV !== "test") {
-  createMiseHttpServer().listen(PORT, () => {
-    console.log(`Mise MCP server: ${getMcpAuthConfig().resource.href}`);
-  });
 }

@@ -39,6 +39,19 @@ describe("middleware", () => {
     expect(response.status).toBe(200);
   });
 
+  it.each([
+    "/mcp",
+    "/api/mcp/health",
+    "/.well-known/oauth-protected-resource/mcp",
+    "/.well-known/oauth-authorization-server",
+  ])("lets the MCP protocol route %s enforce its own auth", async (path) => {
+    const request = makeRequest(path);
+    const response = await middleware(request);
+
+    expect(mockCreateServerClient).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+  });
+
   it("redirects unauthenticated users to /login with returnTo", async () => {
     mockCreateServerClient.mockReturnValue({
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
