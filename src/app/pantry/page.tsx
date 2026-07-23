@@ -2,28 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Check, X } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
-
-type Turnover = 'high' | 'low'
-
-type Item = {
-  id: number
-  name: string
-  quantity: string
-  turnover: Turnover
-}
-
-async function getToken(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession()
-  return data.session?.access_token ?? null
-}
+import {
+  pantryApi,
+  type PantryItem,
+  type Turnover,
+} from '@/lib/pantry-api'
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-2 text-sm font-semibold text-text-primary">{children}</h2>
 }
 
 export default function PantryPage() {
-  const [items, setItems] = useState<Item[]>([])
+  const [items, setItems] = useState<PantryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
   const [quantity, setQuantity] = useState('')
@@ -36,12 +26,8 @@ export default function PantryPage() {
   const editNameRef = useRef<HTMLInputElement>(null)
 
   async function loadItems() {
-    const token = await getToken()
-    if (!token) return
     try {
-      const res = await fetch('/api/pantry', { headers: { Authorization: `Bearer ${token}` } })
-      if (!res.ok) throw new Error(`pantry load failed (${res.status})`)
-      setItems(await res.json())
+      setItems(await pantryApi.list())
       setError(null)
     } catch (err) {
       console.error('failed to load pantry:', err)
@@ -61,27 +47,26 @@ export default function PantryPage() {
     return () => { ignore = true }
   }, [])
 
-  async function mutate(method: 'POST' | 'PUT' | 'DELETE', body: object) {
-    const token = await getToken()
-    if (!token) return false
+  async function mutate(action: () => Promise<unknown>) {
     setError(null)
-    const res = await fetch('/api/pantry', {
-      method,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      setError(data.error ?? 'Something went wrong')
+    try {
+      await action()
+      await loadItems()
+      return true
+    } catch (err) {
+      console.error('pantry mutation failed:', err)
+      setError(err instanceof Error ? err.message : 'Something went wrong')
       return false
     }
-    await loadItems()
-    return true
   }
 
   async function addItem() {
     if (!name.trim()) return
-    const added = await mutate('POST', { name: name.trim(), quantity: quantity.trim(), turnover })
+    const added = await mutate(() => pantryApi.add({
+      name: name.trim(),
+      quantity: quantity.trim(),
+      turnover,
+    }))
     if (added) {
       setName('')
       setQuantity('')
@@ -89,7 +74,7 @@ export default function PantryPage() {
     }
   }
 
-  function startEdit(item: Item) {
+  function startEdit(item: PantryItem) {
     setEditingId(item.id)
     setEditName(item.name)
     setEditQuantity(item.quantity ?? '')
@@ -99,19 +84,19 @@ export default function PantryPage() {
 
   async function saveEdit(id: number) {
     if (!editName.trim()) return
-    const saved = await mutate('PUT', {
+    const saved = await mutate(() => pantryApi.update({
       id,
       name: editName.trim(),
       quantity: editQuantity.trim(),
       turnover: editTurnover,
-    })
+    }))
     if (saved) setEditingId(null)
   }
 
   const highTurnover = items.filter((item) => item.turnover === 'high')
   const lowTurnover = items.filter((item) => item.turnover === 'low')
 
-  function renderItems(sectionItems: Item[]) {
+  function renderItems(sectionItems: PantryItem[]) {
     if (!sectionItems.length) return <p className="py-3 text-sm text-text-secondary">Nothing here yet.</p>
 
     return (
@@ -137,7 +122,7 @@ export default function PantryPage() {
                 </div>
                 <div className="flex shrink-0 gap-3 text-sm">
                   <button onClick={() => startEdit(item)} className="text-text-secondary underline underline-offset-4">Edit</button>
-                  <button onClick={() => mutate('DELETE', { id: item.id })} className="text-text-secondary underline underline-offset-4">Delete</button>
+                  <button onClick={() => mutate(() => pantryApi.remove(item.id))} className="text-text-secondary underline underline-offset-4">Delete</button>
                 </div>
               </div>
             )}

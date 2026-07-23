@@ -60,8 +60,8 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 **The two live loops:**
 - **Chat:** `page.tsx` → `ChatWindow.tsx` → `api/chat/route.ts` → `ratelimit.ts` →
   `db.ts` + `ai.ts` → Anthropic (streamed back, abortable).
-- **Pantry:** `pantry/page.tsx` → `api/pantry/route.ts` → `kitchen-service.ts` →
-  `db.ts` → Supabase.
+- **Pantry:** `pantry/page.tsx` → browser-only `pantry-api.ts` →
+  `api/pantry/route.ts` → `kitchen-service.ts` → `db.ts` → Supabase.
 
 **Experimental third loop:**
 - **ChatGPT app:** ChatGPT → hosted Next `/mcp` route → `src/mcp/server.ts` →
