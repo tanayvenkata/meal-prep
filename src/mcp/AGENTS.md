@@ -36,6 +36,9 @@ transitive dependencies.
 - Target ChatGPT first, but use the standard MCP Apps bridge from
   `@modelcontextprotocol/ext-apps` for widget lifecycle and tool results.
 - Do not hand-roll the initialization handshake with raw `postMessage` calls.
+- Keep widget code under `src/mcp/widget/`: `index.tsx` owns host lifecycle,
+  `bridge.ts` owns the standard MCP Apps connection, and `components/` owns
+  presentation built from Apps SDK UI components.
 - Use `window.openai` only when a documented ChatGPT-specific capability is
   necessary, and keep the standard MCP Apps path functional where possible.
 - Keep server data access separate from widget rendering. Demo fixtures may
@@ -161,6 +164,10 @@ The production connector runs through the existing Next.js deployment:
   HTML, CSS, and JavaScript. Do not maintain handwritten `v1`, `v2`, and similar
   development counters. Keep old URI aliases only when retrying historical
   messages is intentionally supported.
+- Keep the generated widget on package ESM/browser export paths. The repository
+  lives below an unrelated Yarn PnP manifest, so the widget build resolves this
+  project's package export maps explicitly; preserve the protocol test's bundle
+  budget when adding SDK UI components.
 - A historical ChatGPT message retains its original tool result. Retrying or
   refreshing its widget may load new widget code, but it does not fetch new
   pantry data. Make a fresh prompt to test a new tool result.

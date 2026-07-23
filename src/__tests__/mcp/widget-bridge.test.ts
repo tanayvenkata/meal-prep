@@ -1,7 +1,7 @@
 import { AppBridge } from "@modelcontextprotocol/ext-apps/app-bridge";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it, vi } from "vitest";
-import { createKitchenWidgetApp } from "@/mcp/kitchen-widget-bridge";
+import { createKitchenWidgetApp } from "@/mcp/widget/bridge";
 
 describe("Mise MCP Apps widget bridge", () => {
   it("initializes before receiving a tool result through the standard bridge", async () => {

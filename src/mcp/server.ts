@@ -215,6 +215,7 @@ export async function createMiseServer(
       _meta: {
         securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
         ui: { resourceUri: kitchenWidgetResource.uri },
+        "openai/outputTemplate": kitchenWidgetResource.uri,
         "openai/toolInvocation/invoking": "Checking your kitchen…",
         "openai/toolInvocation/invoked": "Kitchen ready.",
       },

@@ -191,6 +191,7 @@ describe("Mise MCP OAuth wire contract", () => {
     expect(tool?._meta).toMatchObject({
       securitySchemes: expectedSchemes,
       ui: { resourceUri: kitchenWidgetResource.uri },
+      "openai/outputTemplate": kitchenWidgetResource.uri,
     });
   });
 
@@ -345,6 +346,10 @@ describe("Mise MCP OAuth wire contract", () => {
   });
 
   it("delivers the widget resource with an explicit no-network CSP", async () => {
+    // This is a regression budget, not a documented host limit. It prevents
+    // the bundler from silently selecting CommonJS SDK entry points again.
+    expect(Buffer.byteLength(kitchenWidgetResource.html)).toBeLessThan(800_000);
+
     const response = await postMcp({
       jsonrpc: "2.0",
       id: 8,
