@@ -27,7 +27,7 @@ import {
   MCP_SCOPES,
 } from "./auth";
 import { kitchenWidgetResource as generatedKitchenWidgetResource } from "./kitchen-widget.generated";
-import { loadKitchenContext } from "./kitchen-context";
+import { getKitchenContext } from "@/lib/kitchen-service";
 import type { KitchenWidgetResource } from "./build-widget";
 
 const MCP_PATH = "/mcp";
@@ -173,7 +173,7 @@ export async function createMiseServer(
         };
       }
 
-      const kitchenContext = await loadKitchenContext(userId);
+      const kitchenContext = await getKitchenContext(userId);
       return {
         content: [{ type: "text", text: "Returned your Mise kitchen context." }],
         structuredContent: kitchenContext,

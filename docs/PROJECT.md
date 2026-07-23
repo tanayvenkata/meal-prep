@@ -54,16 +54,18 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 **The two live loops:**
 - **Chat:** `page.tsx` → `ChatWindow.tsx` → `api/chat/route.ts` → `ratelimit.ts` →
   `db.ts` + `ai.ts` → Anthropic (streamed back, abortable).
-- **Pantry:** `pantry/page.tsx` → `api/pantry/route.ts` → `db.ts` → Supabase.
+- **Pantry:** `pantry/page.tsx` → `api/pantry/route.ts` → `kitchen-service.ts` →
+  `db.ts` → Supabase.
 
 **Experimental third loop:**
 - **ChatGPT app:** ChatGPT → hosted Next `/mcp` route → `src/mcp/server.ts` →
-  `get_kitchen_context` → MCP Apps resource → inline React widget. Local development uses
-  ngrok as an HTTPS tunnel to the standalone process on port `8787`; production uses a
-  short-lived Web-standard MCP transport per Vercel request.
+  `get_kitchen_context` → `kitchen-service.ts` → MCP Apps resource → inline React
+  widget. Local development uses ngrok as an HTTPS tunnel to the standalone process on
+  port `8787`; production uses a short-lived Web-standard MCP transport per Vercel request.
 
-Cross-cutting: `auth.ts` `getUserId()` puts a JWT check on every user-scoped route;
-`middleware.ts` gates all routes except `/login`. Design = Mise system
+Cross-cutting: `auth.ts` `getRequestAuth()` verifies the JWT and preserves OAuth client
+identity for every user-scoped route; `middleware.ts` gates all routes except `/login`.
+Design = Mise system
 (`design_handoff/STATUS.md` tracks built vs. deferred screens).
 
 ## Architecture (the lightweight system design)
@@ -112,13 +114,15 @@ are in git (commits + PRs); these are the patterns worth carrying to the next pr
   not browser→DB-direct via supabase-js. More code, but the *transferable* kind — reach for
   the abstraction later, once you can read what it generates and choose it on purpose.
 - **Extract when the duplication is logic, not just a shared import.** `ChatWindow`, `db.ts`,
-  `auth.ts` were all extracted at the Rule of Three, when real logic repeated.
+  `auth.ts`, and `kitchen-service.ts` were extracted when real behavior needed another
+  caller. The kitchen service now gives website and MCP transports one home for normalized
+  pantry/tool operations without becoming a second SQL layer.
 - **DB is the source of truth; the screen mirrors it.** Re-fetch after every change rather
   than tracking local state. Optimise to optimistic/cached only when lag is actually felt.
-- **Each layer tests itself and mocks everything below.** Route tests mock db + auth; db
-  tests hit real local Postgres. No overlap — route tests prove route logic, db tests prove
-  the SQL. Three zones per endpoint (auth gate / input validation / happy path) = one test
-  per branch. User-isolation tested explicitly on write ops that take a row id.
+- **Each layer tests itself and mocks everything below.** Route tests mock service + auth;
+  kitchen-service tests mock DB functions; DB tests hit real local Postgres. No overlap —
+  routes prove transport behavior, the service proves normalization/orchestration, and DB
+  tests prove SQL. User-isolation is tested explicitly on write ops that take a row id.
 - **Defense in depth for process.** Husky pre-commit (lint) + pre-push (build + unit tests)
   catch errors before CI does; CI re-checks remotely; the default-branch ruleset requires
   the PR + CI path, while `.husky/pre-push` gives immediate local feedback.
