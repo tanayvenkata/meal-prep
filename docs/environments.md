@@ -212,18 +212,23 @@ Prod is the last place a schema change lands, never the first. `db pull` does NO
 **The GUI is legitimately for:** viewing data/tables, grabbing API keys / connection strings,
 account/auth/billing/project setup. I.e. *structure = code; setup & looking = GUI.*
 
-## RLS note (ties to the "one layer" finding above)
+## RLS note (current application path)
 
-When we add RLS for real, the migration needs BOTH lines, because `db.ts` connects as the table
-owner (which bypasses RLS by default):
-```sql
-alter table items force row level security;          -- make RLS apply even to the owner
-create policy "users see own items" on items
-  for all using (auth.uid() = user_id);
-```
-Without `force`, the policy appears to "do nothing" on the app's path — a confusing non-result.
-Test on LOCAL first (`force` will suddenly subject existing db.ts queries to the policy — verify they
-still pass before `db push`). This is exactly why dev-first exists.
+RLS is active on the user-owned tables. `db.ts` does **not** connect as their owner: `DATABASE_URL`
+uses the dedicated `mise_app` login role, which is `NOBYPASSRLS`, `NOINHERIT`, owns no public
+tables, and has no direct table DML. Each user-scoped operation enters `withUserContext`, which
+temporarily `SET ROLE authenticated` and stamps the trusted user ID used by `auth.uid()`.
+
+That gives the app two independent checks:
+
+1. its SQL still includes an explicit `user_id` predicate;
+2. the database ownership policy independently evaluates `(select auth.uid()) = user_id`.
+
+If code skips `withUserContext`, `mise_app` cannot read or mutate the tables, so the mistake fails
+closed. Owner credentials remain separate in `ADMIN_DATABASE_URL` for migrations and tightly
+scoped test/setup work only. New user-owned tables still need RLS enabled plus explicit
+`TO authenticated` policies in a new migration, followed by local isolation tests before
+`db push`.
 
 ---
 

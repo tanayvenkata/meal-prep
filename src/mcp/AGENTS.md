@@ -120,9 +120,11 @@ The development connector runs entirely from the local checkout:
   preserved remotely.
 - The ChatGPT connector can keep using the same ngrok URL while that tunnel is
   alive. A newly generated ngrok URL must be entered into the connector again.
-- Treat the ngrok URL as publicly reachable. Until authentication and user
-  isolation are implemented, expose demo fixtures only and no real Supabase
-  pantry data or write operations.
+- Treat the ngrok URL as publicly reachable. Real kitchen data may only cross
+  it through the same verified OAuth transport, user-scoped kitchen service,
+  and fail-closed RLS boundary as production. Never weaken those boundaries to
+  make local testing easier, and do not expose write operations until their
+  authorization and retry contract is independently complete.
 
 ## Hosted production loop
 
@@ -152,7 +154,9 @@ The production connector runs through the existing Next.js deployment:
 
 - MCP Inspector is the fast inner loop for resources, tools, bridge behavior,
   and initial visual checks. ChatGPT Developer Mode is the required host-level
-  verification.
+  verification. Record those host checks with the direct, indirect, negative,
+  empty, auth-failure, mobile/widget, and two-user cases in
+  `docs/mcp-golden-prompts.md`.
 - Derive the widget resource URI from a short content hash of the assembled
   HTML, CSS, and JavaScript. Do not maintain handwritten `v1`, `v2`, and similar
   development counters. Keep old URI aliases only when retrying historical

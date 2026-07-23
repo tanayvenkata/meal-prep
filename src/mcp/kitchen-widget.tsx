@@ -4,7 +4,6 @@ import {
   CheckCircle,
 } from "@openai/apps-sdk-ui/components/Icon";
 import {
-  App,
   applyDocumentTheme,
   applyHostFonts,
   applyHostStyleVariables,
@@ -12,6 +11,7 @@ import {
 } from "@modelcontextprotocol/ext-apps";
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { createKitchenWidgetApp } from "@/mcp/kitchen-widget-bridge";
 
 type KitchenContext = {
   pantry: Array<{ name: string; quantity: string; turnover: "high" | "low" }>;
@@ -53,13 +53,10 @@ function applyHostContext(context: McpUiHostContext) {
   }
 }
 
-const app = new App(
-  { name: "mise-kitchen-widget", version: "0.2.0" },
-  {},
-  { autoResize: true },
-);
-app.ontoolresult = (result) => publishKitchen(result.structuredContent);
-app.onhostcontextchanged = applyHostContext;
+const app = createKitchenWidgetApp({
+  onToolResult: publishKitchen,
+  onHostContextChanged: applyHostContext,
+});
 let appConnection: Promise<void> | undefined;
 
 window.addEventListener(
@@ -144,17 +141,23 @@ function KitchenWidget() {
               {kitchen.pantry.length} items
             </span>
           </div>
-          <dl className="mt-2 divide-y divide-subtle rounded-xl border border-subtle">
-            {kitchen.pantry.map((item) => (
-              <div
-                className="flex items-center justify-between gap-4 px-3 py-2.5"
-                key={`${item.name}-${item.quantity}`}
-              >
-                <dt className="font-medium capitalize">{item.name}</dt>
-                <dd className="text-sm text-secondary">{item.quantity}</dd>
-              </div>
-            ))}
-          </dl>
+          {kitchen.pantry.length === 0 ? (
+            <p className="mt-2 rounded-xl border border-subtle px-3 py-4 text-sm text-secondary">
+              No pantry items saved yet.
+            </p>
+          ) : (
+            <dl className="mt-2 divide-y divide-subtle rounded-xl border border-subtle">
+              {kitchen.pantry.map((item) => (
+                <div
+                  className="flex items-center justify-between gap-4 px-3 py-2.5"
+                  key={`${item.name}-${item.quantity}`}
+                >
+                  <dt className="font-medium capitalize">{item.name}</dt>
+                  <dd className="text-sm text-secondary">{item.quantity}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </section>
 
         <section className="mt-4 border-t border-subtle pt-4" aria-labelledby="tools-heading">
@@ -164,15 +167,21 @@ function KitchenWidget() {
               Kitchen tools
             </h2>
           </div>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {kitchen.tools.map((tool) => (
-              <li key={`${tool.name}-${tool.kind}`}>
-                <Badge variant="soft" color="secondary" pill>
-                  {tool.name}
-                </Badge>
-              </li>
-            ))}
-          </ul>
+          {kitchen.tools.length === 0 ? (
+            <p className="mt-2 text-sm text-secondary">
+              No kitchen tools saved yet.
+            </p>
+          ) : (
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {kitchen.tools.map((tool) => (
+                <li key={`${tool.name}-${tool.kind}`}>
+                  <Badge variant="soft" color="secondary" pill>
+                    {tool.name}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </article>
     </main>
