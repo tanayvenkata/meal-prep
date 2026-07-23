@@ -3,6 +3,9 @@ export type KitchenContext = {
     name: string;
     quantity: string;
     turnover: "high" | "low";
+    quantityMode?: "unknown" | "text" | "structured" | "unsupported";
+    quantityAmount?: string | null;
+    quantityUnit?: string | null;
   }>;
   tools: Array<{ name: string; kind: string }>;
 };

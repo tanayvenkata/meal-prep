@@ -18,6 +18,7 @@ import {
   type Turnover,
 } from "@/lib/db";
 import {
+  isPantryQuantityUnit,
   isPositiveStructuredPantryQuantity,
   pantryQuantityMatchesStoredFields,
   parsePantryQuantity,
@@ -132,6 +133,18 @@ export type UpdateKitchenToolInput = KitchenToolInput & {
 
 export type KitchenToolIdInput = {
   id?: unknown;
+};
+
+export type KitchenContext = {
+  pantry: Array<{
+    name: string;
+    quantity: string;
+    turnover: Turnover;
+    quantityMode: "unknown" | "text" | "structured" | "unsupported";
+    quantityAmount: string | null;
+    quantityUnit: string | null;
+  }>;
+  tools: Array<{ name: string; kind: string }>;
 };
 
 function invalid(error: string): KitchenServiceResult<never> {
@@ -523,18 +536,37 @@ export async function deleteKitchenTool(
   return valid(null);
 }
 
-export async function getKitchenContext(userId: string) {
+export async function getKitchenContext(
+  userId: string,
+): Promise<KitchenContext> {
   const [items, tools] = await Promise.all([
     listPantryItems(userId),
     listKitchenTools(userId),
   ]);
 
   return {
-    pantry: items.map(({ name, quantity, turnover }) => ({
-      name,
-      quantity,
-      turnover,
-    })),
+    pantry: items.map((item) => {
+      const quantityAmount = item.quantity_value;
+      const quantityUnit = item.quantity_unit;
+      const hasStructuredFields = quantityAmount !== null
+        && quantityUnit !== null;
+      const quantityMode = hasStructuredFields
+        ? isPantryQuantityUnit(quantityUnit)
+          ? "structured"
+          : "unsupported"
+        : item.quantity_text === ""
+          ? "unknown"
+          : "text";
+
+      return {
+        name: item.name,
+        quantity: item.quantity,
+        turnover: item.turnover,
+        quantityMode,
+        quantityAmount: hasStructuredFields ? quantityAmount : null,
+        quantityUnit: hasStructuredFields ? quantityUnit : null,
+      };
+    }),
     tools: tools.map(({ name, kind }) => ({ name, kind })),
   };
 }
