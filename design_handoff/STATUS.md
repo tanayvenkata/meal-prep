@@ -88,6 +88,7 @@ Surfaced here so they don't get lost in the per-screen tables. Grouped by what u
 | Ember "Add" button | ✅ Done | |
 | Search + Recently added / A–Z sort | ✅ Done | Shared client-side inventory helper; tools page matches |
 | Multi-select + confirmed batch delete | ✅ Done | Explicit selection mode; destructive batch is atomic and requires confirmation |
+| Structured quantity editor | ✅ Done | Amount + canonical unit for measurable inventory; explicit custom-text fallback; edit round trips preserve `count` metadata |
 | Pantry as dismissible sheet over chat | ⬜ Not started | Navigation model change — future PR |
 | Grabber handle / swipe-down dismiss | ⬜ Not started | Depends on sheet |
 | Chevron › opens Edit sheet | ⬜ Not started | Depends on Edit sheet |

@@ -56,10 +56,63 @@ describe("GET /api/pantry", () => {
       id: 1,
       name: "eggs",
       quantity: "12",
+      quantityDetails: {
+        mode: "structured",
+        amount: "12",
+        unit: "count",
+      },
       turnover: "high",
       created_at: "2024-01-01",
     }]);
     expect(mockListPantryItems).toHaveBeenCalledWith("user-123");
+  });
+
+  it("returns explicit text, unknown, and unsupported quantity modes", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockListPantryItems.mockResolvedValue([
+      fakeItem({
+        id: 1,
+        name: "Rice",
+        quantity: "about half a bag",
+        quantity_text: "about half a bag",
+        quantity_value: null,
+        quantity_unit: null,
+      }),
+      fakeItem({
+        id: 2,
+        name: "Salt",
+        quantity: "",
+        quantity_text: "",
+        quantity_value: null,
+        quantity_unit: null,
+      }),
+      fakeItem({
+        id: 3,
+        name: "Stock",
+        quantity: "2 pinch",
+        quantity_text: "",
+        quantity_value: "2",
+        quantity_unit: "pinch",
+      }),
+    ]);
+
+    const response = await GET(new Request("http://localhost/api/pantry"));
+    const body = await response.json();
+
+    expect(body.map((item: { quantityDetails: unknown }) =>
+      item.quantityDetails)).toEqual([
+      { mode: "text", text: "about half a bag" },
+      { mode: "unknown" },
+      {
+        mode: "unsupported",
+        amount: "2",
+        unit: "pinch",
+        display: "2 pinch",
+      },
+    ]);
   });
 });
 
@@ -133,6 +186,11 @@ describe("POST /api/pantry", () => {
       id: 1,
       name: "eggs",
       quantity: "12",
+      quantityDetails: {
+        mode: "structured",
+        amount: "12",
+        unit: "count",
+      },
       turnover: "high",
       created_at: "2024-01-01",
     });
@@ -163,6 +221,11 @@ describe("POST /api/pantry", () => {
         id: 1,
         name: "Eggs",
         quantity: "12",
+        quantityDetails: {
+          mode: "structured",
+          amount: "12",
+          unit: "count",
+        },
         turnover: "high",
         created_at: "2024-01-01",
       },
@@ -199,7 +262,7 @@ describe("PUT /api/pantry", () => {
         ok: true,
         value: {
           status: "updated",
-          item: fakeItem({ quantity: "6" }),
+          item: fakeItem({ quantity: "6", quantity_value: "6" }),
         },
       });
 
@@ -219,6 +282,11 @@ describe("PUT /api/pantry", () => {
       id: 1,
       name: "eggs",
       quantity: "6",
+      quantityDetails: {
+        mode: "structured",
+        amount: "6",
+        unit: "count",
+      },
       turnover: "high",
       created_at: "2024-01-01",
     });
@@ -298,6 +366,11 @@ describe("PUT /api/pantry", () => {
         id: 2,
         name: "Eggs",
         quantity: "12",
+        quantityDetails: {
+          mode: "structured",
+          amount: "12",
+          unit: "count",
+        },
         turnover: "high",
         created_at: "2024-01-01",
       },

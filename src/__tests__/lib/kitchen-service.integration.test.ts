@@ -57,7 +57,11 @@ describe("setPantryItemQuantity database boundary", () => {
 
     await expect(setPantryItemQuantity(TEST_USER_A, {
       name: " duck   eggs ",
-      quantity: "6",
+      quantity: {
+        mode: "structured",
+        amount: "6",
+        unit: "count",
+      },
     })).resolves.toEqual({
       ok: true,
       value: {
@@ -69,7 +73,11 @@ describe("setPantryItemQuantity database boundary", () => {
     });
     await expect(setPantryItemQuantity(TEST_USER_A, {
       name: "DUCK EGGS",
-      quantity: "6",
+      quantity: {
+        mode: "structured",
+        amount: "6.000000",
+        unit: "count",
+      },
     })).resolves.toEqual({
       ok: true,
       value: {
@@ -90,9 +98,9 @@ describe("setPantryItemQuantity database boundary", () => {
       {
         user_id: TEST_USER_A,
         quantity: "6",
-        quantity_text: "6",
-        quantity_value: null,
-        quantity_unit: null,
+        quantity_text: "",
+        quantity_value: "6",
+        quantity_unit: "count",
       },
       {
         user_id: TEST_USER_B,
@@ -104,7 +112,7 @@ describe("setPantryItemQuantity database boundary", () => {
     ]);
   });
 
-  it("normalizes unit aliases and treats a semantic retry as unchanged", async () => {
+  it("normalizes decimal amounts and treats a semantic retry as unchanged", async () => {
     await adminSql`
       insert into items (user_id, name, quantity_text)
       values (${TEST_USER_A}, 'Flour', '2 pounds')
@@ -112,14 +120,22 @@ describe("setPantryItemQuantity database boundary", () => {
 
     await expect(setPantryItemQuantity(TEST_USER_A, {
       name: "Flour",
-      quantity: "2 lb",
+      quantity: {
+        mode: "structured",
+        amount: "2.000000",
+        unit: "lb",
+      },
     })).resolves.toMatchObject({
       ok: true,
       value: { status: "updated", quantity: "2 lb" },
     });
     await expect(setPantryItemQuantity(TEST_USER_A, {
       name: "Flour",
-      quantity: "2 pounds",
+      quantity: {
+        mode: "structured",
+        amount: "2",
+        unit: "lb",
+      },
     })).resolves.toMatchObject({
       ok: true,
       value: { status: "unchanged", quantity: "2 lb" },
@@ -135,11 +151,19 @@ describe("setPantryItemQuantity database boundary", () => {
     const results = await Promise.all([
       setPantryItemQuantity(TEST_USER_A, {
         name: "Eggs",
-        quantity: "6",
+        quantity: {
+          mode: "structured",
+          amount: "6",
+          unit: "count",
+        },
       }),
       setPantryItemQuantity(TEST_USER_A, {
         name: "Eggs",
-        quantity: "3",
+        quantity: {
+          mode: "structured",
+          amount: "3",
+          unit: "count",
+        },
       }),
     ]);
 
@@ -169,7 +193,11 @@ describe("setPantryItemQuantity database boundary", () => {
 
     await expect(setPantryItemQuantity(TEST_USER_A, {
       name: "Milk",
-      quantity: "1 gallon",
+      quantity: {
+        mode: "structured",
+        amount: "1",
+        unit: "gal",
+      },
     })).resolves.toEqual({
       ok: true,
       value: { status: "not_found", name: "Milk" },

@@ -6,6 +6,7 @@ import {
   pantryQuantitiesEqual,
   pantryQuantityMatchesStoredFields,
   parsePantryQuantity,
+  parsePantryQuantityInput,
   type StructuredPantryQuantity,
 } from "@/lib/pantry-quantity";
 
@@ -125,6 +126,72 @@ describe("parsePantryQuantity", () => {
     expect(parsePantryQuantity("x".repeat(101))).toMatchObject({
       ok: false,
       code: "too_long",
+    });
+  });
+});
+
+describe("parsePantryQuantityInput", () => {
+  it("preserves explicit structured counts instead of demoting bare amounts", () => {
+    expect(parsePantryQuantityInput({
+      mode: "structured",
+      amount: "0011.000000",
+      unit: "count",
+    })).toEqual({
+      ok: true,
+      value: {
+        mode: "structured",
+        amount: "11",
+        unit: "count",
+        text: null,
+      },
+    });
+  });
+
+  it("keeps an explicitly selected text fallback as text", () => {
+    expect(parsePantryQuantityInput({
+      mode: "text",
+      text: "  about half a bag  ",
+    })).toEqual({
+      ok: true,
+      value: {
+        mode: "text",
+        amount: null,
+        unit: null,
+        text: "about half a bag",
+      },
+    });
+  });
+
+  it("accepts unknown mode and rejects malformed structured inputs", () => {
+    expect(parsePantryQuantityInput({ mode: "unknown" })).toEqual({
+      ok: true,
+      value: {
+        mode: "unknown",
+        amount: null,
+        unit: null,
+        text: null,
+      },
+    });
+    expect(parsePantryQuantityInput({
+      mode: "structured",
+      amount: "11",
+      unit: "potato",
+    })).toMatchObject({ ok: false, code: "invalid_unit" });
+    expect(parsePantryQuantityInput({
+      mode: "structured",
+      amount: "eleven",
+      unit: "count",
+    })).toMatchObject({ ok: false, code: "invalid_type" });
+  });
+
+  it("retains legacy string parsing for existing website callers", () => {
+    expect(parsePantryQuantityInput("3 lbs")).toMatchObject({
+      ok: true,
+      value: { mode: "structured", amount: "3", unit: "lb" },
+    });
+    expect(parsePantryQuantityInput("3")).toMatchObject({
+      ok: true,
+      value: { mode: "text", text: "3" },
     });
   });
 });

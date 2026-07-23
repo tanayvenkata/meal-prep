@@ -125,11 +125,6 @@ const kitchenToolMutationOutputSchema = z.object({
   }),
 });
 
-const setPantryItemQuantityInputSchema = z.object({
-  name: z.string().trim().min(1).max(100),
-  quantity: z.string().trim().min(1).max(100),
-}).strict();
-
 const setPantryItemQuantityOutputSchema = z.object({
   status: z.enum(["updated", "unchanged", "not_found"]),
   name: z.string(),
@@ -155,6 +150,13 @@ const expectedPantryQuantityInputSchema = z.object({
   ),
   unit: z.enum(PANTRY_QUANTITY_UNITS).describe(
     "Canonical Mise quantity unit. Use count explicitly for counts.",
+  ),
+}).strict();
+
+const setPantryItemQuantityInputSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  quantity: expectedPantryQuantityInputSchema.describe(
+    "Exact pantry quantity to store. Use count explicitly for discrete items.",
   ),
 }).strict();
 
@@ -730,7 +732,7 @@ export async function createMiseServer(
     {
       title: "Set pantry item quantity",
       description:
-        "Use this when the user wants to set the exact quantity of one pantry item that already exists in their Mise kitchen. Matches the signed-in user's pantry by normalized item name; it never creates, renames, or deletes an item.",
+        "Use this when the user clearly states an exact measured quantity for one existing Mise pantry item. Pass an explicit decimal amount and canonical unit; counts use count. Free-text estimates are not exact quantities and must not use this tool. Matches by normalized item name and never creates, renames, deletes, or converts units.",
       inputSchema: setPantryItemQuantityInputSchema,
       outputSchema: setPantryItemQuantityOutputSchema,
       annotations: {

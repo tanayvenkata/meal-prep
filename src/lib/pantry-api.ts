@@ -2,28 +2,45 @@
 // state; this module alone knows how the website authenticates and speaks to
 // /api/pantry.
 import { getToken } from "@/lib/supabase";
+import type {
+  PantryQuantityInput,
+  PantryQuantityUnit,
+} from "@/lib/pantry-quantity";
 
 const PANTRY_URL = "/api/pantry";
 
 export type Turnover = "high" | "low";
 
+export type PantryQuantityDetails =
+  | PantryQuantityInput
+  | {
+      mode: "unsupported";
+      amount: string | null;
+      unit: string | null;
+      display: string;
+    };
+
 export type PantryItem = {
   id: number;
   name: string;
   quantity: string;
+  quantityDetails: PantryQuantityDetails;
   turnover: Turnover;
   created_at: string;
 };
 
 export type AddPantryItemInput = {
   name: string;
-  quantity: string;
+  quantity: PantryQuantityInput;
   turnover: Turnover;
 };
 
-export type UpdatePantryItemInput = AddPantryItemInput & {
+export type UpdatePantryItemInput = Omit<AddPantryItemInput, "quantity"> & {
   id: number;
+  quantity?: PantryQuantityInput;
 };
+
+export type { PantryQuantityInput, PantryQuantityUnit };
 
 type PantryErrorBody = {
   code?: unknown;

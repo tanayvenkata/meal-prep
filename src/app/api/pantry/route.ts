@@ -7,12 +7,36 @@ import {
   updatePantryItem,
 } from "@/lib/kitchen-service";
 import type { Item } from "@/lib/db";
+import { isPantryQuantityUnit } from "@/lib/pantry-quantity";
 
 function toPantryItemResponse(item: Item) {
+  const quantityDetails = item.quantity_value !== null
+    && item.quantity_unit !== null
+    && isPantryQuantityUnit(item.quantity_unit)
+    ? {
+        mode: "structured" as const,
+        amount: item.quantity_value,
+        unit: item.quantity_unit,
+      }
+    : item.quantity_value !== null || item.quantity_unit !== null
+      ? {
+          mode: "unsupported" as const,
+          amount: item.quantity_value,
+          unit: item.quantity_unit,
+          display: item.quantity,
+        }
+      : item.quantity_text === ""
+        ? { mode: "unknown" as const }
+        : {
+            mode: "text" as const,
+            text: item.quantity_text,
+          };
+
   return {
     id: item.id,
     name: item.name,
     quantity: item.quantity,
+    quantityDetails,
     turnover: item.turnover,
     created_at: item.created_at,
   };

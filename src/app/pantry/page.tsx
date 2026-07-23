@@ -5,12 +5,132 @@ import { Check, X } from 'lucide-react'
 import {
   pantryApi,
   type PantryItem,
+  type PantryQuantityInput,
+  type PantryQuantityUnit,
   type Turnover,
 } from '@/lib/pantry-api'
 import {
   filterAndSortInventory,
   type InventoryListSort,
 } from '@/lib/inventory-list'
+import { PANTRY_QUANTITY_UNITS } from '@/lib/pantry-quantity'
+
+type QuantityDraft = {
+  mode: 'structured' | 'text'
+  amount: string
+  unit: PantryQuantityUnit
+  text: string
+}
+
+function emptyQuantityDraft(): QuantityDraft {
+  return { mode: 'structured', amount: '', unit: 'count', text: '' }
+}
+
+function quantityDraftFromItem(item: PantryItem): QuantityDraft {
+  switch (item.quantityDetails.mode) {
+    case 'structured':
+      return {
+        mode: 'structured',
+        amount: item.quantityDetails.amount,
+        unit: item.quantityDetails.unit,
+        text: '',
+      }
+    case 'text':
+      return {
+        mode: 'text',
+        amount: '',
+        unit: 'count',
+        text: item.quantityDetails.text,
+      }
+    case 'unsupported':
+      return {
+        mode: 'text',
+        amount: '',
+        unit: 'count',
+        text: item.quantityDetails.display,
+      }
+    case 'unknown':
+      return emptyQuantityDraft()
+  }
+}
+
+function quantityInputFromDraft(draft: QuantityDraft): PantryQuantityInput {
+  if (draft.mode === 'text') {
+    const text = draft.text.trim()
+    return text === '' ? { mode: 'unknown' } : { mode: 'text', text }
+  }
+
+  const amount = draft.amount.trim()
+  return amount === ''
+    ? { mode: 'unknown' }
+    : { mode: 'structured', amount, unit: draft.unit }
+}
+
+function QuantityEditor({
+  label,
+  value,
+  onChange,
+  onEnter,
+}: {
+  label: string
+  value: QuantityDraft
+  onChange: (next: QuantityDraft) => void
+  onEnter?: () => void
+}) {
+  const handleEnter = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') onEnter?.()
+  }
+
+  return (
+    <div className="space-y-1">
+      {value.mode === 'structured' ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_6.5rem]">
+          <input
+            aria-label={`${label} amount`}
+            inputMode="decimal"
+            placeholder="Amount"
+            value={value.amount}
+            onChange={(event) => onChange({ ...value, amount: event.target.value })}
+            onKeyDown={handleEnter}
+            className="min-w-0 border border-r-0 border-outline bg-surface-raised px-3 py-2 text-base"
+          />
+          <select
+            aria-label={`${label} unit`}
+            value={value.unit}
+            onChange={(event) => onChange({
+              ...value,
+              unit: event.target.value as PantryQuantityUnit,
+            })}
+            className="min-w-0 border border-outline bg-surface-raised px-2 py-2 text-sm"
+          >
+            {PANTRY_QUANTITY_UNITS.map((unit) => (
+              <option key={unit} value={unit}>{unit}</option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <input
+          aria-label={`${label} custom text`}
+          placeholder="e.g. half a bag"
+          value={value.text}
+          onChange={(event) => onChange({ ...value, text: event.target.value })}
+          onKeyDown={handleEnter}
+          className="w-full min-w-0 border border-outline bg-surface-raised px-3 py-2 text-base"
+        />
+      )}
+      <button
+        type="button"
+        onClick={() => onChange({
+          ...value,
+          mode: value.mode === 'structured' ? 'text' : 'structured',
+        })}
+        className="text-xs text-text-secondary underline underline-offset-4"
+      >
+        {value.mode === 'structured' ? 'Use custom text' : 'Use amount and unit'}
+      </button>
+    </div>
+  )
+}
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-2 text-sm font-semibold text-text-primary">{children}</h2>
@@ -20,7 +140,7 @@ export default function PantryPage() {
   const [items, setItems] = useState<PantryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
-  const [quantity, setQuantity] = useState('')
+  const [quantity, setQuantity] = useState<QuantityDraft>(emptyQuantityDraft)
   const [turnover, setTurnover] = useState<Turnover>('high')
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -29,7 +149,8 @@ export default function PantryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
-  const [editQuantity, setEditQuantity] = useState('')
+  const [editQuantity, setEditQuantity] = useState<QuantityDraft>(emptyQuantityDraft)
+  const [editQuantityDirty, setEditQuantityDirty] = useState(false)
   const [editTurnover, setEditTurnover] = useState<Turnover>('high')
   const editNameRef = useRef<HTMLInputElement>(null)
 
@@ -72,12 +193,12 @@ export default function PantryPage() {
     if (!name.trim()) return
     const added = await mutate(() => pantryApi.add({
       name: name.trim(),
-      quantity: quantity.trim(),
+      quantity: quantityInputFromDraft(quantity),
       turnover,
     }))
     if (added) {
       setName('')
-      setQuantity('')
+      setQuantity(emptyQuantityDraft())
       setTurnover('high')
     }
   }
@@ -85,7 +206,8 @@ export default function PantryPage() {
   function startEdit(item: PantryItem) {
     setEditingId(item.id)
     setEditName(item.name)
-    setEditQuantity(item.quantity ?? '')
+    setEditQuantity(quantityDraftFromItem(item))
+    setEditQuantityDirty(false)
     setEditTurnover(item.turnover)
     setTimeout(() => editNameRef.current?.focus(), 0)
   }
@@ -95,7 +217,9 @@ export default function PantryPage() {
     const saved = await mutate(() => pantryApi.update({
       id,
       name: editName.trim(),
-      quantity: editQuantity.trim(),
+      ...(editQuantityDirty
+        ? { quantity: quantityInputFromDraft(editQuantity) }
+        : {}),
       turnover: editTurnover,
     }))
     if (saved) setEditingId(null)
@@ -144,9 +268,17 @@ export default function PantryPage() {
         {sectionItems.map((item) => (
           <li key={item.id} className="py-3">
             {editingId === item.id ? (
-              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6rem_auto_auto]">
+              <div className="grid items-start gap-2 sm:grid-cols-[minmax(0,1fr)_13rem_6rem_auto_auto]">
                 <input ref={editNameRef} aria-label="Edit ingredient name" value={editName} onChange={(e) => setEditName(e.target.value)} className="min-w-0 border border-outline bg-surface-raised px-2 py-2 text-base" />
-                <input aria-label="Edit quantity" value={editQuantity} onChange={(e) => setEditQuantity(e.target.value)} className="min-w-0 border border-outline bg-surface-raised px-2 py-2 text-base" placeholder="Quantity" />
+                <QuantityEditor
+                  label="Edit quantity"
+                  value={editQuantity}
+                  onChange={(next) => {
+                    setEditQuantity(next)
+                    setEditQuantityDirty(true)
+                  }}
+                  onEnter={() => saveEdit(item.id)}
+                />
                 <select aria-label="Edit turnover" value={editTurnover} onChange={(e) => setEditTurnover(e.target.value as Turnover)} className="border border-outline bg-surface-raised px-2 py-2 text-sm">
                   <option value="high">High</option>
                   <option value="low">Low</option>
@@ -229,9 +361,14 @@ export default function PantryPage() {
 
       <section aria-labelledby="add-item-heading" className="mb-8">
         <SectionHeading><span id="add-item-heading">Add an item</span></SectionHeading>
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6rem_auto]">
+        <div className="grid items-start gap-2 sm:grid-cols-[minmax(0,1fr)_13rem_6rem_auto]">
           <input aria-label="Ingredient name" placeholder="Ingredient" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addItem()} className="min-w-0 border border-outline bg-surface-raised px-3 py-2 text-base" />
-          <input aria-label="Quantity" placeholder="Quantity" value={quantity} onChange={(e) => setQuantity(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addItem()} className="min-w-0 border border-outline bg-surface-raised px-3 py-2 text-base" />
+          <QuantityEditor
+            label="Quantity"
+            value={quantity}
+            onChange={setQuantity}
+            onEnter={addItem}
+          />
           <select aria-label="Turnover" value={turnover} onChange={(e) => setTurnover(e.target.value as Turnover)} className="border border-outline bg-surface-raised px-3 py-2 text-base">
             <option value="high">High</option>
             <option value="low">Low</option>

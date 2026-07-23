@@ -100,6 +100,11 @@ items in one all-or-nothing MCP action. Missing or ambiguous names, unsupported 
 stale expectations, and unsafe arithmetic leave the pantry unchanged; there is no generic
 CRUD or implicit upsert tool.
 
+Exact quantity writes always carry a decimal `amount` and canonical `unit`; discrete items
+use `count`. The website uses the same structured contract for measurable inventory and
+offers an explicit custom-text fallback for estimates such as “about half a bag.” Formatted
+display text is never reparsed as mutation authority.
+
 Reviewed receipt additions use a separate backend command because they may mix
 new-item creation with existing-item restocks. Every line must explicitly choose
 `create` or `restock`; the whole 1–25 line request commits once or not at all. A

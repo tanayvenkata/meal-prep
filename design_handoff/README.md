@@ -171,4 +171,6 @@ the **data they need must be captured from day one**, or they'll launch empty.
 3. **Dish log** (powers all gamification): per cooked dish log name, cuisine, time, taste rating, tools
    used (airfryer, etc.). Log from dish #1.
 4. **Wrapped / passport** read from the dish log. Monthly engine first.
-5. **Pantry:** name + quantity (free text). No "low" flag for now — let the LLM infer scarcity.
+5. **Pantry:** name + structured amount/unit for measurable inventory, with `count`
+   for discrete items and an explicit custom-text fallback for estimates. Never infer
+   a missing unit from display text. No "low" flag for now — let the LLM infer scarcity.
