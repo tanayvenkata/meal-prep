@@ -307,7 +307,7 @@ describe("RLS ownership across all four user-data tables", () => {
   });
 
   it("OAuth clients cannot update or delete owned rows directly", async () => {
-    const item = await addItem(USER_A, "eggs", "12");
+    const item = (await addItem(USER_A, "eggs", "12")).item;
     const tool = await addKitchenTool(USER_A, "Skillet", "cookware");
     const convo = await createConversation(USER_A, "private chat", id());
     const message = await addMessage(USER_A, convo.id, "user", "private message");

@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import {
   getItems,
+  getItemByCanonicalName,
+  getItemById,
   addItem,
+  setItemQuantity,
   updateItem,
   deleteItem,
   getKitchenTools,
@@ -70,13 +73,52 @@ describe("getItems", () => {
 
 describe("addItem", () => {
   it("inserts an item and returns it with the correct values", async () => {
-    const item = await addItem(TEST_USER_A, "eggs", "12");
+    const result = await addItem(TEST_USER_A, "eggs", "12");
 
-    expect(item.name).toBe("eggs");
-    expect(item.quantity).toBe("12");
-    expect(item.turnover).toBe("high");
-    expect(item.user_id).toBe(TEST_USER_A);
-    expect(item.id).toBeDefined();
+    expect(result.status).toBe("created");
+    expect(result.item.name).toBe("eggs");
+    expect(result.item.name_key).toBe("eggs");
+    expect(result.item.quantity).toBe("12");
+    expect(result.item.turnover).toBe("high");
+    expect(result.item.user_id).toBe(TEST_USER_A);
+    expect(result.item.id).toBeDefined();
+  });
+
+  it("returns the existing owned item for canonical duplicate names", async () => {
+    const created = await addItem(TEST_USER_A, "Eggs", "12");
+    const duplicate = await addItem(TEST_USER_A, "  ＥＧＧＳ  ", "6");
+
+    expect(created.status).toBe("created");
+    expect(duplicate).toEqual({
+      status: "already_exists",
+      item: created.item,
+    });
+    expect(await getItems(TEST_USER_A)).toHaveLength(1);
+  });
+
+  it("allows two users to store the same canonical pantry name", async () => {
+    const userA = await addItem(TEST_USER_A, "Eggs", "12");
+    const userB = await addItem(TEST_USER_B, " eggs ", "6");
+
+    expect(userA.status).toBe("created");
+    expect(userB.status).toBe("created");
+    expect(userA.item.id).not.toBe(userB.item.id);
+  });
+});
+
+describe("canonical item lookup", () => {
+  it("finds one owned row across compatibility, whitespace, and case variants", async () => {
+    const created = await addItem(TEST_USER_A, "Duck   Eggs", "12");
+
+    await expect(
+      getItemByCanonicalName(TEST_USER_A, "  ＤＵＣＫ eggs "),
+    ).resolves.toEqual(created.item);
+    await expect(
+      getItemByCanonicalName(TEST_USER_B, "duck eggs"),
+    ).resolves.toBeNull();
+    await expect(
+      getItemById(TEST_USER_A, created.item.id),
+    ).resolves.toEqual(created.item);
   });
 });
 
@@ -142,10 +184,16 @@ describe("updateItem", () => {
       insert into items (user_id, name, quantity) values (${TEST_USER_A}, 'eggs', '12') returning *
     `;
 
-    const updated = await updateItem(TEST_USER_A, inserted.id, "6");
+    const updated = await updateItem(
+      TEST_USER_A,
+      inserted.id,
+      { quantity: "6" },
+    );
 
-    expect(updated.quantity).toBe("6");
-    expect(updated.name).toBe("eggs");
+    expect(updated.status).toBe("updated");
+    if (updated.status !== "updated") throw new Error("expected update");
+    expect(updated.item.quantity).toBe("6");
+    expect(updated.item.name).toBe("eggs");
   });
 
   it("updates both name and quantity when name is provided", async () => {
@@ -153,10 +201,16 @@ describe("updateItem", () => {
       insert into items (user_id, name, quantity) values (${TEST_USER_A}, 'eggs', '12') returning *
     `;
 
-    const updated = await updateItem(TEST_USER_A, inserted.id, "6", "duck eggs");
+    const updated = await updateItem(
+      TEST_USER_A,
+      inserted.id,
+      { quantity: "6", name: "duck eggs" },
+    );
 
-    expect(updated.name).toBe("duck eggs");
-    expect(updated.quantity).toBe("6");
+    expect(updated.status).toBe("updated");
+    if (updated.status !== "updated") throw new Error("expected update");
+    expect(updated.item.name).toBe("duck eggs");
+    expect(updated.item.quantity).toBe("6");
   });
 
   it("cannot update another user's item", async () => {
@@ -164,9 +218,43 @@ describe("updateItem", () => {
       insert into items (user_id, name, quantity) values (${TEST_USER_B}, 'milk', '1L') returning *
     `;
 
-    const result = await updateItem(TEST_USER_A, inserted.id, "2L");
+    const result = await updateItem(
+      TEST_USER_A,
+      inserted.id,
+      { quantity: "2L" },
+    );
 
-    expect(result).toBeUndefined();
+    expect(result).toEqual({ status: "not_found" });
+  });
+
+  it("returns name conflict when a rename collides canonically", async () => {
+    const eggs = await addItem(TEST_USER_A, "Eggs", "12");
+    const milk = await addItem(TEST_USER_A, "Milk", "1 gallon");
+
+    const result = await updateItem(
+      TEST_USER_A,
+      milk.item.id,
+      { name: " ＥＧＧＳ " },
+    );
+
+    expect(eggs.status).toBe("created");
+    expect(result).toEqual({ status: "name_conflict" });
+  });
+
+  it("does not overwrite fields omitted from a later update", async () => {
+    const created = await addItem(TEST_USER_A, "Eggs", "12");
+    await setItemQuantity(TEST_USER_A, created.item.id, "6");
+
+    const renamed = await updateItem(
+      TEST_USER_A,
+      created.item.id,
+      { name: "Duck eggs" },
+    );
+
+    expect(renamed.status).toBe("updated");
+    if (renamed.status !== "updated") throw new Error("expected update");
+    expect(renamed.item.name).toBe("Duck eggs");
+    expect(renamed.item.quantity).toBe("6");
   });
 });
 

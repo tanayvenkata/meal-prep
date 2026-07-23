@@ -92,12 +92,10 @@ describe("setPantryItemQuantity database boundary", () => {
     ]);
   });
 
-  it("does not mutate missing or ambiguous normalized names", async () => {
+  it("does not mutate a missing canonical name", async () => {
     await adminSql`
       insert into items (user_id, name, quantity)
-      values
-        (${TEST_USER_A}, 'Eggs', '12'),
-        (${TEST_USER_A}, ' eggs ', '6')
+      values (${TEST_USER_A}, 'Eggs', '12')
     `;
 
     await expect(setPantryItemQuantity(TEST_USER_A, {
@@ -107,24 +105,12 @@ describe("setPantryItemQuantity database boundary", () => {
       ok: true,
       value: { status: "not_found", name: "Milk" },
     });
-    await expect(setPantryItemQuantity(TEST_USER_A, {
-      name: "EGGS",
-      quantity: "4",
-    })).resolves.toEqual({
-      ok: true,
-      value: {
-        status: "ambiguous",
-        name: "EGGS",
-        matchCount: 2,
-      },
-    });
-
     const quantities = await adminSql`
       select quantity
       from items
       where user_id = ${TEST_USER_A}
       order by quantity
     `;
-    expect(quantities).toEqual([{ quantity: "12" }, { quantity: "6" }]);
+    expect(quantities).toEqual([{ quantity: "12" }]);
   });
 });

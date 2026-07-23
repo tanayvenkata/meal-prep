@@ -6,8 +6,11 @@ vi.mock("@/lib/db", () => ({
   addKitchenTool: vi.fn(),
   deleteItem: vi.fn(),
   deleteKitchenTool: vi.fn(),
+  getItemById: vi.fn(),
+  getItemByCanonicalName: vi.fn(),
   getItems: vi.fn(),
   getKitchenTools: vi.fn(),
+  setItemQuantity: vi.fn(),
   updateItem: vi.fn(),
   updateKitchenTool: vi.fn(),
 }));
@@ -17,8 +20,11 @@ import {
   addKitchenTool,
   deleteItem,
   deleteKitchenTool as deleteKitchenToolRecord,
+  getItemById,
+  getItemByCanonicalName,
   getItems,
   getKitchenTools,
+  setItemQuantity,
   updateItem,
   updateKitchenTool as updateKitchenToolRecord,
 } from "@/lib/db";
@@ -39,8 +45,11 @@ const mockAddItem = vi.mocked(addItem);
 const mockAddKitchenTool = vi.mocked(addKitchenTool);
 const mockDeleteItem = vi.mocked(deleteItem);
 const mockDeleteKitchenTool = vi.mocked(deleteKitchenToolRecord);
+const mockGetItemById = vi.mocked(getItemById);
+const mockGetItemByCanonicalName = vi.mocked(getItemByCanonicalName);
 const mockGetItems = vi.mocked(getItems);
 const mockGetKitchenTools = vi.mocked(getKitchenTools);
+const mockSetItemQuantity = vi.mocked(setItemQuantity);
 const mockUpdateItem = vi.mocked(updateItem);
 const mockUpdateKitchenTool = vi.mocked(updateKitchenToolRecord);
 
@@ -89,18 +98,35 @@ describe("kitchen reads", () => {
 
 describe("pantry commands", () => {
   it("normalizes creation input and applies the existing turnover default", async () => {
-    mockAddItem.mockResolvedValue(fakeItem());
+    const item = fakeItem();
+    mockAddItem.mockResolvedValue({ status: "created", item });
 
     await expect(createPantryItem("user-123", {
       name: "  eggs  ",
       quantity: " 12 ",
-    })).resolves.toEqual({ ok: true, value: fakeItem() });
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "created", item },
+    });
     expect(mockAddItem).toHaveBeenCalledWith(
       "user-123",
       "eggs",
       "12",
       "high",
     );
+  });
+
+  it("returns the existing row when canonical creation identity already exists", async () => {
+    const item = fakeItem({ name: "Eggs", name_key: "eggs" });
+    mockAddItem.mockResolvedValue({ status: "already_exists", item });
+
+    await expect(createPantryItem("user-123", {
+      name: "  Ｅｇｇｓ ",
+      quantity: "6",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "already_exists", item },
+    });
   });
 
   it.each([
@@ -115,6 +141,11 @@ describe("pantry commands", () => {
       { name: "paprika", turnover: "medium" },
       "turnover must be high or low",
     ],
+    [{ name: "paprika", quantity: 2 }, "quantity must be a string"],
+    [
+      { name: "paprika", quantity: "a".repeat(101) },
+      "quantity must be 100 characters or fewer",
+    ],
   ])("rejects invalid creation input %#", async (input, error) => {
     await expect(createPantryItem("user-123", input)).resolves.toEqual({
       ok: false,
@@ -124,36 +155,123 @@ describe("pantry commands", () => {
   });
 
   it("normalizes optional update fields and delegates as the user", async () => {
+    const current = fakeItem();
     const updated = fakeItem({
       name: "duck eggs",
+      name_key: "duck eggs",
       quantity: "6",
       turnover: "low",
     });
-    mockUpdateItem.mockResolvedValue(updated);
+    mockGetItemById.mockResolvedValue(current);
+    mockGetItemByCanonicalName.mockResolvedValue(null);
+    mockUpdateItem.mockResolvedValue({ status: "updated", item: updated });
 
     await expect(updatePantryItem("user-123", {
       id: 1,
       name: " duck eggs ",
       quantity: " 6 ",
       turnover: "low",
-    })).resolves.toEqual({ ok: true, value: updated });
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "updated", item: updated },
+    });
+    expect(mockGetItemById).toHaveBeenCalledWith("user-123", 1);
+    expect(mockGetItemByCanonicalName).toHaveBeenCalledWith(
+      "user-123",
+      "duck eggs",
+    );
     expect(mockUpdateItem).toHaveBeenCalledWith(
       "user-123",
       1,
-      "6",
-      "duck eggs",
-      "low",
+      {
+        name: "duck eggs",
+        quantity: "6",
+        turnover: "low",
+      },
     );
   });
 
+  it("delegates only changed fields so omitted fields cannot be overwritten", async () => {
+    const current = fakeItem({ name: "Eggs", quantity: "12" });
+    const renamed = fakeItem({ name: "Duck eggs", quantity: "6" });
+    mockGetItemById.mockResolvedValue(current);
+    mockGetItemByCanonicalName.mockResolvedValue(null);
+    mockUpdateItem.mockResolvedValue({ status: "updated", item: renamed });
+
+    await updatePantryItem("user-123", {
+      id: 1,
+      name: "Duck eggs",
+    });
+
+    expect(mockUpdateItem).toHaveBeenCalledWith(
+      "user-123",
+      1,
+      { name: "Duck eggs" },
+    );
+  });
+
+  it("preserves omitted fields and reports an unchanged update without writing", async () => {
+    const current = fakeItem({ name: "Eggs", name_key: "eggs" });
+    mockGetItemById.mockResolvedValue(current);
+
+    await expect(updatePantryItem("user-123", {
+      id: 1,
+      name: "Eggs",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "unchanged", item: current },
+    });
+    expect(mockUpdateItem).not.toHaveBeenCalled();
+  });
+
+  it("returns not found before attempting an update", async () => {
+    mockGetItemById.mockResolvedValue(null);
+
+    await expect(updatePantryItem("user-123", {
+      id: 42,
+      quantity: "6",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "not_found", id: 42 },
+    });
+    expect(mockUpdateItem).not.toHaveBeenCalled();
+  });
+
+  it("returns a canonical rename conflict without writing", async () => {
+    const current = fakeItem({ id: 1, name: "Milk", name_key: "milk" });
+    const eggs = fakeItem({ id: 2, name: "Eggs", name_key: "eggs" });
+    mockGetItemById.mockResolvedValue(current);
+    mockGetItemByCanonicalName.mockResolvedValue(eggs);
+
+    await expect(updatePantryItem("user-123", {
+      id: 1,
+      name: "  ＥＧＧＳ ",
+    })).resolves.toEqual({
+      ok: true,
+      value: {
+        status: "name_conflict",
+        id: 1,
+        conflictingItem: eggs,
+      },
+    });
+    expect(mockUpdateItem).not.toHaveBeenCalled();
+  });
+
   it.each([
-    [{ quantity: "6" }, "id is required"],
+    [{ quantity: "6" }, "id must be a positive integer"],
+    [{ id: "1", quantity: "6" }, "id must be a positive integer"],
+    [{ id: 0, quantity: "6" }, "id must be a positive integer"],
     [{ id: 1, name: "   " }, "name is required"],
     [
       { id: 1, name: "a".repeat(101) },
       "name must be 100 characters or fewer",
     ],
     [{ id: 1, turnover: "medium" }, "turnover must be high or low"],
+    [{ id: 1, quantity: null }, "quantity must be a string"],
+    [
+      { id: 1, quantity: "a".repeat(101) },
+      "quantity must be 100 characters or fewer",
+    ],
   ])("rejects invalid update input %#", async (input, error) => {
     await expect(updatePantryItem("user-123", input)).resolves.toEqual({
       ok: false,
@@ -165,7 +283,7 @@ describe("pantry commands", () => {
   it("validates then delegates deletion as the user", async () => {
     await expect(deletePantryItem("user-123", {})).resolves.toEqual({
       ok: false,
-      error: "id is required",
+      error: "id must be a positive integer",
     });
     await expect(deletePantryItem("user-123", { id: 7 })).resolves.toEqual({
       ok: true,
@@ -175,9 +293,17 @@ describe("pantry commands", () => {
   });
 
   it("sets an unambiguous pantry quantity after normalized name matching", async () => {
-    const eggs = fakeItem({ id: 7, name: "Duck   Eggs", quantity: "12" });
-    mockGetItems.mockResolvedValue([eggs]);
-    mockUpdateItem.mockResolvedValue({ ...eggs, quantity: "6" });
+    const eggs = fakeItem({
+      id: 7,
+      name: "Duck   Eggs",
+      name_key: "duck eggs",
+      quantity: "12",
+    });
+    mockGetItemByCanonicalName.mockResolvedValue(eggs);
+    mockSetItemQuantity.mockResolvedValue({
+      status: "updated",
+      item: { ...eggs, quantity: "6" },
+    });
 
     await expect(setPantryItemQuantity("user-123", {
       name: "  duck eggs ",
@@ -191,14 +317,21 @@ describe("pantry commands", () => {
         quantity: "6",
       },
     });
-    expect(mockGetItems).toHaveBeenCalledWith("user-123");
-    expect(mockUpdateItem).toHaveBeenCalledWith("user-123", 7, "6");
+    expect(mockGetItemByCanonicalName).toHaveBeenCalledWith(
+      "user-123",
+      "duck eggs",
+    );
+    expect(mockSetItemQuantity).toHaveBeenCalledWith(
+      "user-123",
+      7,
+      "6",
+    );
   });
 
   it("treats an identical repeated quantity as unchanged without another write", async () => {
-    mockGetItems.mockResolvedValue([
+    mockGetItemByCanonicalName.mockResolvedValue(
       fakeItem({ id: 7, name: "Eggs", quantity: "6" }),
-    ]);
+    );
 
     await expect(setPantryItemQuantity("user-123", {
       name: "eggs",
@@ -212,14 +345,14 @@ describe("pantry commands", () => {
         quantity: "6",
       },
     });
-    expect(mockUpdateItem).not.toHaveBeenCalled();
+    expect(mockSetItemQuantity).not.toHaveBeenCalled();
   });
 
   it("returns not found if the matched item disappears before the update", async () => {
-    mockGetItems.mockResolvedValue([
+    mockGetItemByCanonicalName.mockResolvedValue(
       fakeItem({ id: 7, name: "Eggs", quantity: "12" }),
-    ]);
-    mockUpdateItem.mockResolvedValue(undefined as never);
+    );
+    mockSetItemQuantity.mockResolvedValue({ status: "not_found" });
 
     await expect(setPantryItemQuantity("user-123", {
       name: "Eggs",
@@ -228,13 +361,15 @@ describe("pantry commands", () => {
       ok: true,
       value: { status: "not_found", name: "Eggs" },
     });
-    expect(mockUpdateItem).toHaveBeenCalledWith("user-123", 7, "6");
+    expect(mockSetItemQuantity).toHaveBeenCalledWith(
+      "user-123",
+      7,
+      "6",
+    );
   });
 
   it("returns not found without writing or creating an item", async () => {
-    mockGetItems.mockResolvedValue([
-      fakeItem({ name: "Milk", quantity: "1 gallon" }),
-    ]);
+    mockGetItemByCanonicalName.mockResolvedValue(null);
 
     await expect(setPantryItemQuantity("user-123", {
       name: "Eggs",
@@ -243,28 +378,8 @@ describe("pantry commands", () => {
       ok: true,
       value: { status: "not_found", name: "Eggs" },
     });
-    expect(mockUpdateItem).not.toHaveBeenCalled();
+    expect(mockSetItemQuantity).not.toHaveBeenCalled();
     expect(mockAddItem).not.toHaveBeenCalled();
-  });
-
-  it("returns ambiguity without writing when normalized names collide", async () => {
-    mockGetItems.mockResolvedValue([
-      fakeItem({ id: 7, name: "Eggs", quantity: "12" }),
-      fakeItem({ id: 8, name: " eggs ", quantity: "6" }),
-    ]);
-
-    await expect(setPantryItemQuantity("user-123", {
-      name: "EGGS",
-      quantity: "4",
-    })).resolves.toEqual({
-      ok: true,
-      value: {
-        status: "ambiguous",
-        name: "EGGS",
-        matchCount: 2,
-      },
-    });
-    expect(mockUpdateItem).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -279,8 +394,8 @@ describe("pantry commands", () => {
     await expect(
       setPantryItemQuantity("user-123", input),
     ).resolves.toEqual({ ok: false, error });
-    expect(mockGetItems).not.toHaveBeenCalled();
-    expect(mockUpdateItem).not.toHaveBeenCalled();
+    expect(mockGetItemByCanonicalName).not.toHaveBeenCalled();
+    expect(mockSetItemQuantity).not.toHaveBeenCalled();
   });
 });
 

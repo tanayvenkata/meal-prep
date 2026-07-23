@@ -49,7 +49,13 @@ describe("GET /api/pantry", () => {
     const response = await GET(new Request("http://localhost/api/pantry"));
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual([fakeItem()]);
+    await expect(response.json()).resolves.toEqual([{
+      id: 1,
+      name: "eggs",
+      quantity: "12",
+      turnover: "high",
+      created_at: "2024-01-01",
+    }]);
     expect(mockListPantryItems).toHaveBeenCalledWith("user-123");
   });
 });
@@ -103,13 +109,16 @@ describe("POST /api/pantry", () => {
     expect(mockCreatePantryItem).toHaveBeenCalledWith("user-123", {});
   });
 
-  it("returns 201 with the service result", async () => {
+  it("returns 201 with the existing safe item contract when created", async () => {
     const item = fakeItem();
     mockGetRequestAuth.mockResolvedValue({
       userId: "user-123",
       oauthClientId: null,
     });
-    mockCreatePantryItem.mockResolvedValue({ ok: true, value: item });
+    mockCreatePantryItem.mockResolvedValue({
+      ok: true,
+      value: { status: "created", item },
+    });
 
     const response = await POST(new Request("http://localhost/api/pantry", {
       method: "POST",
@@ -117,7 +126,46 @@ describe("POST /api/pantry", () => {
     }));
 
     expect(response.status).toBe(201);
-    await expect(response.json()).resolves.toEqual(item);
+    await expect(response.json()).resolves.toEqual({
+      id: 1,
+      name: "eggs",
+      quantity: "12",
+      turnover: "high",
+      created_at: "2024-01-01",
+    });
+  });
+
+  it("maps a duplicate create to a typed 409 without ownership fields", async () => {
+    const item = fakeItem({ name: "Eggs" });
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockCreatePantryItem.mockResolvedValue({
+      ok: true,
+      value: { status: "already_exists", item },
+    });
+
+    const response = await POST(new Request("http://localhost/api/pantry", {
+      method: "POST",
+      body: JSON.stringify({ name: " eggs ", quantity: "6" }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body).toEqual({
+      code: "already_exists",
+      error: "That pantry item already exists.",
+      existingItem: {
+        id: 1,
+        name: "Eggs",
+        quantity: "12",
+        turnover: "high",
+        created_at: "2024-01-01",
+      },
+    });
+    expect(body.existingItem).not.toHaveProperty("user_id");
+    expect(body.existingItem).not.toHaveProperty("name_key");
   });
 });
 
@@ -137,7 +185,7 @@ describe("PUT /api/pantry", () => {
     expect(mockUpdatePantryItem).not.toHaveBeenCalled();
   });
 
-  it("preserves validation errors and successful updates", async () => {
+  it("preserves validation errors and maps updated items to the safe 200 contract", async () => {
     mockGetRequestAuth.mockResolvedValue({
       userId: "user-123",
       oauthClientId: null,
@@ -146,7 +194,10 @@ describe("PUT /api/pantry", () => {
       .mockResolvedValueOnce({ ok: false, error: "id is required" })
       .mockResolvedValueOnce({
         ok: true,
-        value: fakeItem({ quantity: "6" }),
+        value: {
+          status: "updated",
+          item: fakeItem({ quantity: "6" }),
+        },
       });
 
     const invalid = await PUT(new Request("http://localhost/api/pantry", {
@@ -161,7 +212,95 @@ describe("PUT /api/pantry", () => {
     expect(invalid.status).toBe(400);
     expect((await invalid.json()).error).toBe("id is required");
     expect(valid.status).toBe(200);
-    expect((await valid.json()).quantity).toBe("6");
+    await expect(valid.json()).resolves.toEqual({
+      id: 1,
+      name: "eggs",
+      quantity: "6",
+      turnover: "high",
+      created_at: "2024-01-01",
+    });
+  });
+
+  it("returns the current item for an unchanged update", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockUpdatePantryItem.mockResolvedValue({
+      ok: true,
+      value: {
+        status: "unchanged",
+        item: fakeItem(),
+      },
+    });
+
+    const response = await PUT(new Request("http://localhost/api/pantry", {
+      method: "PUT",
+      body: JSON.stringify({ id: 1, quantity: "12" }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).not.toHaveProperty("user_id");
+  });
+
+  it("maps a missing item to a typed 404", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockUpdatePantryItem.mockResolvedValue({
+      ok: true,
+      value: { status: "not_found", id: 42 },
+    });
+
+    const response = await PUT(new Request("http://localhost/api/pantry", {
+      method: "PUT",
+      body: JSON.stringify({ id: 42, quantity: "6" }),
+    }));
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      code: "not_found",
+      error: "That pantry item no longer exists.",
+      id: 42,
+    });
+  });
+
+  it("maps a rename collision to a typed 409 with safe conflict details", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockUpdatePantryItem.mockResolvedValue({
+      ok: true,
+      value: {
+        status: "name_conflict",
+        id: 1,
+        conflictingItem: fakeItem({ id: 2, name: "Eggs" }),
+      },
+    });
+
+    const response = await PUT(new Request("http://localhost/api/pantry", {
+      method: "PUT",
+      body: JSON.stringify({ id: 1, name: " eggs " }),
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body).toEqual({
+      code: "name_conflict",
+      error: "Another pantry item already uses that name.",
+      id: 1,
+      conflictingItem: {
+        id: 2,
+        name: "Eggs",
+        quantity: "12",
+        turnover: "high",
+        created_at: "2024-01-01",
+      },
+    });
+    expect(body.conflictingItem).not.toHaveProperty("user_id");
+    expect(body.conflictingItem).not.toHaveProperty("name_key");
   });
 });
 

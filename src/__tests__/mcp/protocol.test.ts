@@ -264,6 +264,12 @@ describe("Mise MCP OAuth wire contract", () => {
       outputSchema: {
         type: "object",
         required: ["status", "name"],
+        properties: {
+          status: {
+            type: "string",
+            enum: ["updated", "unchanged", "not_found"],
+          },
+        },
       },
       annotations: {
         readOnlyHint: false,
