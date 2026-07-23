@@ -24,13 +24,26 @@ const id = () => crypto.randomUUID();
 async function asUser<T>(
   userId: string,
   fn: (tx: postgres.TransactionSql) => Promise<T>,
+  clientId?: string,
 ): Promise<T> {
   // Impersonate through the real app login role so isolation is proven without BYPASSRLS.
   return appSql.begin(async (tx) => {
-    await tx`select set_config('request.jwt.claim.sub', ${userId}, true)`;
+    const claims = JSON.stringify({
+      sub: userId,
+      role: "authenticated",
+      ...(clientId ? { client_id: clientId } : {}),
+    });
+    await tx`select set_config('request.jwt.claims', ${claims}, true)`;
     await tx`set local role authenticated`;
     return fn(tx);
   }) as Promise<T>;
+}
+
+function asOAuthUser<T>(
+  userId: string,
+  fn: (tx: postgres.TransactionSql) => Promise<T>,
+): Promise<T> {
+  return asUser(userId, fn, "chatgpt-oauth-test-client");
 }
 
 beforeAll(async () => {
@@ -223,6 +236,130 @@ describe("RLS ownership across all four user-data tables", () => {
     expect(await sql`select id from messages where id = ${message.id}`).toHaveLength(1);
   });
 
+  it("OAuth clients can read only their own pantry and kitchen tools", async () => {
+    await addItem(USER_A, "eggs", "12");
+    await addItem(USER_B, "milk", "1L");
+    await addKitchenTool(USER_A, "Skillet", "cookware");
+    await addKitchenTool(USER_B, "Oven", "appliance");
+    const convo = await createConversation(USER_A, "private chat", id());
+    await addMessage(USER_A, convo.id, "user", "private message");
+
+    const items = await asOAuthUser(USER_A, (tx) =>
+      tx<{ name: string }[]>`select name from items order by name`,
+    );
+    const tools = await asOAuthUser(USER_A, (tx) =>
+      tx<{ name: string }[]>`select name from kitchen_tools order by name`,
+    );
+    const conversations = await asOAuthUser(
+      USER_A,
+      (tx) => tx`select * from conversations`,
+    );
+    const messages = await asOAuthUser(
+      USER_A,
+      (tx) => tx`select * from messages`,
+    );
+
+    expect(items.map(({ name }) => name)).toEqual(["eggs"]);
+    expect(tools.map(({ name }) => name)).toEqual(["Skillet"]);
+    expect(conversations).toHaveLength(0);
+    expect(messages).toHaveLength(0);
+  });
+
+  it("OAuth clients cannot insert user data directly", async () => {
+    const convo = await createConversation(USER_A, "private chat", id());
+
+    await expect(
+      asOAuthUser(
+        USER_A,
+        (tx) => tx`
+          insert into items (user_id, name, quantity)
+          values (${USER_A}, 'oauth eggs', '12')
+        `,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      asOAuthUser(
+        USER_A,
+        (tx) => tx`
+          insert into kitchen_tools (user_id, name, kind)
+          values (${USER_A}, 'OAuth oven', 'appliance')
+        `,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      asOAuthUser(
+        USER_A,
+        (tx) => tx`
+          insert into conversations (id, user_id, title)
+          values (${id()}, ${USER_A}, 'oauth chat')
+        `,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      asOAuthUser(
+        USER_A,
+        (tx) => tx`
+          insert into messages (conversation_id, role, content)
+          values (${convo.id}, 'user', 'oauth message')
+        `,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("OAuth clients cannot update or delete owned rows directly", async () => {
+    const item = await addItem(USER_A, "eggs", "12");
+    const tool = await addKitchenTool(USER_A, "Skillet", "cookware");
+    const convo = await createConversation(USER_A, "private chat", id());
+    const message = await addMessage(USER_A, convo.id, "user", "private message");
+
+    const updatedItems = await asOAuthUser(
+      USER_A,
+      (tx) => tx`update items set quantity = '0' where id = ${item.id} returning id`,
+    );
+    const updatedTools = await asOAuthUser(
+      USER_A,
+      (tx) => tx`update kitchen_tools set name = 'Changed' where id = ${tool.id} returning id`,
+    );
+    const updatedConversations = await asOAuthUser(
+      USER_A,
+      (tx) => tx`update conversations set title = 'Changed' where id = ${convo.id} returning id`,
+    );
+    const updatedMessages = await asOAuthUser(
+      USER_A,
+      (tx) => tx`update messages set content = 'Changed' where id = ${message.id} returning id`,
+    );
+    const deletedItems = await asOAuthUser(
+      USER_A,
+      (tx) => tx`delete from items where id = ${item.id} returning id`,
+    );
+    const deletedTools = await asOAuthUser(
+      USER_A,
+      (tx) => tx`delete from kitchen_tools where id = ${tool.id} returning id`,
+    );
+    const deletedConversations = await asOAuthUser(
+      USER_A,
+      (tx) => tx`delete from conversations where id = ${convo.id} returning id`,
+    );
+    const deletedMessages = await asOAuthUser(
+      USER_A,
+      (tx) => tx`delete from messages where id = ${message.id} returning id`,
+    );
+
+    expect(updatedItems).toHaveLength(0);
+    expect(updatedTools).toHaveLength(0);
+    expect(updatedConversations).toHaveLength(0);
+    expect(updatedMessages).toHaveLength(0);
+    expect(deletedItems).toHaveLength(0);
+    expect(deletedTools).toHaveLength(0);
+    expect(deletedConversations).toHaveLength(0);
+    expect(deletedMessages).toHaveLength(0);
+
+    expect(await sql`select id from items where id = ${item.id}`).toHaveLength(1);
+    expect(await sql`select id from kitchen_tools where id = ${tool.id}`).toHaveLength(1);
+    expect(await sql`select id from conversations where id = ${convo.id}`).toHaveLength(1);
+    expect(await sql`select id from messages where id = ${message.id}`).toHaveLength(1);
+  });
+
   it("anon has no effective privileges on user-data tables or their sequences", async () => {
     const tables = await sql<{
       table_name: string;
@@ -349,27 +486,37 @@ describe("RLS ownership across all four user-data tables", () => {
     }
   });
 
-  it("policies use (select auth.uid()) and target authenticated only", async () => {
+  it("policies separate operations and restrict OAuth clients to kitchen reads", async () => {
     const policies = await sql<{
       tablename: string;
       policyname: string;
       roles: string;
-      qual: string;
+      cmd: string;
+      qual: string | null;
       with_check: string | null;
     }[]>`
-      select tablename, policyname, roles::text as roles, qual, with_check
+      select tablename, policyname, roles::text as roles, cmd, qual, with_check
       from pg_policies
       where schemaname = 'public'
         and tablename in ('items', 'kitchen_tools', 'conversations', 'messages')
       order by tablename, policyname
     `;
 
-    expect(policies).toHaveLength(4);
+    expect(policies).toHaveLength(16);
     for (const policy of policies) {
       expect(policy.roles).toContain("authenticated");
-      expect(policy.qual).toContain("( SELECT auth.uid()");
-      if (policy.with_check) {
-        expect(policy.with_check).toContain("( SELECT auth.uid()");
+      const expressions = [policy.qual, policy.with_check]
+        .filter((value): value is string => value !== null)
+        .join(" ");
+      expect(expressions).toContain("( SELECT auth.uid()");
+
+      const isKitchenRead =
+        policy.cmd === "SELECT"
+        && ["items", "kitchen_tools"].includes(policy.tablename);
+      if (isKitchenRead) {
+        expect(expressions).not.toContain("client_id");
+      } else {
+        expect(expressions).toContain("client_id");
       }
     }
   });

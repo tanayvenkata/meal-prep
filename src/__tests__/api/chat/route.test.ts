@@ -3,7 +3,7 @@ import { POST } from "@/app/api/chat/route";
 import { fakeItem, fakeKitchenTool, fakeMessage } from "@/__tests__/helpers/fixtures";
 
 vi.mock("@/lib/auth", () => ({
-  getUserId: vi.fn(),
+  getRequestAuth: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -21,12 +21,12 @@ vi.mock("@/lib/ratelimit", () => ({
   checkRateLimit: vi.fn(),
 }));
 
-import { getUserId } from "@/lib/auth";
+import { getRequestAuth } from "@/lib/auth";
 import { getItems, getKitchenTools, createConversation, addMessage } from "@/lib/db";
 import { streamChat } from "@/lib/ai";
 import { checkRateLimit } from "@/lib/ratelimit";
 
-const mockGetUserId = vi.mocked(getUserId);
+const mockGetRequestAuth = vi.mocked(getRequestAuth);
 const mockGetItems = vi.mocked(getItems);
 const mockGetKitchenTools = vi.mocked(getKitchenTools);
 const mockStreamChat = vi.mocked(streamChat);
@@ -43,7 +43,7 @@ beforeEach(() => {
 
 describe("POST /api/chat", () => {
   it("returns 401 when not authenticated", async () => {
-    mockGetUserId.mockResolvedValue(null);
+    mockGetRequestAuth.mockResolvedValue(null);
 
     const request = new Request("http://localhost/api/chat", {
       method: "POST",
@@ -56,8 +56,28 @@ describe("POST /api/chat", () => {
     expect(body.error).toBe("unauthorized");
   });
 
+  it("returns 403 for an OAuth client token", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: "chatgpt-client",
+    });
+
+    const response = await POST(new Request("http://localhost/api/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        conversationId: "conv-1",
+        messages: [fakeMessage({ content: "private chat" })],
+      }),
+    }));
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error).toBe("oauth client is not permitted");
+    expect(mockGetItems).not.toHaveBeenCalled();
+    expect(mockCreateConversation).not.toHaveBeenCalled();
+  });
+
   it("returns 429 when rate limit is exceeded", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockCheckRateLimit.mockResolvedValue(false);
 
     const request = new Request("http://localhost/api/chat", {
@@ -72,7 +92,7 @@ describe("POST /api/chat", () => {
   });
 
   it("returns 400 when messages are missing", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockCheckRateLimit.mockResolvedValue(true);
 
     const request = new Request("http://localhost/api/chat", {
@@ -87,7 +107,7 @@ describe("POST /api/chat", () => {
   });
 
   it("returns 400 when messages array is empty", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockCheckRateLimit.mockResolvedValue(true);
 
     const request = new Request("http://localhost/api/chat", {
@@ -102,7 +122,7 @@ describe("POST /api/chat", () => {
   });
 
   it("returns 400 when conversationId is missing", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockCheckRateLimit.mockResolvedValue(true);
 
     const request = new Request("http://localhost/api/chat", {
@@ -116,7 +136,7 @@ describe("POST /api/chat", () => {
   });
 
   it("creates a conversation on the first message using the message as title", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockCheckRateLimit.mockResolvedValue(true);
     mockGetItems.mockResolvedValue([]);
     mockCreateConversation.mockResolvedValue({ id: "conv-1", user_id: "user-123", title: "what can I make?", created_at: "" });
@@ -134,7 +154,7 @@ describe("POST /api/chat", () => {
   });
 
   it("truncates long first messages to 50 chars for the title", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockCheckRateLimit.mockResolvedValue(true);
     mockGetItems.mockResolvedValue([]);
     mockCreateConversation.mockResolvedValue({ id: "conv-1", user_id: "user-123", title: "", created_at: "" });
@@ -153,7 +173,7 @@ describe("POST /api/chat", () => {
   });
 
   it("saves the user message before streaming", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockCheckRateLimit.mockResolvedValue(true);
     mockGetItems.mockResolvedValue([]);
     mockCreateConversation.mockResolvedValue({ id: "conv-1", user_id: "user-123", title: "hello", created_at: "" });
@@ -171,7 +191,7 @@ describe("POST /api/chat", () => {
   });
 
   it("returns a stream and calls streamChat with kitchen context in instructions", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockCheckRateLimit.mockResolvedValue(true);
     mockGetItems.mockResolvedValue([
       fakeItem({ name: "eggs" }),

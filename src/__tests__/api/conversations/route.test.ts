@@ -3,7 +3,7 @@ import { GET, POST } from "@/app/api/conversations/route";
 import { fakeConversation } from "@/__tests__/helpers/fixtures";
 
 vi.mock("@/lib/auth", () => ({
-  getUserId: vi.fn(),
+  getRequestAuth: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -11,10 +11,10 @@ vi.mock("@/lib/db", () => ({
   createConversation: vi.fn(),
 }));
 
-import { getUserId } from "@/lib/auth";
+import { getRequestAuth } from "@/lib/auth";
 import { listConversations, createConversation } from "@/lib/db";
 
-const mockGetUserId = vi.mocked(getUserId);
+const mockGetRequestAuth = vi.mocked(getRequestAuth);
 const mockListConversations = vi.mocked(listConversations);
 const mockCreateConversation = vi.mocked(createConversation);
 
@@ -24,7 +24,7 @@ beforeEach(() => {
 
 describe("GET /api/conversations", () => {
   it("returns 401 when not authenticated", async () => {
-    mockGetUserId.mockResolvedValue(null);
+    mockGetRequestAuth.mockResolvedValue(null);
 
     const response = await GET(new Request("http://localhost/api/conversations"));
 
@@ -32,8 +32,20 @@ describe("GET /api/conversations", () => {
     expect((await response.json()).error).toBe("unauthorized");
   });
 
+  it("returns 403 for an OAuth client token", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: "chatgpt-client",
+    });
+
+    const response = await GET(new Request("http://localhost/api/conversations"));
+
+    expect(response.status).toBe(403);
+    expect(mockListConversations).not.toHaveBeenCalled();
+  });
+
   it("returns 200 with conversations for authenticated user", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockListConversations.mockResolvedValue([fakeConversation()]);
 
     const response = await GET(new Request("http://localhost/api/conversations"));
@@ -47,7 +59,7 @@ describe("GET /api/conversations", () => {
 
 describe("POST /api/conversations", () => {
   it("returns 401 when not authenticated", async () => {
-    mockGetUserId.mockResolvedValue(null);
+    mockGetRequestAuth.mockResolvedValue(null);
 
     const response = await POST(new Request("http://localhost/api/conversations", {
       method: "POST",
@@ -58,8 +70,23 @@ describe("POST /api/conversations", () => {
     expect((await response.json()).error).toBe("unauthorized");
   });
 
+  it("returns 403 for an OAuth client token", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: "chatgpt-client",
+    });
+
+    const response = await POST(new Request("http://localhost/api/conversations", {
+      method: "POST",
+      body: JSON.stringify({ title: "private chat" }),
+    }));
+
+    expect(response.status).toBe(403);
+    expect(mockCreateConversation).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when title is missing", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const response = await POST(new Request("http://localhost/api/conversations", {
       method: "POST",
@@ -71,7 +98,7 @@ describe("POST /api/conversations", () => {
   });
 
   it("returns 400 when title is blank", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const response = await POST(new Request("http://localhost/api/conversations", {
       method: "POST",
@@ -83,7 +110,7 @@ describe("POST /api/conversations", () => {
   });
 
   it("returns 201 with the new conversation", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockCreateConversation.mockResolvedValue(fakeConversation());
 
     const response = await POST(new Request("http://localhost/api/conversations", {

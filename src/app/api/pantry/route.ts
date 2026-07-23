@@ -1,5 +1,5 @@
 import { getItems, addItem, updateItem, deleteItem, type Turnover } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getRequestAuth } from "@/lib/auth";
 
 const MAX_NAME_LENGTH = 100;
 
@@ -22,11 +22,11 @@ function validateTurnover(turnover: unknown): { turnover: Turnover } | { error: 
 }
 
 export async function GET(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   try {
-    const items = await getItems(userId);
+    const items = await getItems(auth.userId);
     return Response.json(items);
   } catch (err) {
     console.error("GET /api/pantry failed:", err);
@@ -35,8 +35,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (auth.oauthClientId) {
+    return Response.json({ error: "oauth client is read-only" }, { status: 403 });
+  }
 
   const { name, quantity, turnover = "high" } = await request.json();
   const validated = validateName(name);
@@ -49,7 +52,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const item = await addItem(userId, validated.name, (quantity ?? "").trim(), validatedTurnover.turnover);
+    const item = await addItem(auth.userId, validated.name, (quantity ?? "").trim(), validatedTurnover.turnover);
     return Response.json(item, { status: 201 });
   } catch (err) {
     console.error("POST /api/pantry failed:", err);
@@ -58,8 +61,11 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (auth.oauthClientId) {
+    return Response.json({ error: "oauth client is read-only" }, { status: 403 });
+  }
 
   const { id, quantity, name, turnover } = await request.json();
   if (!id) return Response.json({ error: "id is required" }, { status: 400 });
@@ -84,7 +90,7 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const item = await updateItem(userId, id, (quantity ?? "").trim(), validatedName, validatedTurnover);
+    const item = await updateItem(auth.userId, id, (quantity ?? "").trim(), validatedName, validatedTurnover);
     return Response.json(item);
   } catch (err) {
     console.error("PUT /api/pantry failed:", err);
@@ -93,14 +99,17 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const userId = await getUserId(request);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (auth.oauthClientId) {
+    return Response.json({ error: "oauth client is read-only" }, { status: 403 });
+  }
 
   const { id } = await request.json();
   if (!id) return Response.json({ error: "id is required" }, { status: 400 });
 
   try {
-    await deleteItem(userId, id);
+    await deleteItem(auth.userId, id);
     return Response.json({ success: true });
   } catch (err) {
     console.error("DELETE /api/pantry failed:", err);

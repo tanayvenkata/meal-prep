@@ -1,6 +1,6 @@
 import { getItems, getKitchenTools, createConversation, addMessage } from "@/lib/db";
 import { streamChat } from "@/lib/ai";
-import { getUserId } from "@/lib/auth";
+import { getRequestAuth } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/ratelimit";
 
 // Mise's character, from design_handoff/DESIGN.md ("voice = brand"). This is a STABLE
@@ -34,8 +34,12 @@ How you cook with them:
 Sample of your voice: "Chicken thighs and spinach, you're set. Garlic, butter, wilt the spinach at the end so it doesn't turn to soup. Twenty minutes. Want the steps or just the shape of it?"`;
 
 export async function POST(req: Request) {
-  const userId = await getUserId(req);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(req);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (auth.oauthClientId) {
+    return Response.json({ error: "oauth client is not permitted" }, { status: 403 });
+  }
+  const { userId } = auth;
 
   const allowed = await checkRateLimit(userId);
   if (!allowed) return Response.json({ error: "too many requests" }, { status: 429 });

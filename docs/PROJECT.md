@@ -131,11 +131,13 @@ The open-work list lives on the board, not here, so it can't drift. This section
 the few non-obvious *facts about the current system* that would make me write wrong code if I
 didn't know them — the architectural truths a tracker title can't carry.
 
-- ⚠️ **RLS is NOT real defense.** `items` has `enable row level security` but **no policies
-  and no `force`**, and `db.ts` connects as table owner (pooler) → RLS is **bypassed**. User
-  isolation is therefore ONE layer: the explicit `where user_id = $userId` in every query
-  (present + tested). Don't trust RLS as a guard. (Fix tracked on the board; hardening is
-  optional for one user, required before multi-user.)
+- 🔐 **RLS is a real second authorization layer.** The application pool connects as the
+  non-owner, `NOBYPASSRLS`, `NOINHERIT` `mise_app` role and enters the authenticated role
+  only inside `withUserContext`, which stamps the trusted user ID for ownership policies.
+  Explicit application predicates remain the first layer. Supabase OAuth tokens carry a
+  `client_id`; direct OAuth/Data API access is limited to owned pantry/tool reads and cannot
+  mutate kitchen rows or access chat tables. Mise's own website APIs preserve that client
+  identity and reject OAuth clients outside the same read-only kitchen boundary.
 - ⚠️ **Local dev ↔ prod are isolated by Doppler, but staging is NOT.** The `dev` config points
   the running app at the LOCAL Supabase stack (`127.0.0.1`); `prd` is prod. BUT `dev`/`stg`/
   `prd` ALL share the same prod DB at the cloud level — so a Vercel Preview reads/writes PROD.
@@ -150,8 +152,10 @@ didn't know them — the architectural truths a tracker title can't carry.
   database user ID. The MCP SDK owns the Express shell, OAuth metadata routes, bearer parsing,
   and scope/expiry middleware; Mise owns the Supabase-specific claim policy. Missing or
   invalid credentials receive HTTP 401 with the MCP OAuth discovery challenge. The tool also
-  keeps its own auth declaration and challenge as defense in depth. An ngrok URL remains
-  public reachability, not authentication.
+  keeps its own auth declaration and challenge as defense in depth. Supabase's standard OAuth
+  scopes control OIDC identity data rather than database permissions, so RLS and Mise's API
+  auth boundary independently enforce the connection's current read-only kitchen capability.
+  An ngrok URL remains public reachability, not authentication.
 
 ## Commands & setup
 

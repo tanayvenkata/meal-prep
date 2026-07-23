@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, POST, PUT } from "@/app/api/tools/route";
 
-vi.mock("@/lib/auth", () => ({ getUserId: vi.fn() }));
+vi.mock("@/lib/auth", () => ({ getRequestAuth: vi.fn() }));
 vi.mock("@/lib/db", () => ({
   getKitchenTools: vi.fn(),
   addKitchenTool: vi.fn(),
@@ -9,10 +9,10 @@ vi.mock("@/lib/db", () => ({
   deleteKitchenTool: vi.fn(),
 }));
 
-import { getUserId } from "@/lib/auth";
+import { getRequestAuth } from "@/lib/auth";
 import { addKitchenTool, deleteKitchenTool, getKitchenTools, updateKitchenTool } from "@/lib/db";
 
-const mockGetUserId = vi.mocked(getUserId);
+const mockGetRequestAuth = vi.mocked(getRequestAuth);
 const mockGetKitchenTools = vi.mocked(getKitchenTools);
 const mockAddKitchenTool = vi.mocked(addKitchenTool);
 const mockUpdateKitchenTool = vi.mocked(updateKitchenTool);
@@ -23,12 +23,12 @@ beforeEach(() => vi.clearAllMocks());
 
 describe("GET /api/tools", () => {
   it("requires authentication", async () => {
-    mockGetUserId.mockResolvedValue(null);
+    mockGetRequestAuth.mockResolvedValue(null);
     expect((await GET(new Request("http://localhost/api/tools"))).status).toBe(401);
   });
 
   it("returns the authenticated user's tools", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockGetKitchenTools.mockResolvedValue([tool]);
     const response = await GET(new Request("http://localhost/api/tools"));
     expect(response.status).toBe(200);
@@ -37,8 +37,21 @@ describe("GET /api/tools", () => {
 });
 
 describe("POST /api/tools", () => {
+  it("rejects an OAuth client token", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: "chatgpt-client",
+    });
+    const response = await POST(new Request("http://localhost/api/tools", {
+      method: "POST",
+      body: JSON.stringify({ name: "Air fryer", kind: "appliance" }),
+    }));
+    expect(response.status).toBe(403);
+    expect(mockAddKitchenTool).not.toHaveBeenCalled();
+  });
+
   it("creates a valid tool", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockAddKitchenTool.mockResolvedValue(tool);
     const response = await POST(new Request("http://localhost/api/tools", { method: "POST", body: JSON.stringify({ name: " Air fryer ", kind: "appliance" }) }));
     expect(response.status).toBe(201);
@@ -46,7 +59,7 @@ describe("POST /api/tools", () => {
   });
 
   it("rejects a missing kind", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     const response = await POST(new Request("http://localhost/api/tools", { method: "POST", body: JSON.stringify({ name: "Air fryer" }) }));
     expect(response.status).toBe(400);
     expect((await response.json()).error).toBe("kind is required");
@@ -54,8 +67,38 @@ describe("POST /api/tools", () => {
 });
 
 describe("PUT and DELETE /api/tools", () => {
+  it("rejects OAuth client updates", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: "chatgpt-client",
+    });
+    const response = await PUT(new Request("http://localhost/api/tools", {
+      method: "PUT",
+      body: JSON.stringify({
+        id: tool.id,
+        name: "Convection oven",
+        kind: "appliance",
+      }),
+    }));
+    expect(response.status).toBe(403);
+    expect(mockUpdateKitchenTool).not.toHaveBeenCalled();
+  });
+
+  it("rejects OAuth client deletes", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: "chatgpt-client",
+    });
+    const response = await DELETE(new Request("http://localhost/api/tools", {
+      method: "DELETE",
+      body: JSON.stringify({ id: tool.id }),
+    }));
+    expect(response.status).toBe(403);
+    expect(mockDeleteKitchenTool).not.toHaveBeenCalled();
+  });
+
   it("updates a tool", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockUpdateKitchenTool.mockResolvedValue({ ...tool, name: "Convection oven" });
     const response = await PUT(new Request("http://localhost/api/tools", { method: "PUT", body: JSON.stringify({ id: tool.id, name: "Convection oven", kind: "appliance" }) }));
     expect(response.status).toBe(200);
@@ -63,7 +106,7 @@ describe("PUT and DELETE /api/tools", () => {
   });
 
   it("deletes a tool", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockDeleteKitchenTool.mockResolvedValue();
     const response = await DELETE(new Request("http://localhost/api/tools", { method: "DELETE", body: JSON.stringify({ id: tool.id }) }));
     expect(response.status).toBe(200);

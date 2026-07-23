@@ -1,9 +1,12 @@
 import { getConversation, addMessage } from "@/lib/db";
-import { getUserId } from "@/lib/auth";
+import { getRequestAuth } from "@/lib/auth";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const userId = await getUserId(request);
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const auth = await getRequestAuth(request);
+  if (!auth) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (auth.oauthClientId) {
+    return Response.json({ error: "oauth client is not permitted" }, { status: 403 });
+  }
 
   const { role, content } = await request.json();
   if (!role || !content) {
@@ -16,10 +19,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
 
   try {
-    const conversation = await getConversation(userId, id);
+    const conversation = await getConversation(auth.userId, id);
     if (!conversation) return Response.json({ error: "not found" }, { status: 404 });
 
-    const message = await addMessage(userId, id, role, content);
+    const message = await addMessage(auth.userId, id, role, content);
     return Response.json(message, { status: 201 });
   } catch (err) {
     console.error(`POST /api/conversations/${id}/messages failed:`, err);

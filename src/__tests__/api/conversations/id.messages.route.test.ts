@@ -3,7 +3,7 @@ import { POST } from "@/app/api/conversations/[id]/messages/route";
 import { fakeConversation, fakeDbMessage } from "@/__tests__/helpers/fixtures";
 
 vi.mock("@/lib/auth", () => ({
-  getUserId: vi.fn(),
+  getRequestAuth: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -11,10 +11,10 @@ vi.mock("@/lib/db", () => ({
   addMessage: vi.fn(),
 }));
 
-import { getUserId } from "@/lib/auth";
+import { getRequestAuth } from "@/lib/auth";
 import { getConversation, addMessage } from "@/lib/db";
 
-const mockGetUserId = vi.mocked(getUserId);
+const mockGetRequestAuth = vi.mocked(getRequestAuth);
 const mockGetConversation = vi.mocked(getConversation);
 const mockAddMessage = vi.mocked(addMessage);
 
@@ -26,7 +26,7 @@ beforeEach(() => {
 
 describe("POST /api/conversations/[id]/messages", () => {
   it("returns 401 when not authenticated", async () => {
-    mockGetUserId.mockResolvedValue(null);
+    mockGetRequestAuth.mockResolvedValue(null);
 
     const response = await POST(
       new Request("http://localhost/api/conversations/abc/messages", {
@@ -40,8 +40,27 @@ describe("POST /api/conversations/[id]/messages", () => {
     expect((await response.json()).error).toBe("unauthorized");
   });
 
+  it("returns 403 for an OAuth client token", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: "chatgpt-client",
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/conversations/abc/messages", {
+        method: "POST",
+        body: JSON.stringify({ role: "user", content: "hello" }),
+      }),
+      fakeParams("abc"),
+    );
+
+    expect(response.status).toBe(403);
+    expect(mockGetConversation).not.toHaveBeenCalled();
+    expect(mockAddMessage).not.toHaveBeenCalled();
+  });
+
   it("returns 400 when role is missing", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const response = await POST(
       new Request("http://localhost/api/conversations/abc/messages", {
@@ -56,7 +75,7 @@ describe("POST /api/conversations/[id]/messages", () => {
   });
 
   it("returns 400 when content is missing", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const response = await POST(
       new Request("http://localhost/api/conversations/abc/messages", {
@@ -71,7 +90,7 @@ describe("POST /api/conversations/[id]/messages", () => {
   });
 
   it("returns 400 when role is not user or assistant", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
 
     const response = await POST(
       new Request("http://localhost/api/conversations/abc/messages", {
@@ -86,7 +105,7 @@ describe("POST /api/conversations/[id]/messages", () => {
   });
 
   it("returns 404 when conversation does not belong to this user", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockGetConversation.mockResolvedValue(null);
 
     const response = await POST(
@@ -102,7 +121,7 @@ describe("POST /api/conversations/[id]/messages", () => {
   });
 
   it("returns 201 with the saved message", async () => {
-    mockGetUserId.mockResolvedValue("user-123");
+    mockGetRequestAuth.mockResolvedValue({ userId: "user-123", oauthClientId: null });
     mockGetConversation.mockResolvedValue(fakeConversation());
     mockAddMessage.mockResolvedValue(fakeDbMessage({ role: "user", content: "hello" }));
 
