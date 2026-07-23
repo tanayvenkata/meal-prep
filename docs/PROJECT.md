@@ -136,6 +136,9 @@ are in git (commits + PRs); these are the patterns worth carrying to the next pr
   kitchen-service tests mock DB functions; DB tests hit real local Postgres. No overlap —
   routes prove transport behavior, the service proves normalization/orchestration, and DB
   tests prove SQL. User-isolation is tested explicitly on write ops that take a row id.
+  Frontend behavior tests live under `src/__tests__/components`, opt into jsdom with the
+  Vitest environment comment, and use Testing Library queries to prove user-visible states
+  rather than CSS or layout details.
 - **Retry safety belongs to the mutation boundary.** Fresh expected quantities prevent
   immediate duplicate adjustments, but asynchronous receipt/import confirmation needs a
   durable operation identity. Reviewed receipt additions therefore store only a private
