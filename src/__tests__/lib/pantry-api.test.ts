@@ -15,6 +15,7 @@ const item = {
   name: "Eggs",
   quantity: "12",
   turnover: "high" as const,
+  created_at: "2026-07-23T12:00:00Z",
 };
 
 beforeEach(() => {

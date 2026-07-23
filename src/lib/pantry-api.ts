@@ -12,6 +12,7 @@ export type PantryItem = {
   name: string;
   quantity: string;
   turnover: Turnover;
+  created_at: string;
 };
 
 export type AddPantryItemInput = {

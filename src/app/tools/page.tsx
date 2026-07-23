@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import {
+  filterAndSortInventory,
+  type InventoryListSort,
+} from '@/lib/inventory-list'
 
 const TOOL_KINDS = ['appliance', 'cookware', 'bakeware'] as const
 type ToolKind = typeof TOOL_KINDS[number]
@@ -11,6 +15,7 @@ type KitchenTool = {
   id: string
   name: string
   kind: string
+  created_at: string
 }
 
 async function getToken(): Promise<string | null> {
@@ -24,6 +29,8 @@ export default function ToolsPage() {
   const [name, setName] = useState('')
   const [kind, setKind] = useState<ToolKind>('appliance')
   const [error, setError] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<InventoryListSort>('recent')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editKind, setEditKind] = useState<ToolKind>('appliance')
@@ -91,12 +98,24 @@ export default function ToolsPage() {
     if (await mutate('PUT', { id, name: editName.trim(), kind: editKind })) setEditingId(null)
   }
 
+  const visibleTools = filterAndSortInventory(tools, { query, sort })
+
   return (
     <main className="mx-auto w-full max-w-xl flex-1 overflow-y-auto px-4 py-5 sm:py-8">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold text-text-primary">Kitchen tools</h1>
-        <p className="mt-1 text-sm text-text-secondary">{loading ? 'Loading…' : `${tools.length} tools`}</p>
+        <p className="mt-1 text-sm text-text-secondary">
+          {loading ? 'Loading…' : query.trim() ? `${visibleTools.length} of ${tools.length} tools` : `${tools.length} tools`}
+        </p>
       </header>
+
+      <section aria-label="Organize kitchen tools" className="mb-6 grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem]">
+        <input aria-label="Search kitchen tools" placeholder="Search tools" value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 border border-outline bg-surface-raised px-3 py-2 text-base" />
+        <select aria-label="Sort kitchen tools" value={sort} onChange={(event) => setSort(event.target.value as InventoryListSort)} className="border border-outline bg-surface-raised px-3 py-2 text-sm">
+          <option value="recent">Recently added</option>
+          <option value="name">A–Z</option>
+        </select>
+      </section>
 
       <section aria-labelledby="add-tool-heading" className="mb-8">
         <h2 id="add-tool-heading" className="mb-2 text-sm font-semibold text-text-primary">Add a tool</h2>
@@ -113,9 +132,11 @@ export default function ToolsPage() {
 
       {loading ? <p className="text-sm text-text-secondary">Loading kitchen tools…</p> : tools.length === 0 ? (
         <p className="text-sm text-text-secondary">Add the equipment you cook with most.</p>
+      ) : visibleTools.length === 0 ? (
+        <p className="text-sm text-text-secondary">No kitchen tools match “{query.trim()}”.</p>
       ) : (
         <ul className="divide-y divide-outline border-y border-outline">
-          {tools.map((tool) => (
+          {visibleTools.map((tool) => (
             <li key={tool.id} className="py-3">
               {editingId === tool.id ? (
                 <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_9rem_auto_auto]">
