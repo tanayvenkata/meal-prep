@@ -1,6 +1,7 @@
 // Server-only domain service. Trusted HTTP/MCP transports resolve user identity
 // before calling it; browser components never import this module.
 import {
+  adjustItemQuantitiesByCanonicalName,
   adjustItemQuantityByCanonicalName,
   addItem,
   addKitchenTool,
@@ -31,6 +32,7 @@ import {
 const MAX_ITEM_NAME_LENGTH = 100;
 const MAX_TOOL_NAME_LENGTH = 100;
 const MAX_TOOL_KIND_LENGTH = 50;
+const MAX_PANTRY_ADJUSTMENT_BATCH_SIZE = 25;
 
 export type KitchenServiceResult<T> =
   | { ok: true; value: T }
@@ -77,6 +79,10 @@ export type AdjustPantryItemQuantityInput = {
   deltaQuantity?: unknown;
 };
 
+export type AdjustPantryItemQuantityBatchInput = {
+  changes?: unknown;
+};
+
 export type AdjustPantryItemQuantityOutcome =
   | {
       status: "applied";
@@ -111,6 +117,60 @@ export type AdjustPantryItemQuantityOutcome =
       name: string;
       current: StructuredPantryQuantity;
       delta: StructuredPantryQuantity;
+    };
+
+export type AdjustPantryItemQuantityBatchOutcome =
+  | {
+      status: "applied";
+      changes: Array<{
+        index: number;
+        operation: PantryQuantityAdjustmentOperation;
+        name: string;
+        beforeQuantity: string;
+        quantity: string;
+        before: StructuredPantryQuantity;
+        delta: StructuredPantryQuantity;
+        after: StructuredPantryQuantity;
+      }>;
+    }
+  | {
+      status: "rejected";
+      failures: Array<
+        | {
+            index: number;
+            name: string;
+            status: "duplicate_target";
+            duplicateIndexes: number[];
+          }
+        | { index: number; name: string; status: "not_found" }
+        | {
+            index: number;
+            name: string;
+            status: "unsupported_quantity";
+            currentQuantity: string;
+          }
+        | {
+            index: number;
+            name: string;
+            status: "conflict";
+            expected: StructuredPantryQuantity;
+            current: StructuredPantryQuantity;
+          }
+        | {
+            index: number;
+            name: string;
+            status: "unit_mismatch";
+            expectedUnit: StructuredPantryQuantity["unit"];
+            deltaUnit: StructuredPantryQuantity["unit"];
+          }
+        | {
+            index: number;
+            name: string;
+            status: "insufficient_quantity" | "amount_exceeded";
+            current: StructuredPantryQuantity;
+            delta: StructuredPantryQuantity;
+          }
+      >;
     };
 
 export type CreatePantryItemOutcome =
@@ -465,6 +525,125 @@ export async function adjustPantryItemQuantity(
         after: result.after,
       });
   }
+}
+
+export async function adjustPantryItemQuantities(
+  userId: string,
+  input: AdjustPantryItemQuantityBatchInput,
+): Promise<KitchenServiceResult<AdjustPantryItemQuantityBatchOutcome>> {
+  if (!Array.isArray(input.changes)) {
+    return invalid("changes must be an array");
+  }
+  if (input.changes.length === 0) {
+    return invalid("changes must include at least one item");
+  }
+  if (input.changes.length > MAX_PANTRY_ADJUSTMENT_BATCH_SIZE) {
+    return invalid(
+      `changes must include ${MAX_PANTRY_ADJUSTMENT_BATCH_SIZE} items or fewer`,
+    );
+  }
+
+  const normalizedChanges: Array<{
+    name: string;
+    operation: PantryQuantityAdjustmentOperation;
+    expected: StructuredPantryQuantity;
+    delta: StructuredPantryQuantity;
+  }> = [];
+
+  for (const [index, rawChange] of input.changes.entries()) {
+    if (
+      typeof rawChange !== "object"
+      || rawChange === null
+      || Array.isArray(rawChange)
+    ) {
+      return invalid(`changes[${index}] must be an object`);
+    }
+    const change = rawChange as Record<string, unknown>;
+
+    const name = normalizeRequiredText(
+      change.name,
+      "name",
+      MAX_ITEM_NAME_LENGTH,
+    );
+    if (!name.ok) return invalid(`changes[${index}].${name.error}`);
+
+    if (change.operation !== "consume" && change.operation !== "restock") {
+      return invalid(
+        `changes[${index}].operation must be consume or restock`,
+      );
+    }
+
+    const expected = normalizeRequiredStructuredQuantity(
+      change.expectedQuantity,
+      "expected quantity",
+    );
+    if (!expected.ok) {
+      return invalid(`changes[${index}].${expected.error}`);
+    }
+
+    const delta = normalizeRequiredStructuredQuantity(
+      change.deltaQuantity,
+      "delta quantity",
+    );
+    if (!delta.ok) return invalid(`changes[${index}].${delta.error}`);
+    if (!isPositiveStructuredPantryQuantity(delta.value)) {
+      return invalid(
+        `changes[${index}].delta quantity must be greater than zero`,
+      );
+    }
+
+    normalizedChanges.push({
+      name: name.value,
+      operation: change.operation,
+      expected: expected.value,
+      delta: delta.value,
+    });
+  }
+
+  const result = await adjustItemQuantitiesByCanonicalName(
+    userId,
+    normalizedChanges,
+  );
+  if (result.status === "applied") {
+    return valid({
+      status: "applied",
+      changes: result.changes.map((change) => ({
+        index: change.index,
+        operation: change.operation,
+        name: change.item.name,
+        beforeQuantity: change.beforeQuantity,
+        quantity: change.afterQuantity,
+        before: change.before,
+        delta: change.delta,
+        after: change.after,
+      })),
+    });
+  }
+
+  return valid({
+    status: "rejected",
+    failures: result.failures.map((failure) => {
+      switch (failure.status) {
+        case "unsupported_quantity":
+          return {
+            index: failure.index,
+            name: failure.name,
+            status: failure.status,
+            currentQuantity: failure.currentDisplay,
+          };
+        case "conflict":
+          return {
+            index: failure.index,
+            name: failure.name,
+            status: failure.status,
+            expected: normalizedChanges[failure.index].expected,
+            current: failure.current,
+          };
+        default:
+          return failure;
+      }
+    }),
+  });
 }
 
 export async function listKitchenTools(userId: string): Promise<KitchenTool[]> {

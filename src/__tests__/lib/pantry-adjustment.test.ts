@@ -216,6 +216,22 @@ describe("adjustItemQuantityByCanonicalName", () => {
     });
   });
 
+  it("returns unit_mismatch before looking up a missing item", async () => {
+    await expect(
+      adjustItemQuantityByCanonicalName(
+        TEST_USER_A,
+        "Missing flour",
+        "consume",
+        structured("2", "lb"),
+        structured("1", "oz"),
+      ),
+    ).resolves.toEqual({
+      status: "unit_mismatch",
+      expectedUnit: "lb",
+      deltaUnit: "oz",
+    });
+  });
+
   it("returns conflict when the locked current value differs from expected", async () => {
     await insertStructuredItem(TEST_USER_A, "Eggs", "12", "count");
 

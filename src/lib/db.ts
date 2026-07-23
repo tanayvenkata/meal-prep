@@ -85,11 +85,86 @@ export type AdjustItemQuantityResult =
       deltaUnit: StructuredPantryQuantity["unit"];
     };
 
+export type BatchPantryQuantityAdjustment = {
+  name: string;
+  operation: PantryQuantityAdjustmentOperation;
+  expected: StructuredPantryQuantity;
+  delta: StructuredPantryQuantity;
+};
+
+export type BatchPantryQuantityAdjustmentFailure =
+  | {
+      index: number;
+      name: string;
+      status: "duplicate_target";
+      duplicateIndexes: number[];
+    }
+  | { index: number; name: string; status: "not_found" }
+  | {
+      index: number;
+      name: string;
+      status: "unsupported_quantity";
+      currentDisplay: string;
+    }
+  | {
+      index: number;
+      name: string;
+      status: "conflict";
+      current: StructuredPantryQuantity;
+    }
+  | {
+      index: number;
+      name: string;
+      status: "insufficient_quantity" | "amount_exceeded";
+      current: StructuredPantryQuantity;
+      delta: StructuredPantryQuantity;
+    }
+  | {
+      index: number;
+      name: string;
+      status: "unit_mismatch";
+      expectedUnit: StructuredPantryQuantity["unit"];
+      deltaUnit: StructuredPantryQuantity["unit"];
+    };
+
+export type BatchPantryQuantityAdjustmentResult =
+  | {
+      status: "applied";
+      changes: Array<{
+        index: number;
+        operation: PantryQuantityAdjustmentOperation;
+        item: Item;
+        beforeQuantity: string;
+        afterQuantity: string;
+        before: StructuredPantryQuantity;
+        delta: StructuredPantryQuantity;
+        after: StructuredPantryQuantity;
+      }>;
+    }
+  | {
+      status: "rejected";
+      failures: BatchPantryQuantityAdjustmentFailure[];
+    };
+
 type PantryQuantityColumns = {
   text: string;
   value: string | null;
   unit: string | null;
 };
+
+type AdjustmentEvaluation =
+  | {
+      ok: true;
+      before: StructuredPantryQuantity;
+      after: StructuredPantryQuantity;
+    }
+  | {
+      ok: false;
+      failure: Exclude<
+        AdjustItemQuantityResult,
+        { status: "applied" } | { status: "not_found" }
+      >;
+    };
 
 function pantryQuantityColumns(
   quantity: PantryQuantity,
@@ -377,6 +452,108 @@ export async function setItemQuantityByCanonicalName(
   });
 }
 
+function evaluateStructuredAdjustment(
+  current: Item,
+  adjustment: PantryQuantityAdjustmentOperation,
+  expected: StructuredPantryQuantity,
+  delta: StructuredPantryQuantity,
+): AdjustmentEvaluation {
+  if (expected.unit !== delta.unit) {
+    return {
+      ok: false,
+      failure: {
+        status: "unit_mismatch",
+        expectedUnit: expected.unit,
+        deltaUnit: delta.unit,
+      },
+    };
+  }
+
+  if (
+    current.quantity_value === null
+    || current.quantity_unit === null
+    || !isPantryQuantityUnit(current.quantity_unit)
+  ) {
+    return {
+      ok: false,
+      failure: {
+        status: "unsupported_quantity",
+        currentDisplay: current.quantity,
+      },
+    };
+  }
+
+  const currentQuantity: StructuredPantryQuantity = {
+    mode: "structured",
+    amount: current.quantity_value,
+    unit: current.quantity_unit,
+    text: null,
+  };
+  if (!pantryQuantitiesEqual(currentQuantity, expected)) {
+    return {
+      ok: false,
+      failure: {
+        status: "conflict",
+        current: currentQuantity,
+      },
+    };
+  }
+
+  const calculation = adjustStructuredPantryQuantity(
+    currentQuantity,
+    delta,
+    adjustment,
+  );
+  if (!calculation.ok) {
+    if (calculation.code === "invalid_delta") {
+      throw new RangeError("pantry quantity adjustment must be positive");
+    }
+    if (calculation.code === "invalid_current") {
+      return {
+        ok: false,
+        failure: {
+          status: "unsupported_quantity",
+          currentDisplay: current.quantity,
+        },
+      };
+    }
+    if (calculation.code === "unit_mismatch") {
+      return {
+        ok: false,
+        failure: {
+          status: "unit_mismatch",
+          expectedUnit: expected.unit,
+          deltaUnit: delta.unit,
+        },
+      };
+    }
+    if (calculation.code === "insufficient_quantity") {
+      return {
+        ok: false,
+        failure: {
+          status: "insufficient_quantity",
+          current: currentQuantity,
+          delta,
+        },
+      };
+    }
+    return {
+      ok: false,
+      failure: {
+        status: "amount_exceeded",
+        current: currentQuantity,
+        delta,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    before: currentQuantity,
+    after: calculation.value,
+  };
+}
+
 /**
  * Apply one relative inventory change under the owned row's lock.
  *
@@ -411,69 +588,17 @@ export async function adjustItemQuantityByCanonicalName(
     `;
     if (!current) return { status: "not_found" };
 
-    if (
-      current.quantity_value === null
-      || current.quantity_unit === null
-      || !isPantryQuantityUnit(current.quantity_unit)
-    ) {
-      return {
-        status: "unsupported_quantity",
-        currentDisplay: current.quantity,
-      };
-    }
-
-    const currentQuantity: StructuredPantryQuantity = {
-      mode: "structured",
-      amount: current.quantity_value,
-      unit: current.quantity_unit,
-      text: null,
-    };
-    if (!pantryQuantitiesEqual(currentQuantity, expected)) {
-      return {
-        status: "conflict",
-        current: currentQuantity,
-      };
-    }
-
-    const calculation = adjustStructuredPantryQuantity(
-      currentQuantity,
-      delta,
+    const evaluation = evaluateStructuredAdjustment(
+      current,
       adjustment,
+      expected,
+      delta,
     );
-    if (!calculation.ok) {
-      if (calculation.code === "invalid_delta") {
-        throw new RangeError("pantry quantity adjustment must be positive");
-      }
-      if (calculation.code === "invalid_current") {
-        return {
-          status: "unsupported_quantity",
-          currentDisplay: current.quantity,
-        };
-      }
-      if (calculation.code === "unit_mismatch") {
-        return {
-          status: "unit_mismatch",
-          expectedUnit: expected.unit,
-          deltaUnit: delta.unit,
-        };
-      }
-      if (calculation.code === "insufficient_quantity") {
-        return {
-          status: "insufficient_quantity",
-          current: currentQuantity,
-          delta,
-        };
-      }
-      return {
-        status: "amount_exceeded",
-        current: currentQuantity,
-        delta,
-      };
-    }
+    if (!evaluation.ok) return evaluation.failure;
 
     const [item] = await tx<Item[]>`
       update items
-      set quantity_value = ${calculation.value.amount}::numeric
+      set quantity_value = ${evaluation.after.amount}::numeric
       where id = ${current.id}
         and user_id = ${userId}
       returning *
@@ -485,9 +610,157 @@ export async function adjustItemQuantityByCanonicalName(
       item,
       beforeQuantity: current.quantity,
       afterQuantity: item.quantity,
-      before: currentQuantity,
-      after: calculation.value,
+      before: evaluation.before,
+      after: evaluation.after,
     };
+  });
+}
+
+/**
+ * Apply a reviewed group of relative changes as one inventory decision.
+ *
+ * PostgreSQL remains the canonical-name authority. Every owned target is
+ * locked in canonical order before the snapshot is evaluated, and no row is
+ * updated unless every requested change can apply.
+ */
+export async function adjustItemQuantitiesByCanonicalName(
+  userId: string,
+  adjustments: BatchPantryQuantityAdjustment[],
+): Promise<BatchPantryQuantityAdjustmentResult> {
+  return withUserContext(userId, async (tx) => {
+    const requestedNames = adjustments.map(({ name }) => name);
+    const canonicalTargets = await tx<
+      Array<{
+        request_index: number;
+        name: string;
+        name_key: string;
+      }>
+    >`
+      select
+        (requested.ordinality - 1)::integer as request_index,
+        requested.name,
+        public.canonical_pantry_name(requested.name) as name_key
+      from unnest(${tx.array(requestedNames)}::text[])
+        with ordinality as requested(name, ordinality)
+      order by requested.ordinality
+    `;
+
+    const indexesByNameKey = new Map<string, number[]>();
+    for (const target of canonicalTargets) {
+      const indexes = indexesByNameKey.get(target.name_key) ?? [];
+      indexes.push(target.request_index);
+      indexesByNameKey.set(target.name_key, indexes);
+    }
+    const duplicateFailures = canonicalTargets.flatMap((target) => {
+      const duplicateIndexes = indexesByNameKey.get(target.name_key) ?? [];
+      return duplicateIndexes.length > 1
+        ? [{
+            index: target.request_index,
+            name: target.name,
+            status: "duplicate_target" as const,
+            duplicateIndexes,
+          }]
+        : [];
+    });
+
+    const uniqueTargets = canonicalTargets.filter(
+      ({ name_key }) => (indexesByNameKey.get(name_key)?.length ?? 0) === 1,
+    );
+    const nameKeys = uniqueTargets.map(({ name_key }) => name_key);
+    const lockedItems = await tx<Item[]>`
+      select *
+      from items
+      where user_id = ${userId}
+        and name_key = any(${tx.array(nameKeys)}::text[])
+      order by name_key
+      for update
+    `;
+    const itemByNameKey = new Map(
+      lockedItems.map((item) => [item.name_key, item]),
+    );
+
+    const evaluations: Array<{
+      index: number;
+      adjustment: BatchPantryQuantityAdjustment;
+      item: Item;
+      evaluation: Extract<AdjustmentEvaluation, { ok: true }>;
+    }> = [];
+    const failures: BatchPantryQuantityAdjustmentFailure[] = [
+      ...duplicateFailures,
+    ];
+
+    for (const target of uniqueTargets) {
+      const adjustment = adjustments[target.request_index];
+      const item = itemByNameKey.get(target.name_key);
+      if (!item) {
+        failures.push({
+          index: target.request_index,
+          name: adjustment.name,
+          status: "not_found",
+        });
+        continue;
+      }
+
+      const evaluation = evaluateStructuredAdjustment(
+        item,
+        adjustment.operation,
+        adjustment.expected,
+        adjustment.delta,
+      );
+      if (!evaluation.ok) {
+        failures.push({
+          index: target.request_index,
+          name: adjustment.name,
+          ...evaluation.failure,
+        });
+        continue;
+      }
+      evaluations.push({
+        index: target.request_index,
+        adjustment,
+        item,
+        evaluation,
+      });
+    }
+
+    if (failures.length > 0) {
+      return {
+        status: "rejected",
+        failures: failures.sort((left, right) => left.index - right.index),
+      };
+    }
+
+    const changes: Extract<
+      BatchPantryQuantityAdjustmentResult,
+      { status: "applied" }
+    >["changes"] = [];
+    for (
+      const { index, adjustment, item, evaluation }
+      of evaluations.sort((left, right) => left.index - right.index)
+    ) {
+      const [updated] = await tx<Item[]>`
+        update items
+        set quantity_value = ${evaluation.after.amount}::numeric
+        where id = ${item.id}
+          and user_id = ${userId}
+        returning *
+      `;
+      if (!updated) {
+        throw new Error("locked pantry item disappeared before batch update");
+      }
+      changes.push({
+        index,
+        operation: adjustment.operation,
+        item: updated,
+        beforeQuantity: item.quantity,
+        afterQuantity: updated.quantity,
+        before: evaluation.before,
+        delta: adjustment.delta,
+        after: evaluation.after,
+      });
+    }
+
+    return { status: "applied", changes };
   });
 }
 

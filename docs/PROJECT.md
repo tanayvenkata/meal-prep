@@ -36,12 +36,14 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 - **Done: M1–M6.5 + pre-M7 hardening.** Streaming chat → Vercel deploy → pantry CRUD →
   pantry-aware recipes → auth → tests + CI/CD → voice → Mise redesign; plus rate limiting
   and a stop button. (Per-milestone detail: git history.)
-- **Experimental ChatGPT surface:** a Streamable HTTP MCP server exposes a read-only
-  `get_kitchen_context` tool, its MCP Apps widget, and one retry-safe
-  `set_pantry_item_quantity` action for an unambiguous existing item. Supabase OAuth 2.1
-  maps the connector token to a Mise user; both tools use the same user-scoped kitchen
-  service as the website. The write action sets one exact quantity and cannot create,
-  rename, delete, or bulk-edit data. The complete tool → resource → widget handshake works
+- **Experimental ChatGPT surface:** a Streamable HTTP MCP server exposes
+  `get_kitchen_context`, its read-only MCP Apps widget, and narrow exact-set, consume, and
+  restock actions for unambiguous existing items. Supabase OAuth 2.1 maps the connector
+  token to a Mise user; every tool uses the same user-scoped kitchen service as the
+  website. The write actions cannot create, rename, delete, convert units, or bulk-edit
+  data. The shared backend also has an all-or-nothing multi-item consume/restock command;
+  it remains transport-internal until a reviewed batch experience is designed. The
+  complete tool → resource → widget handshake works
   in MCP Inspector and ChatGPT Developer Mode, including light and dark themes. End-to-end
   account linking was first proven through the ngrok development connector. The same
   deliberately stateless server now also runs through the existing Vercel app at `/mcp`;
