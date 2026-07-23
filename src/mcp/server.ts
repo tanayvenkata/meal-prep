@@ -28,10 +28,12 @@ import {
 } from "./auth";
 import { kitchenWidgetResource as generatedKitchenWidgetResource } from "./kitchen-widget.generated";
 import {
+  applyReviewedReceiptImport as importReviewedReceipt,
   adjustPantryItemQuantities as adjustPantryQuantities,
   adjustPantryItemQuantity as adjustPantryQuantity,
   getKitchenContext as loadKitchenContext,
   setPantryItemQuantity as updatePantryItemQuantity,
+  type ApplyReviewedReceiptImportOutcome,
   type AdjustPantryItemQuantityBatchOutcome,
   type AdjustPantryItemQuantityOutcome,
 } from "@/lib/kitchen-service";
@@ -44,6 +46,7 @@ const SET_PANTRY_ITEM_QUANTITY_TOOL = "set_pantry_item_quantity";
 const CONSUME_PANTRY_ITEM_TOOL = "consume_pantry_item";
 const RESTOCK_PANTRY_ITEM_TOOL = "restock_pantry_item";
 const APPLY_PANTRY_ADJUSTMENTS_TOOL = "apply_pantry_adjustments";
+const APPLY_REVIEWED_RECEIPT_IMPORT_TOOL = "apply_reviewed_receipt_import";
 const MISE_OAUTH_SECURITY_SCHEMES = [
   { type: "oauth2", scopes: MCP_SCOPES },
 ];
@@ -53,6 +56,7 @@ const AUTHENTICATED_MISE_TOOLS = new Set([
   CONSUME_PANTRY_ITEM_TOOL,
   RESTOCK_PANTRY_ITEM_TOOL,
   APPLY_PANTRY_ADJUSTMENTS_TOOL,
+  APPLY_REVIEWED_RECEIPT_IMPORT_TOOL,
 ]);
 const LEGACY_KITCHEN_WIDGET_URIS = [
   // Historical ChatGPT messages can re-read the resource URI captured in their
@@ -69,6 +73,7 @@ type KitchenContextLoader = (userId: string) => Promise<KitchenContext>;
 type PantryQuantityUpdater = typeof updatePantryItemQuantity;
 type PantryQuantityAdjuster = typeof adjustPantryQuantity;
 type PantryQuantityBatchAdjuster = typeof adjustPantryQuantities;
+type ReviewedReceiptImporter = typeof importReviewedReceipt;
 
 type MiseServerOptions = {
   kitchenWidgetResource?: KitchenWidgetResource;
@@ -76,6 +81,7 @@ type MiseServerOptions = {
   setPantryItemQuantity?: PantryQuantityUpdater;
   adjustPantryItemQuantity?: PantryQuantityAdjuster;
   adjustPantryItemQuantities?: PantryQuantityBatchAdjuster;
+  applyReviewedReceiptImport?: ReviewedReceiptImporter;
 };
 
 const kitchenContextSchema = z.object({
@@ -298,6 +304,119 @@ const adjustPantryItemQuantityBatchOutputSchema = z.object({
   outcome: adjustPantryItemQuantityBatchOutcomeSchema,
 }).strict();
 
+const reviewedReceiptImportInputSchema = z.object({
+  requestId: z.string().uuid().describe(
+    "A fresh UUID for this exact confirmed proposal. Reuse it only to retry the identical proposal.",
+  ),
+  lines: z.array(
+    z.discriminatedUnion("decision", [
+      z.object({
+        decision: z.literal("create"),
+        name: z.string().trim().min(1).max(100),
+        quantity: deltaPantryQuantityInputSchema.describe(
+          "Positive structured starting quantity for the new pantry item.",
+        ),
+      }).strict(),
+      z.object({
+        decision: z.literal("restock"),
+        name: z.string().trim().min(1).max(100),
+        expectedQuantity: expectedPantryQuantityInputSchema.describe(
+          "Fresh structured quantity returned by get_kitchen_context.",
+        ),
+        deltaQuantity: deltaPantryQuantityInputSchema.describe(
+          "Positive same-unit quantity to add.",
+        ),
+      }).strict(),
+    ]),
+  ).min(1).max(25),
+}).strict();
+
+const reviewedReceiptItemSchema = z.object({
+  name: z.string(),
+  quantity: z.string(),
+  turnover: z.enum(["high", "low"]),
+}).strict();
+
+const reviewedReceiptChangeSchema = z.discriminatedUnion("decision", [
+  z.object({
+    index: z.number().int().min(0).max(24),
+    decision: z.literal("create"),
+    item: reviewedReceiptItemSchema,
+  }).strict(),
+  z.object({
+    index: z.number().int().min(0).max(24),
+    decision: z.literal("restock"),
+    item: reviewedReceiptItemSchema,
+    beforeQuantity: z.string(),
+    afterQuantity: z.string(),
+    before: structuredPantryQuantitySchema,
+    delta: structuredPantryQuantitySchema,
+    after: structuredPantryQuantitySchema,
+  }).strict(),
+]);
+
+const reviewedReceiptFailureFields = {
+  index: z.number().int().min(0).max(24),
+  name: z.string(),
+};
+const reviewedReceiptFailureSchema = z.discriminatedUnion("status", [
+  z.object({
+    ...reviewedReceiptFailureFields,
+    status: z.literal("duplicate_target"),
+    duplicateIndexes: z.array(z.number().int().min(0).max(24)).min(2),
+  }).strict(),
+  z.object({
+    ...reviewedReceiptFailureFields,
+    status: z.enum(["already_exists", "not_found"]),
+  }).strict(),
+  z.object({
+    ...reviewedReceiptFailureFields,
+    status: z.literal("unsupported_quantity"),
+    currentDisplay: z.string(),
+  }).strict(),
+  z.object({
+    ...reviewedReceiptFailureFields,
+    status: z.literal("conflict"),
+    expected: structuredPantryQuantitySchema,
+    current: structuredPantryQuantitySchema,
+  }).strict(),
+  z.object({
+    ...reviewedReceiptFailureFields,
+    status: z.literal("unit_mismatch"),
+    expectedUnit: z.enum(PANTRY_QUANTITY_UNITS),
+    deltaUnit: z.enum(PANTRY_QUANTITY_UNITS),
+  }).strict(),
+  z.object({
+    ...reviewedReceiptFailureFields,
+    status: z.enum(["insufficient_quantity", "amount_exceeded"]),
+    current: structuredPantryQuantitySchema,
+    delta: structuredPantryQuantitySchema,
+  }).strict(),
+]);
+
+const reviewedReceiptOutcomeSchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("applied"),
+    requestId: z.string().uuid(),
+    replayed: z.boolean(),
+    changes: z.array(reviewedReceiptChangeSchema).min(1).max(25),
+  }).strict(),
+  z.object({
+    status: z.literal("rejected"),
+    requestId: z.string().uuid(),
+    replayed: z.boolean(),
+    failures: z.array(reviewedReceiptFailureSchema).min(1).max(25),
+  }).strict(),
+  z.object({
+    status: z.literal("request_id_reused"),
+    requestId: z.string().uuid(),
+  }).strict(),
+]);
+
+const reviewedReceiptOutputSchema = z.object({
+  outcome: reviewedReceiptOutcomeSchema,
+}).strict();
+
 function formatStructuredToolQuantity(
   quantity: Extract<
     AdjustPantryItemQuantityOutcome,
@@ -323,6 +442,32 @@ function narratePantryAdjustmentBatch(
     ? `; plus ${outcome.failures.length - 3} more`
     : "";
   return `No pantry changes were applied. Review ${failures}${remainder}.`;
+}
+
+function narrateReviewedReceiptImport(
+  outcome: ApplyReviewedReceiptImportOutcome,
+): string {
+  switch (outcome.status) {
+    case "applied": {
+      const count = outcome.changes.length;
+      return outcome.replayed
+        ? `This confirmed receipt import was already applied. Replayed the original ${count}-item result without changing the pantry again.`
+        : `Applied ${count} reviewed receipt ${count === 1 ? "item" : "items"} atomically.`;
+    }
+    case "rejected": {
+      const failures = outcome.failures
+        .slice(0, 3)
+        .map(({ name, status }) => `${name}: ${status.replaceAll("_", " ")}`)
+        .join("; ");
+      const remainder = outcome.failures.length > 3
+        ? `; plus ${outcome.failures.length - 3} more`
+        : "";
+      const replay = outcome.replayed ? " Replayed the original rejection." : "";
+      return `No pantry changes were applied. Review ${failures}${remainder}.${replay}`;
+    }
+    case "request_id_reused":
+      return "This request ID was already used for a different receipt proposal. Nothing changed; use a fresh UUID.";
+  }
 }
 
 function narratePantryAdjustment(
@@ -416,6 +561,7 @@ export async function createMiseServer(
     setPantryItemQuantity = updatePantryItemQuantity,
     adjustPantryItemQuantity = adjustPantryQuantity,
     adjustPantryItemQuantities = adjustPantryQuantities,
+    applyReviewedReceiptImport = importReviewedReceipt,
   }: MiseServerOptions = {},
 ) {
   const kitchenWidgetUris = [
@@ -426,7 +572,7 @@ export async function createMiseServer(
     { name: "mise", version: "0.1.0" },
     {
       instructions:
-        "Read get_kitchen_context before consume, restock, or apply_pantry_adjustments so expectations use fresh structured values. Use apply_pantry_adjustments once for a clearly requested current-turn list; never infer writes from meal planning. Counts use count. On rejection or conflict, reread before retrying. Exact set requires a clear exact request. Never create items implicitly.",
+        "Read get_kitchen_context before relative or receipt writes. Use apply_pantry_adjustments once for a confirmed current-turn list. Use apply_reviewed_receipt_import only after the user confirms exact create/restock lines; receipt images and proposals alone never authorize writes. Reuse its UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection/conflict, reread. Exact set requires a clear request.",
     },
   );
 
@@ -697,6 +843,75 @@ export async function createMiseServer(
     },
   );
 
+  server.registerTool(
+    APPLY_REVIEWED_RECEIPT_IMPORT_TOOL,
+    {
+      title: "Apply reviewed receipt import",
+      description:
+        "Use this only after the user explicitly confirms an exact receipt proposal whose every line is marked create or restock. First read get_kitchen_context; use its fresh structured value for every restock expectation. Send the full confirmed proposal once with a fresh UUID. The import applies atomically and identical retries do not add twice. Never call from an image or draft alone, infer a decision, fuzzy-match names, or convert units.",
+      inputSchema: reviewedReceiptImportInputSchema,
+      outputSchema: reviewedReceiptOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: {
+        securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+        "openai/toolInvocation/invoking": "Applying reviewed receipt…",
+        "openai/toolInvocation/invoked": "Receipt import checked.",
+      },
+    },
+    async ({ requestId, lines }, extra) => {
+      const userId = extra.authInfo?.extra?.userId;
+      if (typeof userId !== "string") {
+        return {
+          isError: true,
+          content: [{
+            type: "text",
+            text: "Connect your Mise account to continue.",
+          }],
+          _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+        };
+      }
+
+      const result = await applyReviewedReceiptImport(userId, {
+        requestId,
+        lines: lines.map((line) =>
+          line.decision === "create"
+            ? {
+                decision: line.decision,
+                name: line.name,
+                quantity: `${line.quantity.amount} ${line.quantity.unit}`,
+              }
+            : {
+                decision: line.decision,
+                name: line.name,
+                expectedQuantity:
+                  `${line.expectedQuantity.amount} ${line.expectedQuantity.unit}`,
+                deltaQuantity:
+                  `${line.deltaQuantity.amount} ${line.deltaQuantity.unit}`,
+              }
+        ),
+      });
+      if (!result.ok) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: result.error }],
+        };
+      }
+
+      return {
+        content: [{
+          type: "text",
+          text: narrateReviewedReceiptImport(result.value),
+        }],
+        structuredContent: { outcome: result.value },
+      };
+    },
+  );
+
   return server;
 }
 
@@ -709,6 +924,7 @@ type MiseHttpServerOptions = {
   setPantryItemQuantity?: PantryQuantityUpdater;
   adjustPantryItemQuantity?: PantryQuantityAdjuster;
   adjustPantryItemQuantities?: PantryQuantityBatchAdjuster;
+  applyReviewedReceiptImport?: ReviewedReceiptImporter;
 };
 
 function invalidTokenResponse(authConfig = getMcpAuthConfig()) {
@@ -742,6 +958,7 @@ export async function handleMiseMcpRequest(
     setPantryItemQuantity = updatePantryItemQuantity,
     adjustPantryItemQuantity = adjustPantryQuantity,
     adjustPantryItemQuantities = adjustPantryQuantities,
+    applyReviewedReceiptImport = importReviewedReceipt,
   }: Pick<
     MiseHttpServerOptions,
     | "verifyAccessToken"
@@ -749,6 +966,7 @@ export async function handleMiseMcpRequest(
     | "setPantryItemQuantity"
     | "adjustPantryItemQuantity"
     | "adjustPantryItemQuantities"
+    | "applyReviewedReceiptImport"
   > = {},
 ) {
   const startedAt = performance.now();
@@ -807,6 +1025,7 @@ export async function handleMiseMcpRequest(
     setPantryItemQuantity,
     adjustPantryItemQuantity,
     adjustPantryItemQuantities,
+    applyReviewedReceiptImport,
   });
   const transport =
     new OpenAiCompatibleWebStandardStreamableHTTPServerTransport({
@@ -849,6 +1068,7 @@ export function createMiseHttpServer({
   setPantryItemQuantity = updatePantryItemQuantity,
   adjustPantryItemQuantity = adjustPantryQuantity,
   adjustPantryItemQuantities = adjustPantryQuantities,
+  applyReviewedReceiptImport = importReviewedReceipt,
 }: MiseHttpServerOptions = {}) {
   const authConfig = getMcpAuthConfig();
   const app = createMcpExpressApp({
@@ -926,6 +1146,7 @@ export function createMiseHttpServer({
       setPantryItemQuantity,
       adjustPantryItemQuantity,
       adjustPantryItemQuantities,
+      applyReviewedReceiptImport,
     });
     const transport = new OpenAiCompatibleStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

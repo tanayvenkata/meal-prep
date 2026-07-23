@@ -94,7 +94,7 @@ in, send a message in the chat to get a recipe reply.
 Mise also has an experimental MCP Apps surface for ChatGPT. Supabase OAuth 2.1 identifies
 the connected Mise user. `get_kitchen_context` returns only that user's pantry and kitchen
 tools in an inline widget, without row IDs. Narrow actions can set, consume, or restock the
-structured quantity of one unambiguous existing item. They cannot create, rename, delete,
+structured quantity of one unambiguous existing item. They cannot rename, delete,
 or convert units. A confirmed list can also consume/restock several existing structured
 items in one all-or-nothing MCP action. Missing or ambiguous names, unsupported quantities,
 stale expectations, and unsafe arithmetic leave the pantry unchanged; there is no generic
@@ -105,8 +105,9 @@ new-item creation with existing-item restocks. Every line must explicitly choose
 `create` or `restock`; the whole 1–25 line request commits once or not at all. A
 private user-scoped operation receipt makes identical retries effect-once and
 rejects reuse of the same request ID for changed content. OCR/image extraction,
-review UI, and MCP exposure remain separate later slices—model output never writes
-directly to the pantry.
+and proposal review remain ChatGPT responsibilities. Only after the user confirms
+the exact typed proposal does `apply_reviewed_receipt_import` send it through the
+authenticated kitchen service; model output never writes directly to the pantry.
 
 The hosted ChatGPT connector uses:
 

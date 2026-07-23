@@ -57,6 +57,12 @@ transitive dependencies.
   user's pantry/tools and may not access chat data or call website mutation
   routes. MCP writes, when intentionally added, must execute through Mise's
   authenticated service boundary rather than widening direct token access.
+- Keep receipt interpretation and pantry mutation separate. A host model may
+  inspect an image, clarify uncertain lines, and present a proposal, but only
+  an exact user-confirmed `create`/`restock` list may reach the reviewed receipt
+  command. Send the whole list once with a caller-generated UUID; reuse that
+  UUID only for an identical retry. Do not add OCR or file inputs to the
+  mutation tool.
 
 ## Required protocol validation
 
@@ -68,6 +74,9 @@ to transport or authentication, preserve automated coverage for:
 - malformed, expired, or otherwise invalid bearer tokens returning an
   `invalid_token` challenge;
 - authenticated initialization, `tools/list`, and representative tool calls;
+- exact mutation input/output schemas, accurate annotations, one service
+  delegation per confirmed batch, and truthful applied/replayed/rejected
+  narration;
 - security schemes in both the standard top-level descriptor field and any
   compatibility metadata required by supported hosts; and
 - widget initialization and tool-result delivery through the standard MCP Apps

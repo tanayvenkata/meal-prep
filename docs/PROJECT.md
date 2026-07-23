@@ -40,9 +40,11 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
   `get_kitchen_context`, its read-only MCP Apps widget, and narrow exact-set, consume, and
   restock actions for unambiguous existing items. Supabase OAuth 2.1 maps the connector
   token to a Mise user; every tool uses the same user-scoped kitchen service as the
-  website. The write actions cannot create, rename, delete, or convert units. A reviewed
+  website. General write actions cannot create, rename, delete, or convert units. A reviewed
   multi-item consume/restock list can use one all-or-nothing batch action; there is no
-  generic CRUD or implicit upsert tool. The
+  generic CRUD or implicit upsert tool. A separately confirmed receipt proposal can call
+  one idempotent atomic action whose lines explicitly choose new-item creation or an
+  existing-item restock; the image or draft proposal never authorizes that call. The
   complete tool → resource → widget handshake works
   in MCP Inspector and ChatGPT Developer Mode, including light and dark themes. End-to-end
   account linking was first proven through the ngrok development connector. The same

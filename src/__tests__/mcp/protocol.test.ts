@@ -39,6 +39,9 @@ const mockAdjustPantryItemQuantity = vi.fn<
 const mockAdjustPantryItemQuantities = vi.fn<
   typeof import("@/lib/kitchen-service").adjustPantryItemQuantities
 >();
+const mockApplyReviewedReceiptImport = vi.fn<
+  typeof import("@/lib/kitchen-service").applyReviewedReceiptImport
+>();
 const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalMcpPublicUrl = process.env.MCP_PUBLIC_URL;
 
@@ -187,6 +190,55 @@ beforeEach(async () => {
       ],
     },
   });
+  mockApplyReviewedReceiptImport.mockReset();
+  mockApplyReviewedReceiptImport.mockResolvedValue({
+    ok: true,
+    value: {
+      status: "applied",
+      requestId: "b9b98fd0-c4b6-4de7-8a9d-1d05be0d6ac1",
+      replayed: false,
+      changes: [
+        {
+          index: 0,
+          decision: "create",
+          item: {
+            name: "Black beans",
+            quantity: "2 can",
+            turnover: "high",
+          },
+        },
+        {
+          index: 1,
+          decision: "restock",
+          item: {
+            name: "Rice",
+            quantity: "3 cup",
+            turnover: "high",
+          },
+          beforeQuantity: "2 cup",
+          afterQuantity: "3 cup",
+          before: {
+            mode: "structured",
+            amount: "2",
+            unit: "cup",
+            text: null,
+          },
+          delta: {
+            mode: "structured",
+            amount: "1",
+            unit: "cup",
+            text: null,
+          },
+          after: {
+            mode: "structured",
+            amount: "3",
+            unit: "cup",
+            text: null,
+          },
+        },
+      ],
+    },
+  });
 
   httpServer = createMiseHttpServer({
     verifyAccessToken: verifyTestAccessToken,
@@ -194,6 +246,7 @@ beforeEach(async () => {
     setPantryItemQuantity: mockSetPantryItemQuantity,
     adjustPantryItemQuantity: mockAdjustPantryItemQuantity,
     adjustPantryItemQuantities: mockAdjustPantryItemQuantities,
+    applyReviewedReceiptImport: mockApplyReviewedReceiptImport,
   });
   await new Promise<void>((resolve, reject) => {
     httpServer.once("error", reject);
@@ -266,7 +319,7 @@ describe("Mise MCP OAuth wire contract", () => {
           resources: {},
         },
         instructions: expect.stringContaining(
-          "Read get_kitchen_context before consume, restock, or apply_pantry_adjustments",
+          "Read get_kitchen_context before relative or receipt writes",
         ),
       },
     });
@@ -283,10 +336,10 @@ describe("Mise MCP OAuth wire contract", () => {
       result: { instructions: string };
     };
     expect(body.result.instructions.slice(0, 512)).toContain(
-      "never infer writes from meal planning",
+      "receipt images and proposals alone never authorize writes",
     );
     expect(body.result.instructions.slice(0, 512)).toContain(
-      "On rejection or conflict, reread before retrying",
+      "On rejection/conflict, reread",
     );
     expect(body.result.instructions.length).toBeLessThanOrEqual(512);
   });
@@ -839,6 +892,308 @@ describe("Mise MCP OAuth wire contract", () => {
     );
   });
 
+  it("publishes and executes one idempotent reviewed receipt import tool", async () => {
+    const listResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 66,
+      method: "tools/list",
+    }, "test-token");
+    const listBody = await listResponse.json() as {
+      result: { tools: Array<Record<string, unknown>> };
+    };
+    const tool = listBody.result.tools.find(
+      ({ name }) => name === "apply_reviewed_receipt_import",
+    );
+    const expectedSchemes = [{ type: "oauth2", scopes: ["openid"] }];
+
+    expect(tool).toMatchObject({
+      description: expect.stringContaining(
+        "only after the user explicitly confirms",
+      ),
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["requestId", "lines"],
+        properties: {
+          requestId: { type: "string", format: "uuid" },
+          lines: {
+            type: "array",
+            minItems: 1,
+            maxItems: 25,
+            items: {
+              oneOf: [
+                expect.objectContaining({
+                  additionalProperties: false,
+                  required: ["decision", "name", "quantity"],
+                }),
+                expect.objectContaining({
+                  additionalProperties: false,
+                  required: [
+                    "decision",
+                    "name",
+                    "expectedQuantity",
+                    "deltaQuantity",
+                  ],
+                }),
+              ],
+            },
+          },
+        },
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      securitySchemes: expectedSchemes,
+      _meta: { securitySchemes: expectedSchemes },
+    });
+    expect((tool?._meta as Record<string, unknown>).ui).toBeUndefined();
+    expect(
+      (tool?._meta as Record<string, unknown>)["openai/outputTemplate"],
+    ).toBeUndefined();
+
+    const serializedOutputSchema = JSON.stringify(tool?.outputSchema);
+    for (const status of [
+      "applied",
+      "rejected",
+      "request_id_reused",
+      "duplicate_target",
+      "already_exists",
+      "not_found",
+      "unsupported_quantity",
+      "conflict",
+      "unit_mismatch",
+      "insufficient_quantity",
+      "amount_exceeded",
+    ]) {
+      expect(serializedOutputSchema).toContain(`"${status}"`);
+    }
+
+    const requestId = "b9b98fd0-c4b6-4de7-8a9d-1d05be0d6ac1";
+    const callResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 67,
+      method: "tools/call",
+      params: {
+        name: "apply_reviewed_receipt_import",
+        arguments: {
+          requestId,
+          lines: [
+            {
+              decision: "create",
+              name: " Black beans ",
+              quantity: { amount: " 2 ", unit: "can" },
+            },
+            {
+              decision: "restock",
+              name: " Rice ",
+              expectedQuantity: { amount: " 2 ", unit: "cup" },
+              deltaQuantity: { amount: " 1 ", unit: "cup" },
+            },
+          ],
+        },
+      },
+    }, "test-token");
+
+    await expect(callResponse.json()).resolves.toMatchObject({
+      result: {
+        content: [{
+          type: "text",
+          text: "Applied 2 reviewed receipt items atomically.",
+        }],
+        structuredContent: {
+          outcome: {
+            status: "applied",
+            requestId,
+            replayed: false,
+            changes: [
+              { index: 0, decision: "create" },
+              { index: 1, decision: "restock" },
+            ],
+          },
+        },
+      },
+    });
+    expect(mockApplyReviewedReceiptImport).toHaveBeenCalledTimes(1);
+    expect(mockApplyReviewedReceiptImport).toHaveBeenCalledWith(
+      "user-123",
+      {
+        requestId,
+        lines: [
+          {
+            decision: "create",
+            name: "Black beans",
+            quantity: "2 can",
+          },
+          {
+            decision: "restock",
+            name: "Rice",
+            expectedQuantity: "2 cup",
+            deltaQuantity: "1 cup",
+          },
+        ],
+      },
+    );
+  });
+
+  it.each([
+    ["invalid UUID", {
+      requestId: "not-a-uuid",
+      lines: [{
+        decision: "create",
+        name: "Beans",
+        quantity: { amount: "2", unit: "can" },
+      }],
+    }],
+    ["empty lines", {
+      requestId: "b9b98fd0-c4b6-4de7-8a9d-1d05be0d6ac1",
+      lines: [],
+    }],
+    ["too many lines", {
+      requestId: "b9b98fd0-c4b6-4de7-8a9d-1d05be0d6ac1",
+      lines: Array.from({ length: 26 }, () => ({
+        decision: "create",
+        name: "Beans",
+        quantity: { amount: "2", unit: "can" },
+      })),
+    }],
+    ["zero quantity", {
+      requestId: "b9b98fd0-c4b6-4de7-8a9d-1d05be0d6ac1",
+      lines: [{
+        decision: "create",
+        name: "Beans",
+        quantity: { amount: "0", unit: "can" },
+      }],
+    }],
+    ["wrong union fields", {
+      requestId: "b9b98fd0-c4b6-4de7-8a9d-1d05be0d6ac1",
+      lines: [{
+        decision: "restock",
+        name: "Beans",
+        quantity: { amount: "2", unit: "can" },
+      }],
+    }],
+    ["extra property", {
+      requestId: "b9b98fd0-c4b6-4de7-8a9d-1d05be0d6ac1",
+      lines: [{
+        decision: "create",
+        name: "Beans",
+        quantity: { amount: "2", unit: "can" },
+        guessed: true,
+      }],
+    }],
+  ])("rejects malformed reviewed receipt arguments: %s", async (
+    _caseName,
+    argumentsValue,
+  ) => {
+    const response = await postMcp({
+      jsonrpc: "2.0",
+      id: 71,
+      method: "tools/call",
+      params: {
+        name: "apply_reviewed_receipt_import",
+        arguments: argumentsValue,
+      },
+    }, "test-token");
+    const body = await response.json() as {
+      result?: {
+        isError?: boolean;
+        content?: Array<{ text?: string }>;
+      };
+    };
+
+    expect(body.result?.isError).toBe(true);
+    expect(body.result?.content?.[0].text).toContain(
+      "MCP error -32602: Input validation error",
+    );
+    expect(mockApplyReviewedReceiptImport).not.toHaveBeenCalled();
+  });
+
+  it("truthfully narrates receipt replay, rejection, and request ID reuse", async () => {
+    const requestId = "b9b98fd0-c4b6-4de7-8a9d-1d05be0d6ac1";
+    mockApplyReviewedReceiptImport
+      .mockResolvedValueOnce({
+        ok: true,
+        value: {
+          status: "applied",
+          requestId,
+          replayed: true,
+          changes: [{
+            index: 0,
+            decision: "create",
+            item: {
+              name: "Black beans",
+              quantity: "2 can",
+              turnover: "high",
+            },
+          }],
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        value: {
+          status: "rejected",
+          requestId,
+          replayed: false,
+          failures: [{
+            index: 0,
+            name: "Rice",
+            status: "conflict",
+            expected: {
+              mode: "structured",
+              amount: "2",
+              unit: "cup",
+              text: null,
+            },
+            current: {
+              mode: "structured",
+              amount: "3",
+              unit: "cup",
+              text: null,
+            },
+          }],
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        value: { status: "request_id_reused", requestId },
+      });
+
+    const argumentsValue = {
+      requestId,
+      lines: [{
+        decision: "create",
+        name: "Black beans",
+        quantity: { amount: "2", unit: "can" },
+      }],
+    };
+    const texts: string[] = [];
+    for (const id of [68, 69, 70]) {
+      const response = await postMcp({
+        jsonrpc: "2.0",
+        id,
+        method: "tools/call",
+        params: {
+          name: "apply_reviewed_receipt_import",
+          arguments: argumentsValue,
+        },
+      }, "test-token");
+      const body = await response.json() as {
+        result: { content: Array<{ text: string }> };
+      };
+      texts.push(body.result.content[0].text);
+    }
+
+    expect(texts[0]).toContain("already applied");
+    expect(texts[0]).toContain("without changing the pantry again");
+    expect(texts[1]).toContain("No pantry changes were applied");
+    expect(texts[1]).toContain("Rice: conflict");
+    expect(texts[2]).toContain("already used for a different");
+    expect(texts[2]).toContain("Nothing changed");
+  });
+
   it("truthfully narrates every rejected pantry batch as all-or-nothing", async () => {
     const structured = (
       amount: string,
@@ -1261,6 +1616,7 @@ describe("Mise MCP OAuth wire contract", () => {
       setPantryItemQuantity: mockSetPantryItemQuantity,
       adjustPantryItemQuantity: mockAdjustPantryItemQuantity,
       adjustPantryItemQuantities: mockAdjustPantryItemQuantities,
+      applyReviewedReceiptImport: mockApplyReviewedReceiptImport,
     });
     const body = (await response.json()) as {
       result: { tools: Array<Record<string, unknown>> };
@@ -1272,6 +1628,7 @@ describe("Mise MCP OAuth wire contract", () => {
       "consume_pantry_item",
       "restock_pantry_item",
       "apply_pantry_adjustments",
+      "apply_reviewed_receipt_import",
     ]) {
       const tool = body.result.tools.find(
         (candidate) => candidate.name === name,
@@ -1324,6 +1681,7 @@ describe("Mise MCP OAuth wire contract", () => {
       setPantryItemQuantity: mockSetPantryItemQuantity,
       adjustPantryItemQuantity: mockAdjustPantryItemQuantity,
       adjustPantryItemQuantities: mockAdjustPantryItemQuantities,
+      applyReviewedReceiptImport: mockApplyReviewedReceiptImport,
     });
 
     expect(response.status).toBe(200);
@@ -1421,5 +1779,69 @@ describe("Mise MCP OAuth wire contract", () => {
     expect(challenge).toContain(
       'error_description="The Mise access token is invalid or expired."',
     );
+    });
   });
-});
+
+  it("executes a reviewed receipt import once through the hosted transport", async () => {
+    const requestId = "b9b98fd0-c4b6-4de7-8a9d-1d05be0d6ac1";
+    const request = new Request("https://mcp.mise.example/mcp", {
+      method: "POST",
+      headers: {
+        accept: "application/json, text/event-stream",
+        authorization: "Bearer test-token",
+        "content-type": "application/json",
+        "mcp-protocol-version": "2025-11-25",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 72,
+        method: "tools/call",
+        params: {
+          name: "apply_reviewed_receipt_import",
+          arguments: {
+            requestId,
+            lines: [{
+              decision: "restock",
+              name: "Rice",
+              expectedQuantity: { amount: "2", unit: "cup" },
+              deltaQuantity: { amount: "1", unit: "cup" },
+            }],
+          },
+        },
+      }),
+    });
+    const response = await handleMiseMcpRequest(request, {
+      verifyAccessToken: verifyTestAccessToken,
+      loadKitchenContext: mockLoadKitchenContext,
+      setPantryItemQuantity: mockSetPantryItemQuantity,
+      adjustPantryItemQuantity: mockAdjustPantryItemQuantity,
+      adjustPantryItemQuantities: mockAdjustPantryItemQuantities,
+      applyReviewedReceiptImport: mockApplyReviewedReceiptImport,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      result: {
+        structuredContent: {
+          outcome: {
+            status: "applied",
+            requestId,
+            replayed: false,
+          },
+        },
+      },
+    });
+    expect(mockApplyReviewedReceiptImport).toHaveBeenCalledTimes(1);
+    expect(mockApplyReviewedReceiptImport).toHaveBeenCalledWith(
+      "user-123",
+      {
+        requestId,
+        lines: [{
+          decision: "restock",
+          name: "Rice",
+          expectedQuantity: "2 cup",
+          deltaQuantity: "1 cup",
+        }],
+      },
+    );
+  });
