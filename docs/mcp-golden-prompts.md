@@ -43,6 +43,12 @@ conversation proves real tool selection, account linking, and rendering.
 | Quantity overflow | With an item near the supported maximum: request a restock that would exceed it. | Returns `amount_exceeded`; the stored quantity remains unchanged. |
 | Planning-only consume | “Give me a recipe that uses two eggs.” | A kitchen read may occur, but neither relative mutation tool runs because the user did not ask to update saved inventory. |
 | Two-user mutation isolation | With the same item name in accounts A and B, consume a safe amount while connected as A, then read both accounts. | Only account A changes. Account B remains unchanged and neither tool accepts a caller-supplied identity. |
+| Multi-item meal use | With structured Eggs and Flour: “I finished cooking and used 2 eggs and 0.5 lb flour; update Mise together.” | Reads current context, confirms the complete list, then calls `apply_pantry_adjustments` once with two `consume` lines and fresh structured expectations. Both changes apply or neither does. |
+| Mixed batch | “I used 1 egg and added 1 bag of rice; apply both together.” | Calls `apply_pantry_adjustments` once with one `consume` and one `restock` line; returns ordered before/delta/after results. |
+| Batch planning negative | “Plan a meal that would use 2 eggs and 0.5 lb flour.” | A kitchen read may occur, but `apply_pantry_adjustments` does not run because the user did not say the ingredients were used or ask to update Mise. |
+| Ambiguous batch quantity | “I used some eggs and a little flour; update Mise.” | Does not call a mutation tool until every requested line has an exact positive structured delta. |
+| Partial-failure rollback | With fresh Eggs and stale Flour expectations, ask to apply both consumes together. | Returns `rejected` with the Flour conflict and states that no pantry changes were applied; Eggs also remains unchanged. |
+| Batch retry | Immediately repeat an applied batch with its old expectations. | Returns `rejected` conflicts and applies no line twice while the stored quantities remain changed. ChatGPT rereads before proposing another call. |
 
 ## Reversible production mutation check
 
@@ -59,6 +65,20 @@ before/after evidence:
 Do not replay the original consume after restoring the baseline: optimistic concurrency prevents
 immediate stale retries, but it is not a durable operation receipt across an ABA state cycle.
 
+## Reversible production batch check
+
+Use two harmless structured items, for example `6 count` Eggs and `2 bag` Rice:
+
+1. Read the kitchen and record both exact structured baselines.
+2. In one `apply_pantry_adjustments` call, consume `1 count` Eggs and restock `1 bag` Rice.
+3. Verify both results (`5 count`, `3 bag`) and confirm the tool ran exactly once.
+4. Repeat the stale batch once; verify `rejected`, conflict failures, and no further change.
+5. Read again, then apply the inverse batch: restock `1 count` Eggs and consume `1 bag` Rice.
+6. Read once more and verify both original baselines are restored.
+
+Do not replay the original first batch after restoring both baselines; the same ABA limitation applies
+to a batch as to a single relative change.
+
 ## Generic MCP Apps bridge check
 
 In MCP Inspector:
@@ -73,9 +93,9 @@ In MCP Inspector:
    no browser network access.
 
 With read and write tools present, server-level instructions define their shared boundary: read
-before relative mutations, write only after clear current-turn intent, pass an explicit structured
-expected quantity, refresh after conflict, and never infer a write from recipe planning. Each
-descriptor still carries its own narrow “when to use” guidance.
+before relative mutations, use one batch call for a confirmed current-turn list, pass explicit
+structured expectations, refresh after rejection or conflict, and never infer a write from recipe
+planning. Each descriptor still carries its own narrow “when to use” guidance.
 
 The older `ui://widget/kitchen-context-v*.html` resources are compatibility aliases for historical
 ChatGPT messages that may re-read their original resource URI. Remove them only after production

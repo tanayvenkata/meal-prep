@@ -2,7 +2,10 @@ import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AdjustPantryItemQuantityOutcome } from "@/lib/kitchen-service";
+import type {
+  AdjustPantryItemQuantityBatchOutcome,
+  AdjustPantryItemQuantityOutcome,
+} from "@/lib/kitchen-service";
 import {
   createMiseHttpServer,
   handleMiseMcpRequest,
@@ -32,6 +35,9 @@ const mockSetPantryItemQuantity = vi.fn<
 >();
 const mockAdjustPantryItemQuantity = vi.fn<
   typeof import("@/lib/kitchen-service").adjustPantryItemQuantity
+>();
+const mockAdjustPantryItemQuantities = vi.fn<
+  typeof import("@/lib/kitchen-service").adjustPantryItemQuantities
 >();
 const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalMcpPublicUrl = process.env.MCP_PUBLIC_URL;
@@ -122,12 +128,72 @@ beforeEach(async () => {
       },
     },
   });
+  mockAdjustPantryItemQuantities.mockReset();
+  mockAdjustPantryItemQuantities.mockResolvedValue({
+    ok: true,
+    value: {
+      status: "applied",
+      changes: [
+        {
+          index: 0,
+          operation: "consume",
+          name: "Eggs",
+          beforeQuantity: "12",
+          quantity: "10",
+          before: {
+            mode: "structured",
+            amount: "12",
+            unit: "count",
+            text: null,
+          },
+          delta: {
+            mode: "structured",
+            amount: "2",
+            unit: "count",
+            text: null,
+          },
+          after: {
+            mode: "structured",
+            amount: "10",
+            unit: "count",
+            text: null,
+          },
+        },
+        {
+          index: 1,
+          operation: "restock",
+          name: "Flour",
+          beforeQuantity: "2 lb",
+          quantity: "3 lb",
+          before: {
+            mode: "structured",
+            amount: "2",
+            unit: "lb",
+            text: null,
+          },
+          delta: {
+            mode: "structured",
+            amount: "1",
+            unit: "lb",
+            text: null,
+          },
+          after: {
+            mode: "structured",
+            amount: "3",
+            unit: "lb",
+            text: null,
+          },
+        },
+      ],
+    },
+  });
 
   httpServer = createMiseHttpServer({
     verifyAccessToken: verifyTestAccessToken,
     loadKitchenContext: mockLoadKitchenContext,
     setPantryItemQuantity: mockSetPantryItemQuantity,
     adjustPantryItemQuantity: mockAdjustPantryItemQuantity,
+    adjustPantryItemQuantities: mockAdjustPantryItemQuantities,
   });
   await new Promise<void>((resolve, reject) => {
     httpServer.once("error", reject);
@@ -200,7 +266,7 @@ describe("Mise MCP OAuth wire contract", () => {
           resources: {},
         },
         instructions: expect.stringContaining(
-          "Call get_kitchen_context before consume_pantry_item or restock_pantry_item",
+          "Read get_kitchen_context before consume, restock, or apply_pantry_adjustments",
         ),
       },
     });
@@ -217,10 +283,10 @@ describe("Mise MCP OAuth wire contract", () => {
       result: { instructions: string };
     };
     expect(body.result.instructions.slice(0, 512)).toContain(
-      "never infer a write from meal planning",
+      "never infer writes from meal planning",
     );
     expect(body.result.instructions.slice(0, 512)).toContain(
-      "On conflict, call get_kitchen_context again",
+      "On rejection or conflict, reread before retrying",
     );
     expect(body.result.instructions.length).toBeLessThanOrEqual(512);
   });
@@ -613,6 +679,361 @@ describe("Mise MCP OAuth wire contract", () => {
     );
   });
 
+  it("publishes and executes one atomic reviewed pantry batch tool", async () => {
+    const listResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 18,
+      method: "tools/list",
+    }, "test-token");
+    const listBody = await listResponse.json() as {
+      result: { tools: Array<Record<string, unknown>> };
+    };
+    const tool = listBody.result.tools.find(
+      ({ name }) => name === "apply_pantry_adjustments",
+    );
+    const expectedSchemes = [{ type: "oauth2", scopes: ["openid"] }];
+
+    expect(tool).toMatchObject({
+      description: expect.stringContaining("applies atomically"),
+      inputSchema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["changes"],
+        properties: {
+          changes: {
+            type: "array",
+            minItems: 1,
+            maxItems: 25,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: [
+                "name",
+                "operation",
+                "expectedQuantity",
+                "deltaQuantity",
+              ],
+            },
+          },
+        },
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+      },
+      securitySchemes: expectedSchemes,
+      _meta: { securitySchemes: expectedSchemes },
+    });
+    expect(tool?.outputSchema).toMatchObject({
+      type: "object",
+      additionalProperties: false,
+      required: ["outcome"],
+      properties: {
+        outcome: {
+          oneOf: [
+            expect.objectContaining({
+              properties: expect.objectContaining({
+                status: expect.objectContaining({ const: "applied" }),
+                changes: expect.objectContaining({
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 25,
+                }),
+              }),
+            }),
+            expect.objectContaining({
+              properties: expect.objectContaining({
+                status: expect.objectContaining({ const: "rejected" }),
+                failures: expect.objectContaining({
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 25,
+                }),
+              }),
+            }),
+          ],
+        },
+      },
+    });
+    const serializedOutputSchema = JSON.stringify(tool?.outputSchema);
+    for (const status of [
+      "applied",
+      "rejected",
+      "duplicate_target",
+      "not_found",
+      "unsupported_quantity",
+      "conflict",
+      "unit_mismatch",
+      "insufficient_quantity",
+      "amount_exceeded",
+    ]) {
+      expect(serializedOutputSchema).toContain(`"${status}"`);
+    }
+    expect((tool?._meta as Record<string, unknown>).ui).toBeUndefined();
+    expect(
+      (tool?._meta as Record<string, unknown>)["openai/outputTemplate"],
+    ).toBeUndefined();
+
+    const callResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 19,
+      method: "tools/call",
+      params: {
+        name: "apply_pantry_adjustments",
+        arguments: {
+          changes: [
+            {
+              name: " Eggs ",
+              operation: "consume",
+              expectedQuantity: { amount: " 12 ", unit: "count" },
+              deltaQuantity: { amount: " 2 ", unit: "count" },
+            },
+            {
+              name: "Flour",
+              operation: "restock",
+              expectedQuantity: { amount: "2", unit: "lb" },
+              deltaQuantity: { amount: "1", unit: "lb" },
+            },
+          ],
+        },
+      },
+    }, "test-token");
+    await expect(callResponse.json()).resolves.toMatchObject({
+      result: {
+        content: [{
+          type: "text",
+          text: "Applied 2 pantry changes atomically.",
+        }],
+        structuredContent: {
+          outcome: {
+            status: "applied",
+            changes: [
+              { index: 0, operation: "consume", name: "Eggs" },
+              { index: 1, operation: "restock", name: "Flour" },
+            ],
+          },
+        },
+      },
+    });
+    expect(mockAdjustPantryItemQuantities).toHaveBeenCalledTimes(1);
+    expect(mockAdjustPantryItemQuantities).toHaveBeenCalledWith(
+      "user-123",
+      {
+        changes: [
+          {
+            name: "Eggs",
+            operation: "consume",
+            expectedQuantity: "12 count",
+            deltaQuantity: "2 count",
+          },
+          {
+            name: "Flour",
+            operation: "restock",
+            expectedQuantity: "2 lb",
+            deltaQuantity: "1 lb",
+          },
+        ],
+      },
+    );
+  });
+
+  it("truthfully narrates every rejected pantry batch as all-or-nothing", async () => {
+    const structured = (
+      amount: string,
+      unit: "count" | "bag" | "lb",
+    ) => ({
+      mode: "structured" as const,
+      amount,
+      unit,
+      text: null,
+    });
+    const failures: Array<
+      Extract<
+        AdjustPantryItemQuantityBatchOutcome,
+        { status: "rejected" }
+      >["failures"][number]
+    > = [
+      {
+        index: 0,
+        name: "Eggs",
+        status: "duplicate_target",
+        duplicateIndexes: [0, 1],
+      },
+      { index: 0, name: "Milk", status: "not_found" },
+      {
+        index: 0,
+        name: "Milk",
+        status: "unsupported_quantity",
+        currentQuantity: "about half",
+      },
+      {
+        index: 0,
+        name: "Eggs",
+        status: "conflict",
+        expected: structured("12", "count"),
+        current: structured("10", "count"),
+      },
+      {
+        index: 0,
+        name: "Flour",
+        status: "unit_mismatch",
+        expectedUnit: "lb",
+        deltaUnit: "count",
+      },
+      {
+        index: 0,
+        name: "Rice",
+        status: "insufficient_quantity",
+        current: structured("1", "bag"),
+        delta: structured("2", "bag"),
+      },
+      {
+        index: 0,
+        name: "Flour",
+        status: "amount_exceeded",
+        current: structured("999999999.999999", "lb"),
+        delta: structured("0.000001", "lb"),
+      },
+    ];
+
+    for (const [index, failure] of failures.entries()) {
+      const outcome = {
+        status: "rejected" as const,
+        failures: [failure],
+      };
+      mockAdjustPantryItemQuantities.mockResolvedValueOnce({
+        ok: true,
+        value: outcome,
+      });
+      const response = await postMcp({
+        jsonrpc: "2.0",
+        id: 40 + index,
+        method: "tools/call",
+        params: {
+          name: "apply_pantry_adjustments",
+          arguments: {
+            changes: [{
+              name: "Eggs",
+              operation: "consume",
+              expectedQuantity: { amount: "12", unit: "count" },
+              deltaQuantity: { amount: "2", unit: "count" },
+            }],
+          },
+        },
+      }, "test-token");
+      const body = await response.json() as {
+        result: {
+          content: Array<{ text: string }>;
+          structuredContent: { outcome: unknown };
+        };
+      };
+      expect(body.result.content[0].text).toMatch(
+        /^No pantry changes were applied\./,
+      );
+      expect(body.result.structuredContent.outcome).toEqual(outcome);
+    }
+  });
+
+  it("rejects malformed, identity-injected, and unauthenticated pantry batches", async () => {
+    const invalidArguments = [
+      { changes: "not-an-array" },
+      { changes: [] },
+      {
+        changes: [{
+          name: "Eggs",
+          operation: "consume",
+          expectedQuantity: { amount: "12", unit: "count" },
+        }],
+      },
+      {
+        changes: [{
+          name: "Eggs",
+          operation: "set",
+          expectedQuantity: { amount: "12", unit: "count" },
+          deltaQuantity: { amount: "2", unit: "count" },
+        }],
+      },
+      {
+        changes: [{
+          name: "Eggs",
+          operation: "consume",
+          expectedQuantity: { amount: "12", unit: "serving" },
+          deltaQuantity: { amount: "2", unit: "serving" },
+        }],
+      },
+      {
+        changes: [{
+          name: "Eggs",
+          operation: "consume",
+          expectedQuantity: { amount: "01", unit: "count" },
+          deltaQuantity: { amount: "2", unit: "count" },
+        }],
+      },
+      {
+        changes: [{
+          name: "Eggs",
+          operation: "consume",
+          expectedQuantity: { amount: "12", unit: "count" },
+          deltaQuantity: { amount: "0", unit: "count" },
+        }],
+      },
+      {
+        changes: [{
+          name: "Eggs",
+          operation: "consume",
+          expectedQuantity: { amount: "12", unit: "count" },
+          deltaQuantity: { amount: "2", unit: "count" },
+        }],
+        userId: "attacker-selected-user",
+      },
+      {
+        changes: Array.from({ length: 26 }, () => ({
+          name: "Eggs",
+          operation: "consume",
+          expectedQuantity: { amount: "12", unit: "count" },
+          deltaQuantity: { amount: "2", unit: "count" },
+        })),
+      },
+    ];
+
+    for (const [index, argumentsValue] of invalidArguments.entries()) {
+      const response = await postMcp({
+        jsonrpc: "2.0",
+        id: 60 + index,
+        method: "tools/call",
+        params: {
+          name: "apply_pantry_adjustments",
+          arguments: argumentsValue,
+        },
+      }, "test-token");
+      await expect(response.json()).resolves.toMatchObject({
+        result: { isError: true },
+      });
+    }
+    expect(mockAdjustPantryItemQuantities).not.toHaveBeenCalled();
+
+    const unauthenticated = await postMcp({
+      jsonrpc: "2.0",
+      id: 80,
+      method: "tools/call",
+      params: {
+        name: "apply_pantry_adjustments",
+        arguments: {
+          changes: [{
+            name: "Eggs",
+            operation: "consume",
+            expectedQuantity: { amount: "12", unit: "count" },
+            deltaQuantity: { amount: "2", unit: "count" },
+          }],
+        },
+      },
+    });
+    expect(unauthenticated.status).toBe(401);
+    expect(mockAdjustPantryItemQuantities).not.toHaveBeenCalled();
+  });
+
   it("narrates every non-applied adjustment outcome without claiming a mutation", async () => {
     const structured = (
       amount: string,
@@ -839,6 +1260,7 @@ describe("Mise MCP OAuth wire contract", () => {
       loadKitchenContext: mockLoadKitchenContext,
       setPantryItemQuantity: mockSetPantryItemQuantity,
       adjustPantryItemQuantity: mockAdjustPantryItemQuantity,
+      adjustPantryItemQuantities: mockAdjustPantryItemQuantities,
     });
     const body = (await response.json()) as {
       result: { tools: Array<Record<string, unknown>> };
@@ -849,6 +1271,7 @@ describe("Mise MCP OAuth wire contract", () => {
       "set_pantry_item_quantity",
       "consume_pantry_item",
       "restock_pantry_item",
+      "apply_pantry_adjustments",
     ]) {
       const tool = body.result.tools.find(
         (candidate) => candidate.name === name,
@@ -859,6 +1282,72 @@ describe("Mise MCP OAuth wire contract", () => {
         (tool?._meta as Record<string, unknown>).securitySchemes,
       ).toEqual(expectedSchemes);
     }
+  });
+
+  it("executes the pantry batch once through the hosted transport with authenticated identity", async () => {
+    const request = new Request("https://mcp.mise.example/mcp", {
+      method: "POST",
+      headers: {
+        accept: "application/json, text/event-stream",
+        authorization: "Bearer test-token",
+        "content-type": "application/json",
+        "mcp-protocol-version": "2025-11-25",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 65,
+        method: "tools/call",
+        params: {
+          name: "apply_pantry_adjustments",
+          arguments: {
+            changes: [
+              {
+                name: "Eggs",
+                operation: "consume",
+                expectedQuantity: { amount: "12", unit: "count" },
+                deltaQuantity: { amount: "2", unit: "count" },
+              },
+              {
+                name: "Flour",
+                operation: "restock",
+                expectedQuantity: { amount: "2", unit: "lb" },
+                deltaQuantity: { amount: "1", unit: "lb" },
+              },
+            ],
+          },
+        },
+      }),
+    });
+    const response = await handleMiseMcpRequest(request, {
+      verifyAccessToken: verifyTestAccessToken,
+      loadKitchenContext: mockLoadKitchenContext,
+      setPantryItemQuantity: mockSetPantryItemQuantity,
+      adjustPantryItemQuantity: mockAdjustPantryItemQuantity,
+      adjustPantryItemQuantities: mockAdjustPantryItemQuantities,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      result: {
+        content: [{
+          type: "text",
+          text: "Applied 2 pantry changes atomically.",
+        }],
+        structuredContent: {
+          outcome: { status: "applied" },
+        },
+      },
+    });
+    expect(mockAdjustPantryItemQuantities).toHaveBeenCalledTimes(1);
+    expect(mockAdjustPantryItemQuantities).toHaveBeenCalledWith(
+      "user-123",
+      expect.objectContaining({
+        changes: expect.arrayContaining([
+          expect.objectContaining({ name: "Eggs" }),
+          expect.objectContaining({ name: "Flour" }),
+        ]),
+      }),
+    );
   });
 
   it("keeps OAuth discovery fail-closed on the hosted transport", async () => {
