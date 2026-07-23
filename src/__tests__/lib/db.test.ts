@@ -4,7 +4,7 @@ import {
   getItemByCanonicalName,
   getItemById,
   addItem,
-  setItemQuantity,
+  setItemQuantityByCanonicalName,
   updateItem,
   deleteItem,
   getKitchenTools,
@@ -12,6 +12,10 @@ import {
   updateKitchenTool,
   deleteKitchenTool,
 } from "@/lib/db";
+import {
+  parsePantryQuantity,
+  type PantryQuantity,
+} from "@/lib/pantry-quantity";
 import postgres from "postgres";
 
 // Owner connection for fixture setup only — app code under test uses mise_app via DATABASE_URL.
@@ -19,6 +23,12 @@ const sql = postgres(process.env.ADMIN_DATABASE_URL ?? process.env.DATABASE_URL!
 
 const TEST_USER_A = "00000000-0000-0000-0000-000000000001";
 const TEST_USER_B = "00000000-0000-0000-0000-000000000002";
+
+function quantity(input: string): PantryQuantity {
+  const result = parsePantryQuantity(input);
+  if (!result.ok) throw new Error(result.error);
+  return result.value;
+}
 
 beforeAll(async () => {
   // Conversations now reference auth.users as well. Clear any rows left by a
@@ -56,8 +66,8 @@ afterEach(async () => {
 
 describe("getItems", () => {
   it("returns only the items belonging to the given user", async () => {
-    await sql`insert into items (user_id, name, quantity) values (${TEST_USER_A}, 'eggs', '12')`;
-    await sql`insert into items (user_id, name, quantity) values (${TEST_USER_B}, 'milk', '1L')`;
+    await sql`insert into items (user_id, name, quantity_text) values (${TEST_USER_A}, 'eggs', '12')`;
+    await sql`insert into items (user_id, name, quantity_text) values (${TEST_USER_B}, 'milk', '1L')`;
 
     const items = await getItems(TEST_USER_A);
 
@@ -73,7 +83,7 @@ describe("getItems", () => {
 
 describe("addItem", () => {
   it("inserts an item and returns it with the correct values", async () => {
-    const result = await addItem(TEST_USER_A, "eggs", "12");
+    const result = await addItem(TEST_USER_A, "eggs", quantity("12"));
 
     expect(result.status).toBe("created");
     expect(result.item.name).toBe("eggs");
@@ -85,8 +95,8 @@ describe("addItem", () => {
   });
 
   it("returns the existing owned item for canonical duplicate names", async () => {
-    const created = await addItem(TEST_USER_A, "Eggs", "12");
-    const duplicate = await addItem(TEST_USER_A, "  ＥＧＧＳ  ", "6");
+    const created = await addItem(TEST_USER_A, "Eggs", quantity("12"));
+    const duplicate = await addItem(TEST_USER_A, "  ＥＧＧＳ  ", quantity("6"));
 
     expect(created.status).toBe("created");
     expect(duplicate).toEqual({
@@ -97,8 +107,8 @@ describe("addItem", () => {
   });
 
   it("allows two users to store the same canonical pantry name", async () => {
-    const userA = await addItem(TEST_USER_A, "Eggs", "12");
-    const userB = await addItem(TEST_USER_B, " eggs ", "6");
+    const userA = await addItem(TEST_USER_A, "Eggs", quantity("12"));
+    const userB = await addItem(TEST_USER_B, " eggs ", quantity("6"));
 
     expect(userA.status).toBe("created");
     expect(userB.status).toBe("created");
@@ -108,7 +118,7 @@ describe("addItem", () => {
 
 describe("canonical item lookup", () => {
   it("finds one owned row across compatibility, whitespace, and case variants", async () => {
-    const created = await addItem(TEST_USER_A, "Duck   Eggs", "12");
+    const created = await addItem(TEST_USER_A, "Duck   Eggs", quantity("12"));
 
     await expect(
       getItemByCanonicalName(TEST_USER_A, "  ＤＵＣＫ eggs "),
@@ -181,13 +191,13 @@ describe("kitchen tools", () => {
 describe("updateItem", () => {
   it("updates the quantity of the given item", async () => {
     const [inserted] = await sql`
-      insert into items (user_id, name, quantity) values (${TEST_USER_A}, 'eggs', '12') returning *
+      insert into items (user_id, name, quantity_text) values (${TEST_USER_A}, 'eggs', '12') returning *
     `;
 
     const updated = await updateItem(
       TEST_USER_A,
       inserted.id,
-      { quantity: "6" },
+      { quantity: quantity("6") },
     );
 
     expect(updated.status).toBe("updated");
@@ -198,13 +208,13 @@ describe("updateItem", () => {
 
   it("updates both name and quantity when name is provided", async () => {
     const [inserted] = await sql`
-      insert into items (user_id, name, quantity) values (${TEST_USER_A}, 'eggs', '12') returning *
+      insert into items (user_id, name, quantity_text) values (${TEST_USER_A}, 'eggs', '12') returning *
     `;
 
     const updated = await updateItem(
       TEST_USER_A,
       inserted.id,
-      { quantity: "6", name: "duck eggs" },
+      { quantity: quantity("6"), name: "duck eggs" },
     );
 
     expect(updated.status).toBe("updated");
@@ -215,21 +225,21 @@ describe("updateItem", () => {
 
   it("cannot update another user's item", async () => {
     const [inserted] = await sql`
-      insert into items (user_id, name, quantity) values (${TEST_USER_B}, 'milk', '1L') returning *
+      insert into items (user_id, name, quantity_text) values (${TEST_USER_B}, 'milk', '1L') returning *
     `;
 
     const result = await updateItem(
       TEST_USER_A,
       inserted.id,
-      { quantity: "2L" },
+      { quantity: quantity("2L") },
     );
 
     expect(result).toEqual({ status: "not_found" });
   });
 
   it("returns name conflict when a rename collides canonically", async () => {
-    const eggs = await addItem(TEST_USER_A, "Eggs", "12");
-    const milk = await addItem(TEST_USER_A, "Milk", "1 gallon");
+    const eggs = await addItem(TEST_USER_A, "Eggs", quantity("12"));
+    const milk = await addItem(TEST_USER_A, "Milk", quantity("1 gallon"));
 
     const result = await updateItem(
       TEST_USER_A,
@@ -242,8 +252,12 @@ describe("updateItem", () => {
   });
 
   it("does not overwrite fields omitted from a later update", async () => {
-    const created = await addItem(TEST_USER_A, "Eggs", "12");
-    await setItemQuantity(TEST_USER_A, created.item.id, "6");
+    const created = await addItem(TEST_USER_A, "Eggs", quantity("12"));
+    await setItemQuantityByCanonicalName(
+      TEST_USER_A,
+      "Eggs",
+      quantity("6"),
+    );
 
     const renamed = await updateItem(
       TEST_USER_A,
@@ -260,7 +274,7 @@ describe("updateItem", () => {
 
 describe("RLS enforcement", () => {
   it("blocks a cross-user unfiltered query when impersonating via authenticated role, but not on the raw connection", async () => {
-    await sql`insert into items (user_id, name, quantity) values (${TEST_USER_B}, 'milk', '1L')`;
+    await sql`insert into items (user_id, name, quantity_text) values (${TEST_USER_B}, 'milk', '1L')`;
 
     // Control: the raw `postgres`-role connection bypasses RLS entirely, so it
     // sees B's row even with a query that has no impersonation at all -- this
@@ -283,7 +297,7 @@ describe("RLS enforcement", () => {
 describe("deleteItem", () => {
   it("deletes the given item", async () => {
     const [inserted] = await sql`
-      insert into items (user_id, name, quantity) values (${TEST_USER_A}, 'eggs', '12') returning *
+      insert into items (user_id, name, quantity_text) values (${TEST_USER_A}, 'eggs', '12') returning *
     `;
 
     await deleteItem(TEST_USER_A, inserted.id);
@@ -294,7 +308,7 @@ describe("deleteItem", () => {
 
   it("cannot delete another user's item", async () => {
     const [inserted] = await sql`
-      insert into items (user_id, name, quantity) values (${TEST_USER_B}, 'milk', '1L') returning *
+      insert into items (user_id, name, quantity_text) values (${TEST_USER_B}, 'milk', '1L') returning *
     `;
 
     await deleteItem(TEST_USER_A, inserted.id);

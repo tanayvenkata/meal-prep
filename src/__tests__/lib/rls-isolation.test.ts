@@ -10,6 +10,10 @@ import {
   getKitchenTools,
   getDatabaseConnectionSafety,
 } from "@/lib/db";
+import {
+  parsePantryQuantity,
+  type PantryQuantity,
+} from "@/lib/pantry-quantity";
 import postgres from "postgres";
 
 // Owner connection for fixtures / privilege catalog checks only.
@@ -20,6 +24,12 @@ const appSql = postgres(process.env.DATABASE_URL!);
 const USER_A = "00000000-0000-0000-0000-0000000000a1";
 const USER_B = "00000000-0000-0000-0000-0000000000b2";
 const id = () => crypto.randomUUID();
+
+function quantity(input: string): PantryQuantity {
+  const result = parsePantryQuantity(input);
+  if (!result.ok) throw new Error(result.error);
+  return result.value;
+}
 
 async function asUser<T>(
   userId: string,
@@ -82,7 +92,7 @@ afterEach(async () => {
 
 describe("RLS ownership across all four user-data tables", () => {
   it("app layer helpers never leak user B rows to user A", async () => {
-    await addItem(USER_B, "milk", "1L");
+    await addItem(USER_B, "milk", quantity("1L"));
     await addKitchenTool(USER_B, "Oven", "appliance");
     const convo = await createConversation(USER_B, "milk chat", id());
     await addMessage(USER_B, convo.id, "user", "what about milk?");
@@ -94,7 +104,7 @@ describe("RLS ownership across all four user-data tables", () => {
   });
 
   it("database policies hide unfiltered cross-user selects under authenticated", async () => {
-    await addItem(USER_B, "milk", "1L");
+    await addItem(USER_B, "milk", quantity("1L"));
     await addKitchenTool(USER_B, "Oven", "appliance");
     const convo = await createConversation(USER_B, "milk chat", id());
     await addMessage(USER_B, convo.id, "user", "what about milk?");
@@ -119,7 +129,7 @@ describe("RLS ownership across all four user-data tables", () => {
       asUser(
         USER_A,
         (tx) => tx`
-          insert into items (user_id, name, quantity)
+          insert into items (user_id, name, quantity_text)
           values (${USER_B}, 'forged milk', '1L')
         `,
       ),
@@ -160,7 +170,7 @@ describe("RLS ownership across all four user-data tables", () => {
     const convo = await createConversation(USER_B, "milk chat", id());
     const message = await addMessage(USER_B, convo.id, "user", "starter");
     const [item] = await sql`
-      insert into items (user_id, name, quantity)
+      insert into items (user_id, name, quantity_text)
       values (${USER_B}, 'milk', '1L')
       returning id
     `;
@@ -197,7 +207,7 @@ describe("RLS ownership across all four user-data tables", () => {
     const convo = await createConversation(USER_B, "milk chat", id());
     const message = await addMessage(USER_B, convo.id, "user", "starter");
     const [item] = await sql`
-      insert into items (user_id, name, quantity)
+      insert into items (user_id, name, quantity_text)
       values (${USER_B}, 'milk', '1L')
       returning id
     `;
@@ -237,8 +247,8 @@ describe("RLS ownership across all four user-data tables", () => {
   });
 
   it("OAuth clients can read only their own pantry and kitchen tools", async () => {
-    await addItem(USER_A, "eggs", "12");
-    await addItem(USER_B, "milk", "1L");
+    await addItem(USER_A, "eggs", quantity("12"));
+    await addItem(USER_B, "milk", quantity("1L"));
     await addKitchenTool(USER_A, "Skillet", "cookware");
     await addKitchenTool(USER_B, "Oven", "appliance");
     const convo = await createConversation(USER_A, "private chat", id());
@@ -272,7 +282,7 @@ describe("RLS ownership across all four user-data tables", () => {
       asOAuthUser(
         USER_A,
         (tx) => tx`
-          insert into items (user_id, name, quantity)
+          insert into items (user_id, name, quantity_text)
           values (${USER_A}, 'oauth eggs', '12')
         `,
       ),
@@ -307,14 +317,14 @@ describe("RLS ownership across all four user-data tables", () => {
   });
 
   it("OAuth clients cannot update or delete owned rows directly", async () => {
-    const item = (await addItem(USER_A, "eggs", "12")).item;
+    const item = (await addItem(USER_A, "eggs", quantity("12"))).item;
     const tool = await addKitchenTool(USER_A, "Skillet", "cookware");
     const convo = await createConversation(USER_A, "private chat", id());
     const message = await addMessage(USER_A, convo.id, "user", "private message");
 
     const updatedItems = await asOAuthUser(
       USER_A,
-      (tx) => tx`update items set quantity = '0' where id = ${item.id} returning id`,
+      (tx) => tx`update items set quantity_text = '0' where id = ${item.id} returning id`,
     );
     const updatedTools = await asOAuthUser(
       USER_A,
@@ -540,11 +550,11 @@ describe("fail-closed application connection (mise_app)", () => {
   });
 
   it("denies bare queries without withUserContext (no silent owner path)", async () => {
-    await addItem(USER_B, "milk", "1L");
+    await addItem(USER_B, "milk", quantity("1L"));
 
     await expect(appSql`select * from items`).rejects.toThrow(/permission denied|must be owner/i);
     await expect(
-      appSql`insert into items (user_id, name, quantity) values (${USER_A}, 'eggs', '12')`,
+      appSql`insert into items (user_id, name, quantity_text) values (${USER_A}, 'eggs', '12')`,
     ).rejects.toThrow(/permission denied|must be owner/i);
   });
 
@@ -608,7 +618,7 @@ describe("fail-closed application connection (mise_app)", () => {
   });
 
   it("still serves same-user data through withUserContext helpers", async () => {
-    await addItem(USER_A, "eggs", "12");
+    await addItem(USER_A, "eggs", quantity("12"));
     await addKitchenTool(USER_A, "Skillet", "cookware");
     const convo = await createConversation(USER_A, "eggs chat", id());
     await addMessage(USER_A, convo.id, "user", "what can I make?");
