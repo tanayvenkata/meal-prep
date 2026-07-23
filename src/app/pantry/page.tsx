@@ -169,10 +169,20 @@ export default function PantryPage() {
         </div>
       </section>
 
-      {error && <p className="mb-4 text-sm text-text-danger">{error}</p>}
+      {error && <p role="alert" className="mb-4 text-sm text-text-danger">{error}</p>}
 
       {loading ? (
-        <p className="text-sm text-text-secondary">Loading pantry…</p>
+        <div role="status" aria-label="Loading pantry" className="space-y-3">
+          <p className="text-sm text-text-secondary">Loading pantry…</p>
+          <div data-testid="pantry-loading-rows" className="divide-y divide-outline border-y border-outline" aria-hidden="true">
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="space-y-2 py-3">
+                <div className="h-4 w-2/3 animate-pulse bg-surface-raised" />
+                <div className="h-3 w-1/3 animate-pulse bg-surface-raised" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : items.length === 0 ? (
         <p className="text-sm text-text-secondary">Nothing here yet. Add the ingredients you use.</p>
       ) : visibleItems.length === 0 ? (
