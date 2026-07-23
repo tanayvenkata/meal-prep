@@ -8,6 +8,7 @@ vi.mock("@/lib/db", () => ({
   addItem: vi.fn(),
   addKitchenTool: vi.fn(),
   deleteItem: vi.fn(),
+  deleteItems: vi.fn(),
   deleteKitchenTool: vi.fn(),
   getItemById: vi.fn(),
   getItemByCanonicalName: vi.fn(),
@@ -27,6 +28,7 @@ import {
   addItem,
   addKitchenTool,
   deleteItem,
+  deleteItems,
   deleteKitchenTool as deleteKitchenToolRecord,
   getItemById,
   getItemByCanonicalName,
@@ -46,6 +48,7 @@ import {
   createPantryItem,
   deleteKitchenTool,
   deletePantryItem,
+  deletePantryItems,
   getKitchenContext,
   listKitchenTools,
   listPantryItems,
@@ -64,6 +67,7 @@ const mockAdjustItemQuantity = vi.mocked(adjustItemQuantityByCanonicalName);
 const mockAddItem = vi.mocked(addItem);
 const mockAddKitchenTool = vi.mocked(addKitchenTool);
 const mockDeleteItem = vi.mocked(deleteItem);
+const mockDeleteItems = vi.mocked(deleteItems);
 const mockDeleteKitchenTool = vi.mocked(deleteKitchenToolRecord);
 const mockGetItemById = vi.mocked(getItemById);
 const mockGetItemByCanonicalName = vi.mocked(getItemByCanonicalName);
@@ -468,6 +472,49 @@ describe("pantry commands", () => {
       value: null,
     });
     expect(mockDeleteItem).toHaveBeenCalledWith("user-123", 7);
+  });
+
+  it("validates and delegates atomic pantry batch deletion", async () => {
+    await expect(deletePantryItems("user-123", {})).resolves.toEqual({
+      ok: false,
+      error: "ids must be an array",
+    });
+    await expect(deletePantryItems("user-123", { ids: [1] })).resolves.toEqual({
+      ok: false,
+      error: "select at least two pantry items",
+    });
+    await expect(
+      deletePantryItems("user-123", { ids: [1, "2"] }),
+    ).resolves.toEqual({
+      ok: false,
+      error: "every id must be a positive integer",
+    });
+    await expect(
+      deletePantryItems("user-123", { ids: [1, 1] }),
+    ).resolves.toEqual({
+      ok: false,
+      error: "ids must not contain duplicates",
+    });
+    await expect(
+      deletePantryItems("user-123", {
+        ids: Array.from({ length: 101 }, (_, index) => index + 1),
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      error: "ids must contain 100 items or fewer",
+    });
+
+    mockDeleteItems.mockResolvedValue({
+      status: "deleted",
+      ids: [1, 2],
+    });
+    await expect(
+      deletePantryItems("user-123", { ids: [1, 2] }),
+    ).resolves.toEqual({
+      ok: true,
+      value: { status: "deleted", ids: [1, 2] },
+    });
+    expect(mockDeleteItems).toHaveBeenCalledWith("user-123", [1, 2]);
   });
 
   it("sets an unambiguous pantry quantity after normalized name matching", async () => {

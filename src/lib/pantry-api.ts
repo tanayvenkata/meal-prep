@@ -89,4 +89,8 @@ export const pantryApi = {
   async remove(id: number): Promise<void> {
     await request<{ success: true }>("DELETE", { id });
   },
+
+  async removeMany(ids: number[]): Promise<void> {
+    await request<{ success: true }>("DELETE", { ids });
+  },
 };

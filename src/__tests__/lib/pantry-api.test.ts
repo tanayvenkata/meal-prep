@@ -68,6 +68,13 @@ describe("pantryApi", () => {
       { id: 7 },
       { success: true },
     ],
+    [
+      "removeMany",
+      () => pantryApi.removeMany([7, 8]),
+      "DELETE",
+      { ids: [7, 8] },
+      { success: true },
+    ],
   ] as const)(
     "sends typed %s mutations through the shared request contract",
     async (_name, call, method, body, responseBody) => {

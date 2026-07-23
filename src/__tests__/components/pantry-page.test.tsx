@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PantryPage from "@/app/pantry/page";
 import { pantryApi, type PantryItem } from "@/lib/pantry-api";
@@ -12,6 +13,7 @@ vi.mock("@/lib/pantry-api", () => ({
     add: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
+    removeMany: vi.fn(),
   },
 }));
 
@@ -76,5 +78,54 @@ describe("PantryPage request states", () => {
     expect(
       screen.getByRole("heading", { name: "Low turnover" }),
     ).toBeInTheDocument();
+  });
+
+  it("confirms and removes two selected items through the batch boundary", async () => {
+    const user = userEvent.setup();
+    vi.mocked(pantryApi.list)
+      .mockResolvedValueOnce(pantryItems)
+      .mockResolvedValueOnce([]);
+    vi.mocked(pantryApi.removeMany).mockResolvedValue();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(<PantryPage />);
+
+    await user.click(await screen.findByRole("button", { name: "Select items" }));
+    await user.click(screen.getByRole("checkbox", { name: "Select Eggs" }));
+    expect(
+      screen.getByRole("button", { name: "Delete selected" }),
+    ).toBeDisabled();
+    await user.click(
+      screen.getByRole("checkbox", { name: "Select Canned tomatoes" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Delete selected" }));
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Delete 2 selected pantry items? This cannot be undone.",
+    );
+    await waitFor(() => {
+      expect(pantryApi.removeMany).toHaveBeenCalledWith([1, 2]);
+    });
+    expect(
+      await screen.findByText("Nothing here yet. Add the ingredients you use."),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves selected items untouched when deletion is not confirmed", async () => {
+    const user = userEvent.setup();
+    vi.mocked(pantryApi.list).mockResolvedValue(pantryItems);
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    render(<PantryPage />);
+
+    await user.click(await screen.findByRole("button", { name: "Select items" }));
+    await user.click(screen.getByRole("checkbox", { name: "Select Eggs" }));
+    await user.click(
+      screen.getByRole("checkbox", { name: "Select Canned tomatoes" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Delete selected" }));
+
+    expect(pantryApi.removeMany).not.toHaveBeenCalled();
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
   });
 });

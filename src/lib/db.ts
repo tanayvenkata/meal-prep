@@ -53,6 +53,10 @@ export type UpdateItemChanges = {
   turnover?: Turnover;
 };
 
+export type DeleteItemsResult =
+  | { status: "deleted"; ids: number[] }
+  | { status: "not_found"; ids: number[] };
+
 export type SetItemQuantityResult =
   | { status: "updated" | "unchanged"; item: Item; beforeQuantity: string }
   | { status: "not_found" };
@@ -1214,6 +1218,34 @@ export async function deleteItem(userId: string, id: number): Promise<void> {
       where id = ${id} and user_id = ${userId}
     `,
   );
+}
+
+export async function deleteItems(
+  userId: string,
+  ids: number[],
+): Promise<DeleteItemsResult> {
+  return withUserContext(userId, async (tx) => {
+    const owned = await tx<{ id: number }[]>`
+      select id
+      from items
+      where user_id = ${userId}
+        and id = any(${tx.array(ids)}::bigint[])
+      order by id
+      for update
+    `;
+    const ownedIds = new Set(owned.map(({ id }) => Number(id)));
+    const missingIds = ids.filter((id) => !ownedIds.has(id));
+    if (missingIds.length > 0) {
+      return { status: "not_found", ids: missingIds };
+    }
+
+    await tx`
+      delete from items
+      where user_id = ${userId}
+        and id = any(${tx.array(ids)}::bigint[])
+    `;
+    return { status: "deleted", ids };
+  });
 }
 
 export async function getKitchenTools(userId: string): Promise<KitchenTool[]> {
