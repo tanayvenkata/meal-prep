@@ -72,7 +72,10 @@ Not yet done: desktop pass (mirror house style), onboarding/signup, settings/acc
 2. **Chat history**: needs `conversations` (id, user, title, created) + `messages` (conversation_id, role, content, time). Save each turn; auto-title from first user message.
 3. **Dish log** (powers all gamification): each cooked dish logs name, cuisine, time, taste rating, tools used. Log from dish #1.
 4. **Cooking Wrapped / Passport** read from the dish log. Monthly engine first; yearly is the same card scaled up.
-5. Pantry: name + quantity (free text — full keyboard, not numeric). No "low" flag for now; let the LLM infer.
+5. Pantry: name + structured amount/unit for measurable inventory, with `count` for
+   discrete items and an explicit custom-text fallback for estimates. Keep the full
+   keyboard available; do not infer a missing unit from display text. No "low" flag for
+   now; let the LLM infer.
 
 ## Fidelity discipline
 Core 8 screens = shippable hi-fi. New features (profile, passport, ritual) stay concept-level until scheduled. Don't over-polish unbuilt features.

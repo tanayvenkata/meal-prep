@@ -475,6 +475,13 @@ describe("Mise MCP OAuth wire contract", () => {
         type: "object",
         additionalProperties: false,
         required: ["name", "quantity"],
+        properties: {
+          quantity: {
+            type: "object",
+            additionalProperties: false,
+            required: ["amount", "unit"],
+          },
+        },
       },
       outputSchema: {
         type: "object",
@@ -503,7 +510,10 @@ describe("Mise MCP OAuth wire contract", () => {
       method: "tools/call",
       params: {
         name: "set_pantry_item_quantity",
-        arguments: { name: " Eggs ", quantity: " 6 " },
+        arguments: {
+          name: " Eggs ",
+          quantity: { amount: "6", unit: "count" },
+        },
       },
     }, "test-token");
     const callBody = await callResponse.json() as {
@@ -529,7 +539,7 @@ describe("Mise MCP OAuth wire contract", () => {
     });
     expect(mockSetPantryItemQuantity).toHaveBeenCalledWith("user-123", {
       name: "Eggs",
-      quantity: "6",
+      quantity: { amount: "6", unit: "count" },
     });
     expect(Object.keys(callBody.result.structuredContent)).toEqual([
       "status",
@@ -537,6 +547,26 @@ describe("Mise MCP OAuth wire contract", () => {
       "beforeQuantity",
       "quantity",
     ]);
+  });
+
+  it("rejects bare display text before the exact quantity service runs", async () => {
+    const response = await postMcp({
+      jsonrpc: "2.0",
+      id: 12,
+      method: "tools/call",
+      params: {
+        name: "set_pantry_item_quantity",
+        arguments: { name: "Sweet potatoes", quantity: "11" },
+      },
+    }, "test-token");
+    const body = await response.json() as {
+      result: { isError?: boolean; structuredContent?: unknown };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.result.isError).toBe(true);
+    expect(body.result.structuredContent).toBeUndefined();
+    expect(mockSetPantryItemQuantity).not.toHaveBeenCalled();
   });
 
   it("publishes and executes retry-safe kitchen tool creation without exposing ownership fields", async () => {
@@ -683,7 +713,7 @@ describe("Mise MCP OAuth wire contract", () => {
         name: "set_pantry_item_quantity",
         arguments: {
           name: "Eggs",
-          quantity: "6",
+          quantity: { amount: "6", unit: "count" },
           userId: "attacker-selected-user",
         },
       },

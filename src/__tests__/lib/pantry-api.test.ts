@@ -14,6 +14,11 @@ const item = {
   id: 7,
   name: "Eggs",
   quantity: "12",
+  quantityDetails: {
+    mode: "structured" as const,
+    amount: "12",
+    unit: "count" as const,
+  },
   turnover: "high" as const,
   created_at: "2026-07-23T12:00:00Z",
 };
@@ -42,11 +47,23 @@ describe("pantryApi", () => {
       "add",
       () => pantryApi.add({
         name: "Eggs",
-        quantity: "12",
+        quantity: {
+          mode: "structured",
+          amount: "12",
+          unit: "count",
+        },
         turnover: "high",
       }),
       "POST",
-      { name: "Eggs", quantity: "12", turnover: "high" },
+      {
+        name: "Eggs",
+        quantity: {
+          mode: "structured",
+          amount: "12",
+          unit: "count",
+        },
+        turnover: "high",
+      },
       item,
     ],
     [
@@ -54,12 +71,34 @@ describe("pantryApi", () => {
       () => pantryApi.update({
         id: 7,
         name: "Eggs",
-        quantity: "6",
+        quantity: {
+          mode: "structured",
+          amount: "6",
+          unit: "count",
+        },
         turnover: "low",
       }),
       "PUT",
-      { id: 7, name: "Eggs", quantity: "6", turnover: "low" },
-      { ...item, quantity: "6", turnover: "low" },
+      {
+        id: 7,
+        name: "Eggs",
+        quantity: {
+          mode: "structured",
+          amount: "6",
+          unit: "count",
+        },
+        turnover: "low",
+      },
+      {
+        ...item,
+        quantity: "6",
+        quantityDetails: {
+          mode: "structured",
+          amount: "6",
+          unit: "count",
+        },
+        turnover: "low",
+      },
     ],
     [
       "remove",
@@ -104,7 +143,11 @@ describe("pantryApi", () => {
 
     const error = await pantryApi.add({
       name: "Eggs",
-      quantity: "12",
+      quantity: {
+        mode: "structured",
+        amount: "12",
+        unit: "count",
+      },
       turnover: "high",
     }).catch((caught) => caught);
 

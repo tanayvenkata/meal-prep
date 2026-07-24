@@ -294,7 +294,10 @@ describe("pantry commands", () => {
       { name: "paprika", turnover: "medium" },
       "turnover must be high or low",
     ],
-    [{ name: "paprika", quantity: 2 }, "quantity must be a string"],
+    [
+      { name: "paprika", quantity: 2 },
+      "quantity must be text or an explicit quantity object",
+    ],
     [
       { name: "paprika", quantity: "a".repeat(101) },
       "quantity must be 100 characters or fewer",
@@ -449,7 +452,7 @@ describe("pantry commands", () => {
       "name must be 100 characters or fewer",
     ],
     [{ id: 1, turnover: "medium" }, "turnover must be high or low"],
-    [{ id: 1, quantity: null }, "quantity must be a string"],
+    [{ id: 1, quantity: null }, "quantity must be text or an explicit quantity object"],
     [
       { id: 1, quantity: "a".repeat(101) },
       "quantity must be 100 characters or fewer",
@@ -517,7 +520,7 @@ describe("pantry commands", () => {
     expect(mockDeleteItems).toHaveBeenCalledWith("user-123", [1, 2]);
   });
 
-  it("sets an unambiguous pantry quantity after normalized name matching", async () => {
+  it("sets an explicit structured pantry quantity after normalized name matching", async () => {
     const eggs = fakeItem({
       id: 7,
       name: "Duck   Eggs",
@@ -532,7 +535,11 @@ describe("pantry commands", () => {
 
     await expect(setPantryItemQuantity("user-123", {
       name: "  duck eggs ",
-      quantity: " 6 ",
+      quantity: {
+        mode: "structured",
+        amount: "6",
+        unit: "count",
+      },
     })).resolves.toEqual({
       ok: true,
       value: {
@@ -546,10 +553,10 @@ describe("pantry commands", () => {
       "user-123",
       "duck eggs",
       {
-        mode: "text",
-        amount: null,
-        unit: null,
-        text: "6",
+        mode: "structured",
+        amount: "6",
+        unit: "count",
+        text: null,
       },
     );
   });
@@ -563,7 +570,11 @@ describe("pantry commands", () => {
 
     await expect(setPantryItemQuantity("user-123", {
       name: "eggs",
-      quantity: "6",
+      quantity: {
+        mode: "structured",
+        amount: "6",
+        unit: "count",
+      },
     })).resolves.toEqual({
       ok: true,
       value: {
@@ -577,10 +588,10 @@ describe("pantry commands", () => {
       "user-123",
       "eggs",
       {
-        mode: "text",
-        amount: null,
-        unit: null,
-        text: "6",
+        mode: "structured",
+        amount: "6",
+        unit: "count",
+        text: null,
       },
     );
   });
@@ -590,7 +601,11 @@ describe("pantry commands", () => {
 
     await expect(setPantryItemQuantity("user-123", {
       name: "Eggs",
-      quantity: "6",
+      quantity: {
+        mode: "structured",
+        amount: "6",
+        unit: "count",
+      },
     })).resolves.toEqual({
       ok: true,
       value: { status: "not_found", name: "Eggs" },
@@ -599,10 +614,10 @@ describe("pantry commands", () => {
       "user-123",
       "Eggs",
       {
-        mode: "text",
-        amount: null,
-        unit: null,
-        text: "6",
+        mode: "structured",
+        amount: "6",
+        unit: "count",
+        text: null,
       },
     );
   });
@@ -612,7 +627,11 @@ describe("pantry commands", () => {
 
     await expect(setPantryItemQuantity("user-123", {
       name: "Eggs",
-      quantity: "6",
+      quantity: {
+        mode: "structured",
+        amount: "6",
+        unit: "count",
+      },
     })).resolves.toEqual({
       ok: true,
       value: { status: "not_found", name: "Eggs" },
@@ -622,9 +641,15 @@ describe("pantry commands", () => {
   });
 
   it.each([
-    [{ quantity: "6" }, "name is required"],
+    [{
+      quantity: { mode: "structured", amount: "6", unit: "count" },
+    }, "name is required"],
     [{ name: "Eggs" }, "quantity is required"],
     [{ name: "Eggs", quantity: "   " }, "quantity is required"],
+    [{
+      name: "Eggs",
+      quantity: { mode: "text", text: "6" },
+    }, "quantity must include a recognized unit, such as 2 count or 0.5 lb"],
     [
       { name: "Eggs", quantity: "a".repeat(101) },
       "quantity must be 100 characters or fewer",

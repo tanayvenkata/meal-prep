@@ -22,6 +22,11 @@ const pantryItems: PantryItem[] = [
     id: 1,
     name: "Eggs",
     quantity: "12",
+    quantityDetails: {
+      mode: "structured",
+      amount: "12",
+      unit: "count",
+    },
     turnover: "high",
     created_at: "2026-07-23T12:00:00.000Z",
   },
@@ -29,6 +34,10 @@ const pantryItems: PantryItem[] = [
     id: 2,
     name: "Canned tomatoes",
     quantity: "2 cans",
+    quantityDetails: {
+      mode: "text",
+      text: "2 cans",
+    },
     turnover: "low",
     created_at: "2026-07-22T12:00:00.000Z",
   },
@@ -78,6 +87,154 @@ describe("PantryPage request states", () => {
     expect(
       screen.getByRole("heading", { name: "Low turnover" }),
     ).toBeInTheDocument();
+  });
+
+  it("adds a measured quantity with an explicit amount and unit", async () => {
+    const user = userEvent.setup();
+    vi.mocked(pantryApi.list)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    vi.mocked(pantryApi.add).mockResolvedValue({
+      id: 3,
+      name: "Rice",
+      quantity: "3 lb",
+      quantityDetails: {
+        mode: "structured",
+        amount: "3",
+        unit: "lb",
+      },
+      turnover: "high",
+      created_at: "2026-07-23T13:00:00.000Z",
+    });
+
+    render(<PantryPage />);
+
+    await user.type(screen.getByRole("textbox", { name: "Ingredient name" }), "Rice");
+    await user.type(screen.getByRole("textbox", { name: "Quantity amount" }), "3");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Quantity unit" }), "lb");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => {
+      expect(pantryApi.add).toHaveBeenCalledWith({
+        name: "Rice",
+        quantity: {
+          mode: "structured",
+          amount: "3",
+          unit: "lb",
+        },
+        turnover: "high",
+      });
+    });
+  });
+
+  it("uses free text only after the user selects the custom fallback", async () => {
+    const user = userEvent.setup();
+    vi.mocked(pantryApi.list)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    vi.mocked(pantryApi.add).mockResolvedValue({
+      id: 4,
+      name: "Rice",
+      quantity: "about half a bag",
+      quantityDetails: {
+        mode: "text",
+        text: "about half a bag",
+      },
+      turnover: "high",
+      created_at: "2026-07-23T13:00:00.000Z",
+    });
+
+    render(<PantryPage />);
+
+    await user.type(screen.getByRole("textbox", { name: "Ingredient name" }), "Rice");
+    await user.click(screen.getByRole("button", { name: "Use custom text" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Quantity custom text" }),
+      "about half a bag",
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => {
+      expect(pantryApi.add).toHaveBeenCalledWith({
+        name: "Rice",
+        quantity: {
+          mode: "text",
+          text: "about half a bag",
+        },
+        turnover: "high",
+      });
+    });
+  });
+
+  it("preserves a structured count when saving an unrelated edit", async () => {
+    const user = userEvent.setup();
+    vi.mocked(pantryApi.list)
+      .mockResolvedValueOnce(pantryItems)
+      .mockResolvedValueOnce(pantryItems);
+    vi.mocked(pantryApi.update).mockResolvedValue(pantryItems[0]);
+
+    render(<PantryPage />);
+
+    const editButtons = await screen.findAllByRole("button", { name: "Edit" });
+    await user.click(editButtons[0]);
+    expect(screen.getByRole("textbox", { name: "Edit quantity amount" }))
+      .toHaveValue("12");
+    expect(screen.getByRole("combobox", { name: "Edit quantity unit" }))
+      .toHaveValue("count");
+    await user.clear(screen.getByRole("textbox", { name: "Edit ingredient name" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Edit ingredient name" }),
+      "Duck eggs",
+    );
+    await user.click(screen.getByRole("button", { name: "Save item" }));
+
+    await waitFor(() => {
+      expect(pantryApi.update).toHaveBeenCalledWith({
+        id: 1,
+        name: "Duck eggs",
+        turnover: "high",
+      });
+    });
+  });
+
+  it("updates a structured count without passing display text", async () => {
+    const user = userEvent.setup();
+    vi.mocked(pantryApi.list)
+      .mockResolvedValueOnce(pantryItems)
+      .mockResolvedValueOnce(pantryItems);
+    vi.mocked(pantryApi.update).mockResolvedValue({
+      ...pantryItems[0],
+      quantity: "10",
+      quantityDetails: {
+        mode: "structured",
+        amount: "10",
+        unit: "count",
+      },
+    });
+
+    render(<PantryPage />);
+
+    const editButtons = await screen.findAllByRole("button", { name: "Edit" });
+    await user.click(editButtons[0]);
+    const amount = screen.getByRole("textbox", {
+      name: "Edit quantity amount",
+    });
+    await user.clear(amount);
+    await user.type(amount, "10");
+    await user.click(screen.getByRole("button", { name: "Save item" }));
+
+    await waitFor(() => {
+      expect(pantryApi.update).toHaveBeenCalledWith({
+        id: 1,
+        name: "Eggs",
+        quantity: {
+          mode: "structured",
+          amount: "10",
+          unit: "count",
+        },
+        turnover: "high",
+      });
+    });
   });
 
   it("confirms and removes two selected items through the batch boundary", async () => {

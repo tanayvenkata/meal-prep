@@ -51,6 +51,18 @@ export type PantryQuantity =
       text: string;
     };
 
+export type PantryQuantityInput =
+  | { mode: "unknown" }
+  | {
+      mode: "structured";
+      amount: string;
+      unit: PantryQuantityUnit;
+    }
+  | {
+      mode: "text";
+      text: string;
+    };
+
 export type StructuredPantryQuantity = Extract<
   PantryQuantity,
   { mode: "structured" }
@@ -86,7 +98,9 @@ export type PantryQuantityParseResult =
         | "zero_denominator"
         | "non_terminating_fraction"
         | "scale_exceeded"
-        | "amount_exceeded";
+        | "amount_exceeded"
+        | "invalid_mode"
+        | "invalid_unit";
       error: string;
     };
 
@@ -382,6 +396,86 @@ export function parsePantryQuantity(
       text,
     },
   };
+}
+
+export function parsePantryQuantityInput(
+  input: unknown,
+): PantryQuantityParseResult {
+  if (typeof input === "string") return parsePantryQuantity(input);
+  if (typeof input !== "object" || input === null || !("mode" in input)) {
+    return invalid(
+      "invalid_type",
+      "quantity must be text or an explicit quantity object",
+    );
+  }
+
+  switch (input.mode) {
+    case "unknown":
+      return { ok: true, value: UNKNOWN_PANTRY_QUANTITY };
+    case "text": {
+      if (!("text" in input) || typeof input.text !== "string") {
+        return invalid("invalid_type", "text quantity must include text");
+      }
+      const text = input.text.trim();
+      if (text.length > MAX_PANTRY_QUANTITY_TEXT_LENGTH) {
+        return invalid(
+          "too_long",
+          `quantity must be ${MAX_PANTRY_QUANTITY_TEXT_LENGTH} characters or fewer`,
+        );
+      }
+      if (text === "") {
+        return { ok: true, value: UNKNOWN_PANTRY_QUANTITY };
+      }
+      return {
+        ok: true,
+        value: {
+          mode: "text",
+          amount: null,
+          unit: null,
+          text,
+        },
+      };
+    }
+    case "structured": {
+      if (!("amount" in input) || typeof input.amount !== "string") {
+        return invalid(
+          "invalid_type",
+          "structured quantity must include a decimal amount",
+        );
+      }
+      if (
+        !("unit" in input)
+        || typeof input.unit !== "string"
+        || !isPantryQuantityUnit(input.unit)
+      ) {
+        return invalid(
+          "invalid_unit",
+          "structured quantity must include a recognized unit",
+        );
+      }
+      const amount = parseDecimal(input.amount.trim());
+      if (typeof amount !== "string") {
+        return amount ?? invalid(
+          "invalid_type",
+          "structured quantity amount must be a decimal",
+        );
+      }
+      return {
+        ok: true,
+        value: {
+          mode: "structured",
+          amount,
+          unit: input.unit,
+          text: null,
+        },
+      };
+    }
+    default:
+      return invalid(
+        "invalid_mode",
+        "quantity mode must be unknown, structured, or text",
+      );
+  }
 }
 
 export function formatPantryQuantity(quantity: PantryQuantity): string {

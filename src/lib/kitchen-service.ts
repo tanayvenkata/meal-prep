@@ -28,7 +28,7 @@ import {
   isPantryQuantityUnit,
   isPositiveStructuredPantryQuantity,
   pantryQuantityMatchesStoredFields,
-  parsePantryQuantity,
+  parsePantryQuantityInput,
   UNKNOWN_PANTRY_QUANTITY,
   type PantryQuantity,
   type PantryQuantityAdjustmentOperation,
@@ -270,18 +270,22 @@ function normalizeOptionalQuantity(
   value: unknown,
 ): KitchenServiceResult<PantryQuantity | undefined> {
   if (value === undefined) return valid(undefined);
-  const result = parsePantryQuantity(value);
+  const result = parsePantryQuantityInput(value);
   return result.ok ? valid(result.value) : invalid(result.error);
 }
 
 function normalizeRequiredQuantity(
   value: unknown,
 ): KitchenServiceResult<PantryQuantity> {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (
+    value === undefined
+    || value === null
+    || (typeof value === "string" && value.trim() === "")
+  ) {
     return invalid("quantity is required");
   }
 
-  const result = parsePantryQuantity(value);
+  const result = parsePantryQuantityInput(value);
   return result.ok ? valid(result.value) : invalid(result.error);
 }
 
@@ -521,7 +525,10 @@ export async function setPantryItemQuantity(
   );
   if (!name.ok) return name;
 
-  const quantity = normalizeRequiredQuantity(input.quantity);
+  const quantity = normalizeRequiredStructuredQuantity(
+    input.quantity,
+    "quantity",
+  );
   if (!quantity.ok) return quantity;
 
   const updated = await setItemQuantityByCanonicalName(

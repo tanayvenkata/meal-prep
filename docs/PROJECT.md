@@ -40,7 +40,9 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
   `get_kitchen_context`, its read-only MCP Apps widget, and narrow exact-set, consume, and
   restock actions for unambiguous existing items. Supabase OAuth 2.1 maps the connector
   token to a Mise user; every tool uses the same user-scoped kitchen service as the
-  website. General write actions cannot create, rename, delete, or convert units. A reviewed
+  website. Exact-set inputs carry an explicit decimal amount and canonical unit; the
+  website preserves the same structured value through edits and exposes custom text only
+  as a deliberate fallback. General write actions cannot create, rename, delete, or convert units. A reviewed
   multi-item consume/restock list can use one all-or-nothing batch action; there is no
   generic CRUD or implicit upsert tool. A separately confirmed receipt proposal can call
   one idempotent atomic action whose lines explicitly choose new-item creation or an
