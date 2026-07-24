@@ -294,6 +294,7 @@ describe("setPantryItemQuantity database boundary", () => {
       select user_id, quantity, quantity_text, quantity_value, quantity_unit
       from items
       where name = 'Duck Eggs'
+        and user_id in (${TEST_USER_A}, ${TEST_USER_B})
       order by user_id
     `;
     expect(rows).toEqual([
