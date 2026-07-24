@@ -37,14 +37,15 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
   pantry-aware recipes → auth → tests + CI/CD → voice → Mise redesign; plus rate limiting
   and a stop button. (Per-milestone detail: git history.)
 - **Experimental ChatGPT surface:** a Streamable HTTP MCP server exposes
-  `get_kitchen_context`, its read-only MCP Apps widget, and narrow exact-set, consume, and
-  restock actions for unambiguous existing items. Supabase OAuth 2.1 maps the connector
+  `get_kitchen_context`, its read-only MCP Apps widget, and focused pantry/kitchen-tool
+  create, edit, and delete actions plus exact-set, consume, and restock commands. Supabase OAuth 2.1 maps the connector
   token to a Mise user; every tool uses the same user-scoped kitchen service as the
-  website. Exact-set inputs carry an explicit decimal amount and canonical unit; the
+  website. Kitchen reads return stable resource IDs; edits and deletes also carry the exact
+  current display name so stale targeting fails closed. Exact quantity inputs carry an explicit decimal amount and canonical unit; the
   website preserves the same structured value through edits and exposes custom text only
-  as a deliberate fallback. General write actions cannot create, rename, delete, or convert units. A reviewed
-  multi-item consume/restock list can use one all-or-nothing batch action; there is no
-  generic CRUD or implicit upsert tool. A separately confirmed receipt proposal can call
+  as a deliberate fallback. No action converts units. A reviewed multi-item
+  consume/restock list can use one all-or-nothing batch action; there is no raw database
+  CRUD, implicit upsert, or MCP access to conversations/account data. A separately confirmed receipt proposal can call
   one idempotent atomic action whose lines explicitly choose new-item creation or an
   existing-item restock; the image or draft proposal never authorizes that call. The
   complete tool → resource → widget handshake works

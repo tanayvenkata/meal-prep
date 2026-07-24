@@ -31,9 +31,14 @@ import {
   applyReviewedReceiptImport as importReviewedReceipt,
   adjustPantryItemQuantities as adjustPantryQuantities,
   adjustPantryItemQuantity as adjustPantryQuantity,
+  createPantryItem as addPantryItem,
   createKitchenTool as addKitchenTool,
+  deleteKitchenTool as removeKitchenTool,
+  deletePantryItem as removePantryItem,
   getKitchenContext as loadKitchenContext,
   setPantryItemQuantity as updatePantryItemQuantity,
+  updateKitchenTool as editKitchenTool,
+  updatePantryItem as editPantryItem,
   type ApplyReviewedReceiptImportOutcome,
   type AdjustPantryItemQuantityBatchOutcome,
   type AdjustPantryItemQuantityOutcome,
@@ -43,7 +48,12 @@ import type { KitchenWidgetResource } from "./build-widget";
 
 const MCP_PATH = "/mcp";
 const KITCHEN_CONTEXT_TOOL = "get_kitchen_context";
+const ADD_PANTRY_ITEM_TOOL = "add_pantry_item";
+const UPDATE_PANTRY_ITEM_TOOL = "update_pantry_item";
+const DELETE_PANTRY_ITEM_TOOL = "delete_pantry_item";
 const ADD_KITCHEN_TOOL = "add_kitchen_tool";
+const UPDATE_KITCHEN_TOOL = "update_kitchen_tool";
+const DELETE_KITCHEN_TOOL = "delete_kitchen_tool";
 const SET_PANTRY_ITEM_QUANTITY_TOOL = "set_pantry_item_quantity";
 const CONSUME_PANTRY_ITEM_TOOL = "consume_pantry_item";
 const RESTOCK_PANTRY_ITEM_TOOL = "restock_pantry_item";
@@ -54,7 +64,12 @@ const MISE_OAUTH_SECURITY_SCHEMES = [
 ];
 const AUTHENTICATED_MISE_TOOLS = new Set([
   KITCHEN_CONTEXT_TOOL,
+  ADD_PANTRY_ITEM_TOOL,
+  UPDATE_PANTRY_ITEM_TOOL,
+  DELETE_PANTRY_ITEM_TOOL,
   ADD_KITCHEN_TOOL,
+  UPDATE_KITCHEN_TOOL,
+  DELETE_KITCHEN_TOOL,
   SET_PANTRY_ITEM_QUANTITY_TOOL,
   CONSUME_PANTRY_ITEM_TOOL,
   RESTOCK_PANTRY_ITEM_TOOL,
@@ -77,7 +92,12 @@ type PantryQuantityUpdater = typeof updatePantryItemQuantity;
 type PantryQuantityAdjuster = typeof adjustPantryQuantity;
 type PantryQuantityBatchAdjuster = typeof adjustPantryQuantities;
 type ReviewedReceiptImporter = typeof importReviewedReceipt;
+type PantryItemCreator = typeof addPantryItem;
+type PantryItemUpdater = typeof editPantryItem;
+type PantryItemDeleter = typeof removePantryItem;
 type KitchenToolCreator = typeof addKitchenTool;
+type KitchenToolUpdater = typeof editKitchenTool;
+type KitchenToolDeleter = typeof removeKitchenTool;
 
 type MiseServerOptions = {
   kitchenWidgetResource?: KitchenWidgetResource;
@@ -86,12 +106,18 @@ type MiseServerOptions = {
   adjustPantryItemQuantity?: PantryQuantityAdjuster;
   adjustPantryItemQuantities?: PantryQuantityBatchAdjuster;
   applyReviewedReceiptImport?: ReviewedReceiptImporter;
+  createPantryItem?: PantryItemCreator;
+  updatePantryItem?: PantryItemUpdater;
+  deletePantryItem?: PantryItemDeleter;
   createKitchenTool?: KitchenToolCreator;
+  updateKitchenTool?: KitchenToolUpdater;
+  deleteKitchenTool?: KitchenToolDeleter;
 };
 
 const kitchenContextSchema = z.object({
   pantry: z.array(
     z.object({
+      id: z.number().int().positive(),
       name: z.string(),
       quantity: z.string(),
       quantityMode: z.enum([
@@ -106,7 +132,7 @@ const kitchenContextSchema = z.object({
     }),
   ),
   tools: z.array(
-    z.object({ name: z.string(), kind: z.string() }),
+    z.object({ id: z.uuid(), name: z.string(), kind: z.string() }),
   ),
 });
 
@@ -122,8 +148,50 @@ const kitchenToolMutationOutputSchema = z.object({
     name: z.string(),
     kind: z.enum(["appliance", "cookware", "bakeware"]),
     created_at: z.string(),
-  }),
-});
+  }).strict(),
+}).strict();
+
+const updateKitchenToolInputSchema = z.object({
+  id: z.uuid().describe("Stable kitchen-tool ID from get_kitchen_context."),
+  expectedName: z.string().trim().min(1).max(100).describe(
+    "Exact current name from a fresh get_kitchen_context result.",
+  ),
+  name: z.string().trim().min(1).max(100),
+  kind: z.enum(["appliance", "cookware", "bakeware"]),
+}).strict();
+
+const publicKitchenToolSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  kind: z.enum(["appliance", "cookware", "bakeware"]),
+  created_at: z.string(),
+}).strict();
+
+const updateKitchenToolOutputSchema = z.object({
+  status: z.enum([
+    "updated",
+    "unchanged",
+    "not_found",
+    "conflict",
+    "name_conflict",
+  ]),
+  id: z.uuid().optional(),
+  tool: publicKitchenToolSchema.optional(),
+  conflictingTool: publicKitchenToolSchema.optional(),
+}).strict();
+
+const deleteKitchenToolInputSchema = z.object({
+  id: z.uuid().describe("Stable kitchen-tool ID from get_kitchen_context."),
+  expectedName: z.string().trim().min(1).max(100).describe(
+    "Exact current name from a fresh get_kitchen_context result.",
+  ),
+}).strict();
+
+const deleteKitchenToolOutputSchema = z.object({
+  status: z.enum(["deleted", "not_found", "conflict"]),
+  id: z.uuid(),
+  tool: publicKitchenToolSchema.optional(),
+}).strict();
 
 const setPantryItemQuantityOutputSchema = z.object({
   status: z.enum(["updated", "unchanged", "not_found"]),
@@ -151,6 +219,71 @@ const expectedPantryQuantityInputSchema = z.object({
   unit: z.enum(PANTRY_QUANTITY_UNITS).describe(
     "Canonical Mise quantity unit. Use count explicitly for counts.",
   ),
+}).strict();
+
+const pantryMutationItemSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  quantity: z.string(),
+  turnover: z.enum(["high", "low"]),
+  created_at: z.string(),
+}).strict();
+
+const addPantryItemInputSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  quantity: expectedPantryQuantityInputSchema.optional().describe(
+    "Optional exact starting quantity. Omit it when the user did not specify a quantity.",
+  ),
+  turnover: z.enum(["high", "low"]).optional().describe(
+    "Optional turnover classification. Defaults to high.",
+  ),
+}).strict();
+
+const addPantryItemOutputSchema = z.object({
+  status: z.enum(["created", "already_exists"]),
+  item: pantryMutationItemSchema,
+}).strict();
+
+const updatePantryItemInputSchema = z.object({
+  id: z.number().int().positive().describe(
+    "Stable pantry-item ID from get_kitchen_context.",
+  ),
+  expectedName: z.string().trim().min(1).max(100).describe(
+    "Exact current name from a fresh get_kitchen_context result.",
+  ),
+  name: z.string().trim().min(1).max(100).optional(),
+  quantity: expectedPantryQuantityInputSchema.optional().describe(
+    "Optional exact replacement quantity. Use count explicitly for counts.",
+  ),
+  turnover: z.enum(["high", "low"]).optional(),
+}).strict();
+
+const updatePantryItemOutputSchema = z.object({
+  status: z.enum([
+    "updated",
+    "unchanged",
+    "not_found",
+    "conflict",
+    "name_conflict",
+  ]),
+  id: z.number().int().positive().optional(),
+  item: pantryMutationItemSchema.optional(),
+  conflictingItem: pantryMutationItemSchema.optional(),
+}).strict();
+
+const deletePantryItemInputSchema = z.object({
+  id: z.number().int().positive().describe(
+    "Stable pantry-item ID from get_kitchen_context.",
+  ),
+  expectedName: z.string().trim().min(1).max(100).describe(
+    "Exact current name from a fresh get_kitchen_context result.",
+  ),
+}).strict();
+
+const deletePantryItemOutputSchema = z.object({
+  status: z.enum(["deleted", "not_found", "conflict"]),
+  id: z.number().int().positive(),
+  item: pantryMutationItemSchema.optional(),
 }).strict();
 
 const setPantryItemQuantityInputSchema = z.object({
@@ -439,6 +572,54 @@ const reviewedReceiptOutputSchema = z.object({
   outcome: reviewedReceiptOutcomeSchema,
 }).strict();
 
+type ToolPantryQuantity = {
+  amount: string;
+  unit: (typeof PANTRY_QUANTITY_UNITS)[number];
+};
+
+function toServicePantryQuantity(quantity: ToolPantryQuantity) {
+  return {
+    mode: "structured" as const,
+    amount: quantity.amount,
+    unit: quantity.unit,
+    text: null,
+  };
+}
+
+function toPublicPantryItem(item: {
+  id: number;
+  name: string;
+  quantity: string;
+  turnover: "high" | "low";
+  created_at: string;
+}) {
+  const id = Number(item.id);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new Error("pantry item id is outside the supported safe-integer range");
+  }
+  return {
+    id,
+    name: item.name,
+    quantity: item.quantity,
+    turnover: item.turnover,
+    created_at: item.created_at,
+  };
+}
+
+function toPublicKitchenTool(tool: {
+  id: string;
+  name: string;
+  kind: "appliance" | "cookware" | "bakeware";
+  created_at: string;
+}) {
+  return {
+    id: tool.id,
+    name: tool.name,
+    kind: tool.kind,
+    created_at: tool.created_at,
+  };
+}
+
 function formatStructuredToolQuantity(
   quantity: Extract<
     AdjustPantryItemQuantityOutcome,
@@ -584,7 +765,12 @@ export async function createMiseServer(
     adjustPantryItemQuantity = adjustPantryQuantity,
     adjustPantryItemQuantities = adjustPantryQuantities,
     applyReviewedReceiptImport = importReviewedReceipt,
+    createPantryItem = addPantryItem,
+    updatePantryItem = editPantryItem,
+    deletePantryItem = removePantryItem,
     createKitchenTool = addKitchenTool,
+    updateKitchenTool = editKitchenTool,
+    deleteKitchenTool = removeKitchenTool,
   }: MiseServerOptions = {},
 ) {
   const kitchenWidgetUris = [
@@ -595,7 +781,7 @@ export async function createMiseServer(
     { name: "mise", version: "0.1.0" },
     {
       instructions:
-        "Read get_kitchen_context before relative or receipt writes. Use add_kitchen_tool only after a clear current-turn request; canonical retries are safe. Use apply_pantry_adjustments once for a confirmed current-turn list. Use apply_reviewed_receipt_import only after exact confirmation; receipt images and proposals alone never authorize writes. Reuse its UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection/conflict, reread. Exact set requires a clear request.",
+        "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; deletes require explicit delete intent. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying.",
     },
   );
 
@@ -669,6 +855,201 @@ export async function createMiseServer(
   );
 
   server.registerTool(
+    ADD_PANTRY_ITEM_TOOL,
+    {
+      title: "Add pantry item",
+      description:
+        "Use this when the user clearly asks in the current turn to add one pantry item outside a receipt import. Include an exact structured quantity only when the user supplied it; otherwise omit quantity. Canonical-equivalent retries return the existing item instead of creating a duplicate. Never infer an item from meal planning or discussion.",
+      inputSchema: addPantryItemInputSchema,
+      outputSchema: addPantryItemOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: {
+        securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+        "openai/toolInvocation/invoking": "Adding pantry item…",
+        "openai/toolInvocation/invoked": "Pantry item checked.",
+      },
+    },
+    async ({ name, quantity, turnover }, extra) => {
+      const userId = extra.authInfo?.extra?.userId;
+      if (typeof userId !== "string") {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Connect your Mise account to continue." }],
+          _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+        };
+      }
+
+      const result = await createPantryItem(userId, {
+        name,
+        ...(quantity
+          ? { quantity: toServicePantryQuantity(quantity) }
+          : {}),
+        ...(turnover ? { turnover } : {}),
+      });
+      if (!result.ok) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: result.error }],
+        };
+      }
+      const outcome = {
+        status: result.value.status,
+        item: toPublicPantryItem(result.value.item),
+      };
+      return {
+        content: [{
+          type: "text",
+          text: outcome.status === "created"
+            ? `Added ${outcome.item.name} to your pantry.`
+            : `${outcome.item.name} is already in your pantry.`,
+        }],
+        structuredContent: outcome,
+      };
+    },
+  );
+
+  server.registerTool(
+    UPDATE_PANTRY_ITEM_TOOL,
+    {
+      title: "Update pantry item",
+      description:
+        "Use this when the user clearly asks in the current turn to rename one pantry item or change its exact quantity or turnover. First call get_kitchen_context and pass the stable ID plus its exact current name. Include only requested replacement fields. Never use this for relative consume/restock changes or unit conversion.",
+      inputSchema: updatePantryItemInputSchema,
+      outputSchema: updatePantryItemOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: {
+        securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+        "openai/toolInvocation/invoking": "Updating pantry item…",
+        "openai/toolInvocation/invoked": "Pantry item checked.",
+      },
+    },
+    async ({ id, expectedName, name, quantity, turnover }, extra) => {
+      const userId = extra.authInfo?.extra?.userId;
+      if (typeof userId !== "string") {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Connect your Mise account to continue." }],
+          _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+        };
+      }
+
+      const result = await updatePantryItem(userId, {
+        id,
+        expectedName,
+        ...(name ? { name } : {}),
+        ...(quantity
+          ? { quantity: toServicePantryQuantity(quantity) }
+          : {}),
+        ...(turnover ? { turnover } : {}),
+      });
+      if (!result.ok) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: result.error }],
+        };
+      }
+
+      const value = result.value;
+      const outcome = value.status === "updated" || value.status === "unchanged"
+        ? { status: value.status, item: toPublicPantryItem(value.item) }
+        : value.status === "conflict"
+          ? { status: value.status, id: value.id, item: toPublicPantryItem(value.item) }
+          : value.status === "name_conflict"
+            ? {
+                status: value.status,
+                id: value.id,
+                conflictingItem: toPublicPantryItem(value.conflictingItem),
+              }
+            : value;
+      let text: string;
+      switch (outcome.status) {
+        case "updated":
+          text = `Updated ${outcome.item.name}.`;
+          break;
+        case "unchanged":
+          text = `${outcome.item.name} already has those details.`;
+          break;
+        case "not_found":
+          text = "That pantry item no longer exists. Nothing changed.";
+          break;
+        case "conflict":
+          text = `That pantry item is now named ${outcome.item.name}. Refresh kitchen context before retrying. Nothing changed.`;
+          break;
+        case "name_conflict":
+          text = `${outcome.conflictingItem.name} already exists in your pantry. Nothing changed.`;
+          break;
+      }
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: outcome,
+      };
+    },
+  );
+
+  server.registerTool(
+    DELETE_PANTRY_ITEM_TOOL,
+    {
+      title: "Delete pantry item",
+      description:
+        "Use this only when the user explicitly asks in the current turn to permanently delete one pantry item. First call get_kitchen_context and pass the stable ID plus its exact current name. Do not treat zero quantity, consumption, receipt correction, or vague cleanup language as delete authorization.",
+      inputSchema: deletePantryItemInputSchema,
+      outputSchema: deletePantryItemOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: {
+        securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+        "openai/toolInvocation/invoking": "Deleting pantry item…",
+        "openai/toolInvocation/invoked": "Pantry deletion checked.",
+      },
+    },
+    async ({ id, expectedName }, extra) => {
+      const userId = extra.authInfo?.extra?.userId;
+      if (typeof userId !== "string") {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Connect your Mise account to continue." }],
+          _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+        };
+      }
+
+      const result = await deletePantryItem(userId, { id, expectedName });
+      if (!result.ok) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: result.error }],
+        };
+      }
+      const value = result.value;
+      const outcome = value.status === "conflict"
+        ? { status: value.status, id: value.id, item: toPublicPantryItem(value.item) }
+        : value;
+      const text = outcome.status === "deleted"
+        ? `Deleted ${expectedName} from your pantry.`
+        : outcome.status === "not_found"
+          ? "That pantry item no longer exists. Nothing changed."
+          : `That pantry item is now named ${outcome.item.name}. Refresh kitchen context before retrying. Nothing changed.`;
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: outcome,
+      };
+    },
+  );
+
+  server.registerTool(
     ADD_KITCHEN_TOOL,
     {
       title: "Add kitchen tool",
@@ -710,16 +1091,143 @@ export async function createMiseServer(
       }
       const outcome = {
         status: result.value.status,
-        tool: {
-          id: result.value.tool.id,
-          name: result.value.tool.name,
-          kind: result.value.tool.kind,
-          created_at: result.value.tool.created_at,
-        },
+        tool: toPublicKitchenTool(result.value.tool),
       };
       const text = outcome.status === "created"
         ? `Added ${outcome.tool.name} to your kitchen tools.`
         : `${outcome.tool.name} is already in your kitchen tools.`;
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: outcome,
+      };
+    },
+  );
+
+  server.registerTool(
+    UPDATE_KITCHEN_TOOL,
+    {
+      title: "Update kitchen tool",
+      description:
+        "Use this when the user clearly asks in the current turn to rename one saved kitchen tool or change its kind. First call get_kitchen_context and pass the stable ID plus its exact current name, then provide the complete replacement name and kind. Do not infer equipment ownership from cooking discussion.",
+      inputSchema: updateKitchenToolInputSchema,
+      outputSchema: updateKitchenToolOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: {
+        securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+        "openai/toolInvocation/invoking": "Updating kitchen tool…",
+        "openai/toolInvocation/invoked": "Kitchen tool checked.",
+      },
+    },
+    async ({ id, expectedName, name, kind }, extra) => {
+      const userId = extra.authInfo?.extra?.userId;
+      if (typeof userId !== "string") {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Connect your Mise account to continue." }],
+          _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+        };
+      }
+
+      const result = await updateKitchenTool(userId, {
+        id,
+        expectedName,
+        name,
+        kind,
+      });
+      if (!result.ok) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: result.error }],
+        };
+      }
+      const value = result.value;
+      const outcome = value.status === "updated" || value.status === "unchanged"
+        ? { status: value.status, tool: toPublicKitchenTool(value.tool) }
+        : value.status === "conflict"
+          ? { status: value.status, id: value.id, tool: toPublicKitchenTool(value.tool) }
+          : value.status === "name_conflict"
+            ? {
+                status: value.status,
+                id: value.id,
+                conflictingTool: toPublicKitchenTool(value.conflictingTool),
+              }
+            : value;
+      let text: string;
+      switch (outcome.status) {
+        case "updated":
+          text = `Updated ${outcome.tool.name}.`;
+          break;
+        case "unchanged":
+          text = `${outcome.tool.name} already has those details.`;
+          break;
+        case "not_found":
+          text = "That kitchen tool no longer exists. Nothing changed.";
+          break;
+        case "conflict":
+          text = `That kitchen tool is now named ${outcome.tool.name}. Refresh kitchen context before retrying. Nothing changed.`;
+          break;
+        case "name_conflict":
+          text = `${outcome.conflictingTool.name} already exists in your kitchen tools. Nothing changed.`;
+          break;
+      }
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: outcome,
+      };
+    },
+  );
+
+  server.registerTool(
+    DELETE_KITCHEN_TOOL,
+    {
+      title: "Delete kitchen tool",
+      description:
+        "Use this only when the user explicitly asks in the current turn to permanently delete one saved kitchen tool. First call get_kitchen_context and pass the stable ID plus its exact current name. Do not infer deletion from replacement, disuse, or vague cleanup language.",
+      inputSchema: deleteKitchenToolInputSchema,
+      outputSchema: deleteKitchenToolOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+      _meta: {
+        securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+        "openai/toolInvocation/invoking": "Deleting kitchen tool…",
+        "openai/toolInvocation/invoked": "Kitchen-tool deletion checked.",
+      },
+    },
+    async ({ id, expectedName }, extra) => {
+      const userId = extra.authInfo?.extra?.userId;
+      if (typeof userId !== "string") {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Connect your Mise account to continue." }],
+          _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+        };
+      }
+
+      const result = await deleteKitchenTool(userId, { id, expectedName });
+      if (!result.ok) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: result.error }],
+        };
+      }
+      const value = result.value;
+      const outcome = value.status === "conflict"
+        ? { status: value.status, id: value.id, tool: toPublicKitchenTool(value.tool) }
+        : value;
+      const text = outcome.status === "deleted"
+        ? `Deleted ${expectedName} from your kitchen tools.`
+        : outcome.status === "not_found"
+          ? "That kitchen tool no longer exists. Nothing changed."
+          : `That kitchen tool is now named ${outcome.tool.name}. Refresh kitchen context before retrying. Nothing changed.`;
       return {
         content: [{ type: "text", text }],
         structuredContent: outcome,
@@ -757,7 +1265,10 @@ export async function createMiseServer(
         };
       }
 
-      const result = await setPantryItemQuantity(userId, { name, quantity });
+      const result = await setPantryItemQuantity(userId, {
+        name,
+        quantity: toServicePantryQuantity(quantity),
+      });
       if (!result.ok) {
         return {
           isError: true,
@@ -1007,7 +1518,12 @@ type MiseHttpServerOptions = {
   adjustPantryItemQuantity?: PantryQuantityAdjuster;
   adjustPantryItemQuantities?: PantryQuantityBatchAdjuster;
   applyReviewedReceiptImport?: ReviewedReceiptImporter;
+  createPantryItem?: PantryItemCreator;
+  updatePantryItem?: PantryItemUpdater;
+  deletePantryItem?: PantryItemDeleter;
   createKitchenTool?: KitchenToolCreator;
+  updateKitchenTool?: KitchenToolUpdater;
+  deleteKitchenTool?: KitchenToolDeleter;
 };
 
 function invalidTokenResponse(authConfig = getMcpAuthConfig()) {
@@ -1042,7 +1558,12 @@ export async function handleMiseMcpRequest(
     adjustPantryItemQuantity = adjustPantryQuantity,
     adjustPantryItemQuantities = adjustPantryQuantities,
     applyReviewedReceiptImport = importReviewedReceipt,
+    createPantryItem = addPantryItem,
+    updatePantryItem = editPantryItem,
+    deletePantryItem = removePantryItem,
     createKitchenTool = addKitchenTool,
+    updateKitchenTool = editKitchenTool,
+    deleteKitchenTool = removeKitchenTool,
   }: Pick<
     MiseHttpServerOptions,
     | "verifyAccessToken"
@@ -1051,7 +1572,12 @@ export async function handleMiseMcpRequest(
     | "adjustPantryItemQuantity"
     | "adjustPantryItemQuantities"
     | "applyReviewedReceiptImport"
+    | "createPantryItem"
+    | "updatePantryItem"
+    | "deletePantryItem"
     | "createKitchenTool"
+    | "updateKitchenTool"
+    | "deleteKitchenTool"
   > = {},
 ) {
   const startedAt = performance.now();
@@ -1111,7 +1637,12 @@ export async function handleMiseMcpRequest(
     adjustPantryItemQuantity,
     adjustPantryItemQuantities,
     applyReviewedReceiptImport,
+    createPantryItem,
+    updatePantryItem,
+    deletePantryItem,
     createKitchenTool,
+    updateKitchenTool,
+    deleteKitchenTool,
   });
   const transport =
     new OpenAiCompatibleWebStandardStreamableHTTPServerTransport({
@@ -1155,7 +1686,12 @@ export function createMiseHttpServer({
   adjustPantryItemQuantity = adjustPantryQuantity,
   adjustPantryItemQuantities = adjustPantryQuantities,
   applyReviewedReceiptImport = importReviewedReceipt,
+  createPantryItem = addPantryItem,
+  updatePantryItem = editPantryItem,
+  deletePantryItem = removePantryItem,
   createKitchenTool = addKitchenTool,
+  updateKitchenTool = editKitchenTool,
+  deleteKitchenTool = removeKitchenTool,
 }: MiseHttpServerOptions = {}) {
   const authConfig = getMcpAuthConfig();
   const app = createMcpExpressApp({
@@ -1234,7 +1770,12 @@ export function createMiseHttpServer({
       adjustPantryItemQuantity,
       adjustPantryItemQuantities,
       applyReviewedReceiptImport,
+      createPantryItem,
+      updatePantryItem,
+      deletePantryItem,
       createKitchenTool,
+      updateKitchenTool,
+      deleteKitchenTool,
     });
     const transport = new OpenAiCompatibleStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

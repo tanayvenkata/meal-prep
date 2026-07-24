@@ -158,6 +158,7 @@ describe("kitchen reads", () => {
     await expect(getKitchenContext("user-123")).resolves.toEqual({
       pantry: [
         {
+          id: 42,
           name: "Rice",
           quantity: "2 cup",
           turnover: "high",
@@ -166,6 +167,7 @@ describe("kitchen reads", () => {
           quantityUnit: "cup",
         },
         {
+          id: 43,
           name: "Milk",
           quantity: "2 cups",
           turnover: "low",
@@ -174,6 +176,7 @@ describe("kitchen reads", () => {
           quantityUnit: null,
         },
         {
+          id: 44,
           name: "Salt",
           quantity: "",
           turnover: "high",
@@ -182,6 +185,7 @@ describe("kitchen reads", () => {
           quantityUnit: null,
         },
         {
+          id: 45,
           name: "Protein powder",
           quantity: "4 scoop",
           turnover: "high",
@@ -190,6 +194,7 @@ describe("kitchen reads", () => {
           quantityUnit: "scoop",
         },
         {
+          id: 46,
           name: "Eggs",
           quantity: "6",
           turnover: "high",
@@ -198,7 +203,7 @@ describe("kitchen reads", () => {
           quantityUnit: "count",
         },
       ],
-      tools: [{ name: "Dutch oven", kind: "cookware" }],
+      tools: [{ id: tool.id, name: "Dutch oven", kind: "cookware" }],
     });
     expect(mockGetItems).toHaveBeenCalledWith("user-123");
     expect(mockGetKitchenTools).toHaveBeenCalledWith("user-123");
@@ -353,6 +358,7 @@ describe("pantry commands", () => {
         },
         turnover: "low",
       },
+      undefined,
     );
   });
 
@@ -372,6 +378,7 @@ describe("pantry commands", () => {
       "user-123",
       1,
       { name: "Duck eggs" },
+      undefined,
     );
   });
 
@@ -422,6 +429,47 @@ describe("pantry commands", () => {
     expect(mockUpdateItem).not.toHaveBeenCalled();
   });
 
+  it("rejects a stale pantry display name before updating", async () => {
+    const current = fakeItem({ id: 42, name: "Chicken stock" });
+    mockGetItemById.mockResolvedValue(current);
+
+    await expect(updatePantryItem("user-123", {
+      id: 42,
+      expectedName: "Chicken broth",
+      name: "Chicken consommé",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "conflict", id: 42, item: current },
+    });
+    expect(mockGetItemByCanonicalName).not.toHaveBeenCalled();
+    expect(mockUpdateItem).not.toHaveBeenCalled();
+  });
+
+  it("maps a concurrent pantry rename during update to conflict", async () => {
+    const current = fakeItem({ id: 42, name: "Chicken breast" });
+    const changed = fakeItem({ id: 42, name: "Chicken stock" });
+    mockGetItemById
+      .mockResolvedValueOnce(current)
+      .mockResolvedValueOnce(changed);
+    mockGetItemByCanonicalName.mockResolvedValue(null);
+    mockUpdateItem.mockResolvedValue({ status: "not_found" });
+
+    await expect(updatePantryItem("user-123", {
+      id: 42,
+      expectedName: "Chicken breast",
+      name: "Chicken broth",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "conflict", id: 42, item: changed },
+    });
+    expect(mockUpdateItem).toHaveBeenCalledWith(
+      "user-123",
+      42,
+      { name: "Chicken broth" },
+      "Chicken breast",
+    );
+  });
+
   it("returns a canonical rename conflict without writing", async () => {
     const current = fakeItem({ id: 1, name: "Milk", name_key: "milk" });
     const eggs = fakeItem({ id: 2, name: "Eggs", name_key: "eggs" });
@@ -470,11 +518,58 @@ describe("pantry commands", () => {
       ok: false,
       error: "id must be a positive integer",
     });
+    const item = fakeItem({ id: 7 });
+    mockGetItemById.mockResolvedValue(item);
+    mockDeleteItem.mockResolvedValue({ status: "deleted" });
     await expect(deletePantryItem("user-123", { id: 7 })).resolves.toEqual({
       ok: true,
-      value: null,
+      value: { status: "deleted", id: 7 },
     });
-    expect(mockDeleteItem).toHaveBeenCalledWith("user-123", 7);
+    expect(mockDeleteItem).toHaveBeenCalledWith("user-123", 7, undefined);
+  });
+
+  it("keeps missing and stale pantry deletions safe", async () => {
+    mockGetItemById.mockResolvedValueOnce(null);
+    await expect(deletePantryItem("user-123", {
+      id: 7,
+      expectedName: "Chicken broth",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "not_found", id: 7 },
+    });
+
+    const current = fakeItem({ id: 7, name: "Chicken stock" });
+    mockGetItemById.mockResolvedValueOnce(current);
+    await expect(deletePantryItem("user-123", {
+      id: 7,
+      expectedName: "Chicken broth",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "conflict", id: 7, item: current },
+    });
+    expect(mockDeleteItem).not.toHaveBeenCalled();
+  });
+
+  it("maps a concurrent pantry rename during deletion to conflict", async () => {
+    const current = fakeItem({ id: 7, name: "Chicken broth" });
+    const changed = fakeItem({ id: 7, name: "Chicken stock" });
+    mockGetItemById
+      .mockResolvedValueOnce(current)
+      .mockResolvedValueOnce(changed);
+    mockDeleteItem.mockResolvedValue({ status: "not_found" });
+
+    await expect(deletePantryItem("user-123", {
+      id: 7,
+      expectedName: "Chicken broth",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "conflict", id: 7, item: changed },
+    });
+    expect(mockDeleteItem).toHaveBeenCalledWith(
+      "user-123",
+      7,
+      "Chicken broth",
+    );
   });
 
   it("validates and delegates atomic pantry batch deletion", async () => {
@@ -1203,6 +1298,7 @@ describe("kitchen-tool commands", () => {
       tool.id,
       "Convection oven",
       "appliance",
+      undefined,
     );
   });
 
@@ -1240,6 +1336,7 @@ describe("kitchen-tool commands", () => {
       tool.id,
       "Air fryer",
       "cookware",
+      undefined,
     );
   });
 
@@ -1276,6 +1373,48 @@ describe("kitchen-tool commands", () => {
     });
     expect(mockGetKitchenToolByCanonicalName).not.toHaveBeenCalled();
     expect(mockUpdateKitchenTool).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stale kitchen-tool display name before updating", async () => {
+    mockGetKitchenToolById.mockResolvedValue(tool);
+
+    await expect(updateKitchenTool("user-123", {
+      id: tool.id,
+      expectedName: "Countertop oven",
+      name: "Convection oven",
+      kind: "appliance",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "conflict", id: tool.id, tool },
+    });
+    expect(mockGetKitchenToolByCanonicalName).not.toHaveBeenCalled();
+    expect(mockUpdateKitchenTool).not.toHaveBeenCalled();
+  });
+
+  it("maps a concurrent kitchen-tool rename during update to conflict", async () => {
+    const changed = { ...tool, name: "Countertop oven" };
+    mockGetKitchenToolById
+      .mockResolvedValueOnce(tool)
+      .mockResolvedValueOnce(changed);
+    mockGetKitchenToolByCanonicalName.mockResolvedValue(null);
+    mockUpdateKitchenTool.mockResolvedValue({ status: "not_found" });
+
+    await expect(updateKitchenTool("user-123", {
+      id: tool.id,
+      expectedName: "Air fryer",
+      name: "Convection oven",
+      kind: "appliance",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "conflict", id: tool.id, tool: changed },
+    });
+    expect(mockUpdateKitchenTool).toHaveBeenCalledWith(
+      "user-123",
+      tool.id,
+      "Convection oven",
+      "appliance",
+      "Air fryer",
+    );
   });
 
   it("returns canonical conflicts without exposing another user's rows", async () => {
@@ -1337,6 +1476,7 @@ describe("kitchen-tool commands", () => {
       ok: false,
       error: "id must be a UUID",
     });
+    mockGetKitchenToolById.mockResolvedValue(tool);
     mockDeleteKitchenTool.mockResolvedValue({ status: "deleted" });
     await expect(deleteKitchenTool("user-123", {
       id: tool.id,
@@ -1344,7 +1484,11 @@ describe("kitchen-tool commands", () => {
       ok: true,
       value: { status: "deleted", id: tool.id },
     });
-    expect(mockDeleteKitchenTool).toHaveBeenCalledWith("user-123", tool.id);
+    expect(mockDeleteKitchenTool).toHaveBeenCalledWith(
+      "user-123",
+      tool.id,
+      undefined,
+    );
   });
 
   it("truthfully reports a missing tool deletion", async () => {
@@ -1356,5 +1500,39 @@ describe("kitchen-tool commands", () => {
       ok: true,
       value: { status: "not_found", id: tool.id },
     });
+  });
+
+  it("rejects a stale kitchen-tool display name before deletion", async () => {
+    mockGetKitchenToolById.mockResolvedValue(tool);
+
+    await expect(deleteKitchenTool("user-123", {
+      id: tool.id,
+      expectedName: "Countertop oven",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "conflict", id: tool.id, tool },
+    });
+    expect(mockDeleteKitchenTool).not.toHaveBeenCalled();
+  });
+
+  it("maps a concurrent kitchen-tool rename during deletion to conflict", async () => {
+    const changed = { ...tool, name: "Countertop oven" };
+    mockGetKitchenToolById
+      .mockResolvedValueOnce(tool)
+      .mockResolvedValueOnce(changed);
+    mockDeleteKitchenTool.mockResolvedValue({ status: "not_found" });
+
+    await expect(deleteKitchenTool("user-123", {
+      id: tool.id,
+      expectedName: "Air fryer",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "conflict", id: tool.id, tool: changed },
+    });
+    expect(mockDeleteKitchenTool).toHaveBeenCalledWith(
+      "user-123",
+      tool.id,
+      "Air fryer",
+    );
   });
 });

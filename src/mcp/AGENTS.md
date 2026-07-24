@@ -63,6 +63,12 @@ transitive dependencies.
   command. Send the whole list once with a caller-generated UUID; reuse that
   UUID only for an identical retry. Do not add OCR or file inputs to the
   mutation tool.
+- Expose kitchen lifecycle parity as focused user-intent tools, not raw
+  database CRUD. Pantry and kitchen-tool edits/deletes must start from a fresh
+  kitchen read and carry the stable resource ID plus exact current display name.
+  Keep create retries canonical/idempotent, distinguish missing/foreign IDs
+  from stale-name conflicts without exposing ownership, and require explicit
+  current-turn delete intent.
 
 ## Required protocol validation
 
@@ -77,6 +83,9 @@ to transport or authentication, preserve automated coverage for:
 - exact mutation input/output schemas, accurate annotations, one service
   delegation per confirmed batch, and truthful applied/replayed/rejected
   narration;
+- stable IDs in kitchen reads plus create/update/delete lifecycle coverage for
+  pantry items and kitchen tools, including duplicate, unchanged, stale-name,
+  missing/foreign, and caller-supplied-identity cases;
 - security schemes in both the standard top-level descriptor field and any
   compatibility metadata required by supported hosts; and
 - widget initialization and tool-result delivery through the standard MCP Apps

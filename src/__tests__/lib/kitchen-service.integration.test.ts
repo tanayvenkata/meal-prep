@@ -1,6 +1,21 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import postgres from "postgres";
-import { setPantryItemQuantity } from "@/lib/kitchen-service";
+import {
+  createKitchenTool,
+  createPantryItem,
+  deleteKitchenTool,
+  deletePantryItem,
+  getKitchenContext,
+  setPantryItemQuantity,
+  updateKitchenTool,
+  updatePantryItem,
+} from "@/lib/kitchen-service";
+import {
+  deleteItem as deleteItemRecord,
+  deleteKitchenTool as deleteKitchenToolRecord,
+  updateItem as updateItemRecord,
+  updateKitchenTool as updateKitchenToolRecord,
+} from "@/lib/db";
 
 const adminSql = postgres(
   process.env.ADMIN_DATABASE_URL ?? process.env.DATABASE_URL!,
@@ -29,12 +44,20 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await adminSql`
+    delete from kitchen_tools
+    where user_id in (${TEST_USER_A}, ${TEST_USER_B})
+  `;
+  await adminSql`
     delete from items
     where user_id in (${TEST_USER_A}, ${TEST_USER_B})
   `;
 });
 
 afterAll(async () => {
+  await adminSql`
+    delete from kitchen_tools
+    where user_id in (${TEST_USER_A}, ${TEST_USER_B})
+  `;
   await adminSql`
     delete from items
     where user_id in (${TEST_USER_A}, ${TEST_USER_B})
@@ -44,6 +67,185 @@ afterAll(async () => {
     where id in (${TEST_USER_A}, ${TEST_USER_B})
   `;
   await adminSql.end();
+});
+
+describe("kitchen lifecycle database boundary", () => {
+  it("enforces expected display names inside update/delete SQL writes", async () => {
+    const pantry = await createPantryItem(TEST_USER_A, {
+      name: "Chicken broth",
+      quantity: {
+        mode: "structured",
+        amount: "1",
+        unit: "carton",
+      },
+    });
+    const kitchenTool = await createKitchenTool(TEST_USER_A, {
+      name: "Dutch oven",
+      kind: "cookware",
+    });
+    if (
+      !pantry.ok
+      || pantry.value.status !== "created"
+      || !kitchenTool.ok
+      || kitchenTool.value.status !== "created"
+    ) {
+      throw new Error("expected lifecycle fixtures");
+    }
+
+    const pantryId = Number(pantry.value.item.id);
+    await expect(updateItemRecord(
+      TEST_USER_A,
+      pantryId,
+      { name: "Chicken stock" },
+      "Stale pantry name",
+    )).resolves.toEqual({ status: "not_found" });
+    await expect(deleteItemRecord(
+      TEST_USER_A,
+      pantryId,
+      "Stale pantry name",
+    )).resolves.toEqual({ status: "not_found" });
+
+    const tool = kitchenTool.value.tool;
+    await expect(updateKitchenToolRecord(
+      TEST_USER_A,
+      tool.id,
+      "Enameled Dutch oven",
+      "cookware",
+      "Stale tool name",
+    )).resolves.toEqual({ status: "not_found" });
+    await expect(deleteKitchenToolRecord(
+      TEST_USER_A,
+      tool.id,
+      "Stale tool name",
+    )).resolves.toEqual({ status: "not_found" });
+
+    const context = await getKitchenContext(TEST_USER_A);
+    expect(context.pantry).toMatchObject([{ name: "Chicken broth" }]);
+    expect(context.tools).toMatchObject([{ name: "Dutch oven" }]);
+  });
+
+  it("creates, updates, and deletes only the authenticated user's pantry item", async () => {
+    const createdA = await createPantryItem(TEST_USER_A, {
+      name: "Chicken breast",
+      quantity: {
+        mode: "structured",
+        amount: "1",
+        unit: "package",
+      },
+    });
+    const createdB = await createPantryItem(TEST_USER_B, {
+      name: "Chicken breast",
+      quantity: {
+        mode: "structured",
+        amount: "2",
+        unit: "package",
+      },
+    });
+    if (
+      !createdA.ok
+      || createdA.value.status !== "created"
+      || !createdB.ok
+      || createdB.value.status !== "created"
+    ) {
+      throw new Error("expected isolated pantry rows");
+    }
+
+    const itemA = createdA.value.item;
+    const itemAId = Number(itemA.id);
+    await expect(updatePantryItem(TEST_USER_A, {
+      id: itemAId,
+      expectedName: "Chicken breast",
+      name: "Chicken broth",
+    })).resolves.toMatchObject({
+      ok: true,
+      value: {
+        status: "updated",
+        item: { id: itemA.id, name: "Chicken broth" },
+      },
+    });
+
+    const contextA = await getKitchenContext(TEST_USER_A);
+    const contextB = await getKitchenContext(TEST_USER_B);
+    expect(contextA.pantry).toMatchObject([
+      { id: itemAId, name: "Chicken broth", quantity: "1 package" },
+    ]);
+    expect(contextB.pantry).toMatchObject([
+      { name: "Chicken breast", quantity: "2 package" },
+    ]);
+
+    await expect(deletePantryItem(TEST_USER_A, {
+      id: itemAId,
+      expectedName: "Chicken broth",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "deleted", id: itemAId },
+    });
+    await expect(deletePantryItem(TEST_USER_A, {
+      id: Number(createdB.value.item.id),
+      expectedName: "Chicken breast",
+    })).resolves.toMatchObject({
+      ok: true,
+      value: { status: "not_found" },
+    });
+    expect((await getKitchenContext(TEST_USER_A)).pantry).toEqual([]);
+    expect((await getKitchenContext(TEST_USER_B)).pantry).toHaveLength(1);
+  });
+
+  it("creates, updates, and deletes only the authenticated user's kitchen tool", async () => {
+    const createdA = await createKitchenTool(TEST_USER_A, {
+      name: "Dutch oven",
+      kind: "cookware",
+    });
+    const createdB = await createKitchenTool(TEST_USER_B, {
+      name: "Dutch oven",
+      kind: "cookware",
+    });
+    if (
+      !createdA.ok
+      || createdA.value.status !== "created"
+      || !createdB.ok
+      || createdB.value.status !== "created"
+    ) {
+      throw new Error("expected isolated kitchen-tool rows");
+    }
+
+    const toolA = createdA.value.tool;
+    await expect(updateKitchenTool(TEST_USER_A, {
+      id: toolA.id,
+      expectedName: "Dutch oven",
+      name: "Enameled Dutch oven",
+      kind: "cookware",
+    })).resolves.toMatchObject({
+      ok: true,
+      value: {
+        status: "updated",
+        tool: { id: toolA.id, name: "Enameled Dutch oven" },
+      },
+    });
+    expect((await getKitchenContext(TEST_USER_A)).tools).toMatchObject([
+      { id: toolA.id, name: "Enameled Dutch oven" },
+    ]);
+    expect((await getKitchenContext(TEST_USER_B)).tools).toMatchObject([
+      { name: "Dutch oven" },
+    ]);
+
+    await expect(deleteKitchenTool(TEST_USER_A, {
+      id: toolA.id,
+      expectedName: "Enameled Dutch oven",
+    })).resolves.toEqual({
+      ok: true,
+      value: { status: "deleted", id: toolA.id },
+    });
+    await expect(deleteKitchenTool(TEST_USER_A, {
+      id: createdB.value.tool.id,
+      expectedName: "Dutch oven",
+    })).resolves.toMatchObject({
+      ok: true,
+      value: { status: "not_found" },
+    });
+    expect((await getKitchenContext(TEST_USER_A)).tools).toEqual([]);
+    expect((await getKitchenContext(TEST_USER_B)).tools).toHaveLength(1);
+  });
 });
 
 describe("setPantryItemQuantity database boundary", () => {

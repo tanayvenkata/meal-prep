@@ -52,6 +52,7 @@ export type CreatePantryItemInput = {
 
 export type UpdatePantryItemInput = {
   id?: unknown;
+  expectedName?: unknown;
   name?: unknown;
   quantity?: unknown;
   turnover?: unknown;
@@ -59,6 +60,7 @@ export type UpdatePantryItemInput = {
 
 export type PantryItemIdInput = {
   id?: unknown;
+  expectedName?: unknown;
 };
 
 export type PantryItemIdsInput = {
@@ -197,7 +199,13 @@ export type CreatePantryItemOutcome =
 export type UpdatePantryItemOutcome =
   | { status: "updated" | "unchanged"; item: Item }
   | { status: "not_found"; id: number }
+  | { status: "conflict"; id: number; item: Item }
   | { status: "name_conflict"; id: number; conflictingItem: Item };
+
+export type DeletePantryItemOutcome =
+  | { status: "deleted"; id: number }
+  | { status: "not_found"; id: number }
+  | { status: "conflict"; id: number; item: Item };
 
 export type DeletePantryItemsOutcome =
   | { status: "deleted"; ids: number[] }
@@ -210,11 +218,13 @@ export type CreateKitchenToolOutcome =
 export type UpdateKitchenToolOutcome =
   | { status: "updated" | "unchanged"; tool: KitchenTool }
   | { status: "not_found"; id: string }
+  | { status: "conflict"; id: string; tool: KitchenTool }
   | { status: "name_conflict"; id: string; conflictingTool: KitchenTool };
 
 export type DeleteKitchenToolOutcome =
   | { status: "deleted"; id: string }
-  | { status: "not_found"; id: string };
+  | { status: "not_found"; id: string }
+  | { status: "conflict"; id: string; tool: KitchenTool };
 
 export type KitchenToolInput = {
   name?: unknown;
@@ -223,14 +233,17 @@ export type KitchenToolInput = {
 
 export type UpdateKitchenToolInput = KitchenToolInput & {
   id?: unknown;
+  expectedName?: unknown;
 };
 
 export type KitchenToolIdInput = {
   id?: unknown;
+  expectedName?: unknown;
 };
 
 export type KitchenContext = {
   pantry: Array<{
+    id: number;
     name: string;
     quantity: string;
     turnover: Turnover;
@@ -238,7 +251,7 @@ export type KitchenContext = {
     quantityAmount: string | null;
     quantityUnit: string | null;
   }>;
-  tools: Array<{ name: string; kind: string }>;
+  tools: Array<{ id: string; name: string; kind: string }>;
 };
 
 function invalid(error: string): KitchenServiceResult<never> {
@@ -312,6 +325,14 @@ function normalizePantryItemId(value: unknown): KitchenServiceResult<number> {
     return invalid("id must be a positive integer");
   }
   return valid(value);
+}
+
+function projectPantryItemId(value: number): number {
+  const id = Number(value);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new Error("pantry item id is outside the supported safe-integer range");
+  }
+  return id;
 }
 
 function normalizeRequestId(value: unknown): KitchenServiceResult<string> {
@@ -394,6 +415,17 @@ export async function updatePantryItem(
   const id = normalizePantryItemId(input.id);
   if (!id.ok) return id;
 
+  let expectedName: string | undefined;
+  if (input.expectedName !== undefined && input.expectedName !== null) {
+    const normalized = normalizeRequiredText(
+      input.expectedName,
+      "name",
+      MAX_ITEM_NAME_LENGTH,
+    );
+    if (!normalized.ok) return invalid(`expected ${normalized.error}`);
+    expectedName = normalized.value;
+  }
+
   let name: string | undefined;
   if (input.name !== undefined && input.name !== null) {
     const normalized = normalizeRequiredText(
@@ -418,6 +450,9 @@ export async function updatePantryItem(
   const current = await getItemById(userId, id.value);
   if (!current) {
     return valid({ status: "not_found", id: id.value });
+  }
+  if (expectedName !== undefined && expectedName !== current.name) {
+    return valid({ status: "conflict", id: id.value, item: current });
   }
 
   if (name !== undefined) {
@@ -454,8 +489,15 @@ export async function updatePantryItem(
       ...(quantityChanged ? { quantity: quantity.value } : {}),
       ...(turnoverChanged ? { turnover } : {}),
     },
+    expectedName,
   );
   if (result.status === "not_found") {
+    if (expectedName !== undefined) {
+      const changed = await getItemById(userId, id.value);
+      if (changed) {
+        return valid({ status: "conflict", id: id.value, item: changed });
+      }
+    }
     return valid({ status: "not_found", id: id.value });
   }
   if (result.status === "name_conflict") {
@@ -477,12 +519,35 @@ export async function updatePantryItem(
 export async function deletePantryItem(
   userId: string,
   input: PantryItemIdInput,
-): Promise<KitchenServiceResult<null>> {
+): Promise<KitchenServiceResult<DeletePantryItemOutcome>> {
   const id = normalizePantryItemId(input.id);
   if (!id.ok) return id;
 
-  await deleteItemRecord(userId, id.value);
-  return valid(null);
+  let expectedName: string | undefined;
+  if (input.expectedName !== undefined && input.expectedName !== null) {
+    const normalized = normalizeRequiredText(
+      input.expectedName,
+      "name",
+      MAX_ITEM_NAME_LENGTH,
+    );
+    if (!normalized.ok) return invalid(`expected ${normalized.error}`);
+    expectedName = normalized.value;
+  }
+
+  const current = await getItemById(userId, id.value);
+  if (!current) return valid({ status: "not_found", id: id.value });
+  if (expectedName !== undefined && current.name !== expectedName) {
+    return valid({ status: "conflict", id: id.value, item: current });
+  }
+
+  const result = await deleteItemRecord(userId, id.value, expectedName);
+  if (result.status === "not_found" && expectedName !== undefined) {
+    const changed = await getItemById(userId, id.value);
+    if (changed) {
+      return valid({ status: "conflict", id: id.value, item: changed });
+    }
+  }
+  return valid({ status: result.status, id: id.value });
 }
 
 export async function deletePantryItems(
@@ -890,6 +955,17 @@ export async function updateKitchenTool(
   const id = normalizeUuid(input.id, "id");
   if (!id.ok) return id;
 
+  let expectedName: string | undefined;
+  if (input.expectedName !== undefined && input.expectedName !== null) {
+    const normalized = normalizeRequiredText(
+      input.expectedName,
+      "name",
+      MAX_TOOL_NAME_LENGTH,
+    );
+    if (!normalized.ok) return invalid(`expected ${normalized.error}`);
+    expectedName = normalized.value;
+  }
+
   const name = normalizeRequiredText(
     input.name,
     "name",
@@ -903,6 +979,9 @@ export async function updateKitchenTool(
   const current = await getKitchenToolById(userId, id.value);
   if (!current) {
     return valid({ status: "not_found", id: id.value });
+  }
+  if (expectedName !== undefined && expectedName !== current.name) {
+    return valid({ status: "conflict", id: id.value, tool: current });
   }
 
   const conflictingTool = await getKitchenToolByCanonicalName(
@@ -927,8 +1006,15 @@ export async function updateKitchenTool(
     id.value,
     keepsCanonicalIdentity ? current.name : name.value,
     kind.value,
+    expectedName,
   );
   if (result.status === "not_found") {
+    if (expectedName !== undefined) {
+      const changed = await getKitchenToolById(userId, id.value);
+      if (changed) {
+        return valid({ status: "conflict", id: id.value, tool: changed });
+      }
+    }
     return valid({ status: "not_found", id: id.value });
   }
   if (result.status === "name_conflict") {
@@ -952,7 +1038,30 @@ export async function deleteKitchenTool(
   const id = normalizeUuid(input.id, "id");
   if (!id.ok) return id;
 
-  const result = await deleteKitchenToolRecord(userId, id.value);
+  let expectedName: string | undefined;
+  if (input.expectedName !== undefined && input.expectedName !== null) {
+    const normalized = normalizeRequiredText(
+      input.expectedName,
+      "name",
+      MAX_TOOL_NAME_LENGTH,
+    );
+    if (!normalized.ok) return invalid(`expected ${normalized.error}`);
+    expectedName = normalized.value;
+  }
+
+  const current = await getKitchenToolById(userId, id.value);
+  if (!current) return valid({ status: "not_found", id: id.value });
+  if (expectedName !== undefined && current.name !== expectedName) {
+    return valid({ status: "conflict", id: id.value, tool: current });
+  }
+
+  const result = await deleteKitchenToolRecord(userId, id.value, expectedName);
+  if (result.status === "not_found" && expectedName !== undefined) {
+    const changed = await getKitchenToolById(userId, id.value);
+    if (changed) {
+      return valid({ status: "conflict", id: id.value, tool: changed });
+    }
+  }
   return valid({ ...result, id: id.value });
 }
 
@@ -979,6 +1088,7 @@ export async function getKitchenContext(
           : "text";
 
       return {
+        id: projectPantryItemId(item.id),
         name: item.name,
         quantity: item.quantity,
         turnover: item.turnover,
@@ -987,6 +1097,6 @@ export async function getKitchenContext(
         quantityUnit: hasStructuredFields ? quantityUnit : null,
       };
     }),
-    tools: tools.map(({ name, kind }) => ({ name, kind })),
+    tools: tools.map(({ id, name, kind }) => ({ id, name, kind })),
   };
 }

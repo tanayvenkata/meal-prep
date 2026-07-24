@@ -93,12 +93,14 @@ in, send a message in the chat to get a recipe reply.
 
 Mise also has an experimental MCP Apps surface for ChatGPT. Supabase OAuth 2.1 identifies
 the connected Mise user. `get_kitchen_context` returns only that user's pantry and kitchen
-tools in an inline widget, without row IDs. Narrow actions can set, consume, or restock the
-structured quantity of one unambiguous existing item. They cannot rename, delete,
-or convert units. A confirmed list can also consume/restock several existing structured
-items in one all-or-nothing MCP action. Missing or ambiguous names, unsupported quantities,
-stale expectations, and unsafe arithmetic leave the pantry unchanged; there is no generic
-CRUD or implicit upsert tool.
+tools in an inline widget, including stable resource IDs for follow-up actions. Focused
+actions cover the full pantry and kitchen-tool lifecycle: create, edit, and explicitly
+delete, plus exact quantity set/consume/restock commands. Edits and deletes require a fresh
+ID and exact display name so stale model context fails closed. A confirmed list can also
+consume/restock several existing structured items in one all-or-nothing MCP action. Missing
+or foreign IDs, duplicate names, unsupported quantities, stale expectations, and unsafe
+arithmetic leave the kitchen unchanged. There is no raw database CRUD or implicit upsert
+tool, and no MCP access to conversations or account data.
 
 Exact quantity writes always carry a decimal `amount` and canonical `unit`; discrete items
 use `count`. The website uses the same structured contract for measurable inventory and

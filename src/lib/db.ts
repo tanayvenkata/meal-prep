@@ -57,6 +57,10 @@ export type DeleteItemsResult =
   | { status: "deleted"; ids: number[] }
   | { status: "not_found"; ids: number[] };
 
+export type DeleteItemResult =
+  | { status: "deleted" }
+  | { status: "not_found" };
+
 export type SetItemQuantityResult =
   | { status: "updated" | "unchanged"; item: Item; beforeQuantity: string }
   | { status: "not_found" };
@@ -469,6 +473,7 @@ export async function updateItem(
   userId: string,
   id: number,
   changes: UpdateItemChanges,
+  expectedName?: string,
 ): Promise<UpdateItemResult> {
   try {
     return await withUserContext(userId, async (tx) => {
@@ -502,7 +507,9 @@ export async function updateItem(
                 then ${changes.turnover ?? "high"}
               else turnover
             end
-        where id = ${id} and user_id = ${userId}
+        where id = ${id}
+          and user_id = ${userId}
+          and (${expectedName ?? null}::text is null or name = ${expectedName ?? null})
         returning *
       `;
       return item
@@ -1211,13 +1218,21 @@ export async function applyReviewedReceiptImport(
   }
 }
 
-export async function deleteItem(userId: string, id: number): Promise<void> {
-  await withUserContext(userId, (tx) =>
-    tx`
+export async function deleteItem(
+  userId: string,
+  id: number,
+  expectedName?: string,
+): Promise<DeleteItemResult> {
+  return withUserContext(userId, async (tx) => {
+    const [deleted] = await tx<{ id: number }[]>`
       delete from items
-      where id = ${id} and user_id = ${userId}
-    `,
-  );
+      where id = ${id}
+        and user_id = ${userId}
+        and (${expectedName ?? null}::text is null or name = ${expectedName ?? null})
+      returning id
+    `;
+    return deleted ? { status: "deleted" } : { status: "not_found" };
+  });
 }
 
 export async function deleteItems(
@@ -1316,13 +1331,16 @@ export async function updateKitchenTool(
   id: string,
   name: string,
   kind: KitchenToolKind,
+  expectedName?: string,
 ): Promise<UpdateKitchenToolResult> {
   try {
     return await withUserContext(userId, async (tx) => {
       const [tool] = await tx<KitchenTool[]>`
         update kitchen_tools
         set name = ${name}, kind = ${kind}
-        where id = ${id} and user_id = ${userId}
+        where id = ${id}
+          and user_id = ${userId}
+          and (${expectedName ?? null}::text is null or name = ${expectedName ?? null})
         returning *
       `;
       return tool
@@ -1347,11 +1365,14 @@ export async function updateKitchenTool(
 export async function deleteKitchenTool(
   userId: string,
   id: string,
+  expectedName?: string,
 ): Promise<DeleteKitchenToolResult> {
   return withUserContext(userId, async (tx) => {
     const [deleted] = await tx<{ id: string }[]>`
       delete from kitchen_tools
-      where id = ${id} and user_id = ${userId}
+      where id = ${id}
+        and user_id = ${userId}
+        and (${expectedName ?? null}::text is null or name = ${expectedName ?? null})
       returning id
     `;
     return deleted ? { status: "deleted" } : { status: "not_found" };
