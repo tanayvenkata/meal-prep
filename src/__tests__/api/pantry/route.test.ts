@@ -432,7 +432,10 @@ describe("DELETE /api/pantry", () => {
     });
     mockDeletePantryItem
       .mockResolvedValueOnce({ ok: false, error: "id is required" })
-      .mockResolvedValueOnce({ ok: true, value: null });
+      .mockResolvedValueOnce({
+        ok: true,
+        value: { status: "deleted", id: 1 },
+      });
 
     const invalid = await DELETE(new Request("http://localhost/api/pantry", {
       method: "DELETE",

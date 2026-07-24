@@ -161,14 +161,27 @@ export async function DELETE(request: Request) {
     if (!result.ok) {
       return Response.json({ error: result.error }, { status: 400 });
     }
-    if (result.value && result.value.status === "not_found") {
+    if (result.value.status === "not_found") {
       return Response.json(
         {
           code: "not_found",
           error: "One or more pantry items no longer exist.",
-          ids: result.value.ids,
+          ids: "ids" in result.value
+            ? result.value.ids
+            : [result.value.id],
         },
         { status: 404 },
+      );
+    }
+    if (result.value.status === "conflict") {
+      return Response.json(
+        {
+          code: "conflict",
+          error: "That pantry item changed. Refresh and try again.",
+          id: result.value.id,
+          item: toPantryItemResponse(result.value.item),
+        },
+        { status: 409 },
       );
     }
     return Response.json({ success: true });

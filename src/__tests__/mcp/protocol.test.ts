@@ -19,6 +19,7 @@ const mockLoadKitchenContext = vi.fn(
     void userId;
     return {
       pantry: [{
+        id: 1,
         name: "Rice",
         quantity: "2 cup",
         quantityMode: "structured" as const,
@@ -26,7 +27,11 @@ const mockLoadKitchenContext = vi.fn(
         quantityUnit: "cup" as const,
         turnover: "high" as const,
       }],
-      tools: [{ name: "Dutch oven", kind: "cookware" }],
+      tools: [{
+        id: "00000000-0000-4000-8000-000000000020",
+        name: "Dutch oven",
+        kind: "cookware",
+      }],
     };
   },
 );
@@ -42,8 +47,23 @@ const mockAdjustPantryItemQuantities = vi.fn<
 const mockApplyReviewedReceiptImport = vi.fn<
   typeof import("@/lib/kitchen-service").applyReviewedReceiptImport
 >();
+const mockCreatePantryItem = vi.fn<
+  typeof import("@/lib/kitchen-service").createPantryItem
+>();
+const mockUpdatePantryItem = vi.fn<
+  typeof import("@/lib/kitchen-service").updatePantryItem
+>();
+const mockDeletePantryItem = vi.fn<
+  typeof import("@/lib/kitchen-service").deletePantryItem
+>();
 const mockCreateKitchenTool = vi.fn<
   typeof import("@/lib/kitchen-service").createKitchenTool
+>();
+const mockUpdateKitchenTool = vi.fn<
+  typeof import("@/lib/kitchen-service").updateKitchenTool
+>();
+const mockDeleteKitchenTool = vi.fn<
+  typeof import("@/lib/kitchen-service").deleteKitchenTool
 >();
 const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalMcpPublicUrl = process.env.MCP_PUBLIC_URL;
@@ -86,6 +106,7 @@ beforeEach(async () => {
   mockLoadKitchenContext.mockReset();
   mockLoadKitchenContext.mockResolvedValue({
     pantry: [{
+      id: 1,
       name: "Rice",
       quantity: "2 cup",
       quantityMode: "structured",
@@ -93,7 +114,11 @@ beforeEach(async () => {
       quantityUnit: "cup",
       turnover: "high",
     }],
-    tools: [{ name: "Dutch oven", kind: "cookware" }],
+    tools: [{
+      id: "00000000-0000-4000-8000-000000000020",
+      name: "Dutch oven",
+      kind: "cookware",
+    }],
   });
   mockSetPantryItemQuantity.mockReset();
   mockSetPantryItemQuantity.mockResolvedValue({
@@ -257,6 +282,72 @@ beforeEach(async () => {
       },
     },
   });
+  mockCreatePantryItem.mockReset();
+  mockCreatePantryItem.mockResolvedValue({
+    ok: true,
+    value: {
+      status: "created",
+      item: {
+        id: 42,
+        user_id: "user-123",
+        name: "Chicken broth",
+        name_key: "chicken broth",
+        quantity: "1 carton",
+        quantity_text: "",
+        quantity_value: "1",
+        quantity_unit: "carton",
+        turnover: "high",
+        created_at: "2026-07-24T22:00:00Z",
+      },
+    },
+  });
+  mockUpdatePantryItem.mockReset();
+  mockUpdatePantryItem.mockResolvedValue({
+    ok: true,
+    value: {
+      status: "updated",
+      item: {
+        id: 42,
+        user_id: "user-123",
+        name: "Chicken broth",
+        name_key: "chicken broth",
+        quantity: "1 package",
+        quantity_text: "",
+        quantity_value: "1",
+        quantity_unit: "package",
+        turnover: "high",
+        created_at: "2026-07-24T22:00:00Z",
+      },
+    },
+  });
+  mockDeletePantryItem.mockReset();
+  mockDeletePantryItem.mockResolvedValue({
+    ok: true,
+    value: { status: "deleted", id: 42 },
+  });
+  mockUpdateKitchenTool.mockReset();
+  mockUpdateKitchenTool.mockResolvedValue({
+    ok: true,
+    value: {
+      status: "updated",
+      tool: {
+        id: "00000000-0000-4000-8000-000000000020",
+        user_id: "user-123",
+        name: "Enameled Dutch oven",
+        name_key: "enameled dutch oven",
+        kind: "cookware",
+        created_at: "2026-07-23T22:00:00Z",
+      },
+    },
+  });
+  mockDeleteKitchenTool.mockReset();
+  mockDeleteKitchenTool.mockResolvedValue({
+    ok: true,
+    value: {
+      status: "deleted",
+      id: "00000000-0000-4000-8000-000000000020",
+    },
+  });
 
   httpServer = createMiseHttpServer({
     verifyAccessToken: verifyTestAccessToken,
@@ -265,7 +356,12 @@ beforeEach(async () => {
     adjustPantryItemQuantity: mockAdjustPantryItemQuantity,
     adjustPantryItemQuantities: mockAdjustPantryItemQuantities,
     applyReviewedReceiptImport: mockApplyReviewedReceiptImport,
+    createPantryItem: mockCreatePantryItem,
+    updatePantryItem: mockUpdatePantryItem,
+    deletePantryItem: mockDeletePantryItem,
     createKitchenTool: mockCreateKitchenTool,
+    updateKitchenTool: mockUpdateKitchenTool,
+    deleteKitchenTool: mockDeleteKitchenTool,
   });
   await new Promise<void>((resolve, reject) => {
     httpServer.once("error", reject);
@@ -338,7 +434,7 @@ describe("Mise MCP OAuth wire contract", () => {
           resources: {},
         },
         instructions: expect.stringContaining(
-          "Read get_kitchen_context before relative or receipt writes",
+          "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes",
         ),
       },
     });
@@ -355,10 +451,10 @@ describe("Mise MCP OAuth wire contract", () => {
       result: { instructions: string };
     };
     expect(body.result.instructions.slice(0, 512)).toContain(
-      "receipt images and proposals alone never authorize writes",
+      "Receipt images and proposals alone never authorize writes",
     );
     expect(body.result.instructions.slice(0, 512)).toContain(
-      "On rejection/conflict, reread",
+      "On rejection or conflict, reread",
     );
     expect(body.result.instructions.length).toBeLessThanOrEqual(512);
   });
@@ -428,6 +524,7 @@ describe("Mise MCP OAuth wire contract", () => {
         structuredContent: {
           pantry: [
             {
+              id: 1,
               name: "Rice",
               quantity: "2 cup",
               quantityMode: "structured",
@@ -436,12 +533,17 @@ describe("Mise MCP OAuth wire contract", () => {
               turnover: "high",
             },
           ],
-          tools: [{ name: "Dutch oven", kind: "cookware" }],
+          tools: [{
+            id: "00000000-0000-4000-8000-000000000020",
+            name: "Dutch oven",
+            kind: "cookware",
+          }],
         },
       },
     });
     expect(mockLoadKitchenContext).toHaveBeenCalledWith("user-123");
     expect(Object.keys(body.result.structuredContent.pantry[0])).toEqual([
+      "id",
       "name",
       "quantity",
       "quantityMode",
@@ -450,6 +552,7 @@ describe("Mise MCP OAuth wire contract", () => {
       "turnover",
     ]);
     expect(Object.keys(body.result.structuredContent.tools[0])).toEqual([
+      "id",
       "name",
       "kind",
     ]);
@@ -539,7 +642,12 @@ describe("Mise MCP OAuth wire contract", () => {
     });
     expect(mockSetPantryItemQuantity).toHaveBeenCalledWith("user-123", {
       name: "Eggs",
-      quantity: { amount: "6", unit: "count" },
+      quantity: {
+        mode: "structured",
+        amount: "6",
+        unit: "count",
+        text: null,
+      },
     });
     expect(Object.keys(callBody.result.structuredContent)).toEqual([
       "status",
@@ -677,6 +785,261 @@ describe("Mise MCP OAuth wire contract", () => {
           text: "Cast iron skillet is already in your kitchen tools.",
         }],
         structuredContent: { status: "already_exists" },
+      },
+    });
+  });
+
+  it("publishes focused pantry and kitchen-tool lifecycle descriptors", async () => {
+    const response = await postMcp({
+      jsonrpc: "2.0",
+      id: 75,
+      method: "tools/list",
+    }, "test-token");
+    const body = await response.json() as {
+      result: { tools: Array<Record<string, unknown>> };
+    };
+
+    for (const [name, destructiveHint] of [
+      ["add_pantry_item", false],
+      ["update_pantry_item", true],
+      ["delete_pantry_item", true],
+      ["update_kitchen_tool", true],
+      ["delete_kitchen_tool", true],
+    ] as const) {
+      const tool = body.result.tools.find((candidate) => candidate.name === name);
+      expect(tool).toMatchObject({
+        description: expect.stringContaining("current turn"),
+        inputSchema: {
+          type: "object",
+          additionalProperties: false,
+        },
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+        securitySchemes: [{ type: "oauth2", scopes: ["openid"] }],
+        _meta: {
+          securitySchemes: [{ type: "oauth2", scopes: ["openid"] }],
+        },
+      });
+      expect((tool?._meta as Record<string, unknown>).ui).toBeUndefined();
+    }
+
+    const deletePantry = body.result.tools.find(
+      (candidate) => candidate.name === "delete_pantry_item",
+    );
+    expect(deletePantry?.inputSchema).toMatchObject({
+      required: ["id", "expectedName"],
+    });
+    const updateKitchen = body.result.tools.find(
+      (candidate) => candidate.name === "update_kitchen_tool",
+    );
+    expect(updateKitchen?.inputSchema).toMatchObject({
+      required: ["id", "expectedName", "name", "kind"],
+    });
+  });
+
+  it("creates, corrects, and deletes a pantry item with authenticated identity", async () => {
+    const createResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 76,
+      method: "tools/call",
+      params: {
+        name: "add_pantry_item",
+        arguments: {
+          name: "Chicken broth",
+          quantity: { amount: "1", unit: "carton" },
+        },
+      },
+    }, "test-token");
+    await expect(createResponse.json()).resolves.toMatchObject({
+      result: {
+        content: [{ text: "Added Chicken broth to your pantry." }],
+        structuredContent: {
+          status: "created",
+          item: {
+            id: 42,
+            name: "Chicken broth",
+            quantity: "1 carton",
+          },
+        },
+      },
+    });
+    expect(mockCreatePantryItem).toHaveBeenCalledWith("user-123", {
+      name: "Chicken broth",
+      quantity: {
+        mode: "structured",
+        amount: "1",
+        unit: "carton",
+        text: null,
+      },
+    });
+
+    const updateResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 77,
+      method: "tools/call",
+      params: {
+        name: "update_pantry_item",
+        arguments: {
+          id: 42,
+          expectedName: "Chicken breast",
+          name: "Chicken broth",
+        },
+      },
+    }, "test-token");
+    const updateBody = await updateResponse.json() as {
+      result: { structuredContent: { item: Record<string, unknown> } };
+    };
+    expect(updateBody).toMatchObject({
+      result: {
+        content: [{ text: "Updated Chicken broth." }],
+        structuredContent: {
+          status: "updated",
+          item: { id: 42, name: "Chicken broth" },
+        },
+      },
+    });
+    expect(mockUpdatePantryItem).toHaveBeenCalledWith("user-123", {
+      id: 42,
+      expectedName: "Chicken breast",
+      name: "Chicken broth",
+    });
+    expect(updateBody.result.structuredContent.item).not.toHaveProperty("user_id");
+    expect(updateBody.result.structuredContent.item).not.toHaveProperty("name_key");
+
+    const deleteResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 78,
+      method: "tools/call",
+      params: {
+        name: "delete_pantry_item",
+        arguments: { id: 42, expectedName: "Chicken broth" },
+      },
+    }, "test-token");
+    await expect(deleteResponse.json()).resolves.toMatchObject({
+      result: {
+        content: [{ text: "Deleted Chicken broth from your pantry." }],
+        structuredContent: { status: "deleted", id: 42 },
+      },
+    });
+    expect(mockDeletePantryItem).toHaveBeenCalledWith("user-123", {
+      id: 42,
+      expectedName: "Chicken broth",
+    });
+  });
+
+  it("updates and deletes a kitchen tool with authenticated identity", async () => {
+    const id = "00000000-0000-4000-8000-000000000020";
+    const updateResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 79,
+      method: "tools/call",
+      params: {
+        name: "update_kitchen_tool",
+        arguments: {
+          id,
+          expectedName: "Dutch oven",
+          name: "Enameled Dutch oven",
+          kind: "cookware",
+        },
+      },
+    }, "test-token");
+    await expect(updateResponse.json()).resolves.toMatchObject({
+      result: {
+        content: [{ text: "Updated Enameled Dutch oven." }],
+        structuredContent: {
+          status: "updated",
+          tool: { id, name: "Enameled Dutch oven", kind: "cookware" },
+        },
+      },
+    });
+    expect(mockUpdateKitchenTool).toHaveBeenCalledWith("user-123", {
+      id,
+      expectedName: "Dutch oven",
+      name: "Enameled Dutch oven",
+      kind: "cookware",
+    });
+
+    const deleteResponse = await postMcp({
+      jsonrpc: "2.0",
+      id: 80,
+      method: "tools/call",
+      params: {
+        name: "delete_kitchen_tool",
+        arguments: { id, expectedName: "Enameled Dutch oven" },
+      },
+    }, "test-token");
+    await expect(deleteResponse.json()).resolves.toMatchObject({
+      result: {
+        content: [{ text: "Deleted Enameled Dutch oven from your kitchen tools." }],
+        structuredContent: { status: "deleted", id },
+      },
+    });
+    expect(mockDeleteKitchenTool).toHaveBeenCalledWith("user-123", {
+      id,
+      expectedName: "Enameled Dutch oven",
+    });
+  });
+
+  it("rejects caller identity and stale lifecycle targets", async () => {
+    const invalid = await postMcp({
+      jsonrpc: "2.0",
+      id: 81,
+      method: "tools/call",
+      params: {
+        name: "delete_pantry_item",
+        arguments: {
+          id: 42,
+          expectedName: "Chicken broth",
+          userId: "attacker-selected-user",
+        },
+      },
+    }, "test-token");
+    await expect(invalid.json()).resolves.toMatchObject({
+      result: { isError: true },
+    });
+    expect(mockDeletePantryItem).not.toHaveBeenCalled();
+
+    mockDeletePantryItem.mockResolvedValueOnce({
+      ok: true,
+      value: {
+        status: "conflict",
+        id: 42,
+        item: {
+          id: 42,
+          user_id: "user-123",
+          name: "Chicken stock",
+          name_key: "chicken stock",
+          quantity: "1 carton",
+          quantity_text: "",
+          quantity_value: "1",
+          quantity_unit: "carton",
+          turnover: "high",
+          created_at: "2026-07-24T22:00:00Z",
+        },
+      },
+    });
+    const stale = await postMcp({
+      jsonrpc: "2.0",
+      id: 82,
+      method: "tools/call",
+      params: {
+        name: "delete_pantry_item",
+        arguments: { id: 42, expectedName: "Chicken broth" },
+      },
+    }, "test-token");
+    await expect(stale.json()).resolves.toMatchObject({
+      result: {
+        content: [{
+          text: expect.stringContaining("now named Chicken stock"),
+        }],
+        structuredContent: {
+          status: "conflict",
+          item: { name: "Chicken stock" },
+        },
       },
     });
   });
@@ -1809,7 +2172,12 @@ describe("Mise MCP OAuth wire contract", () => {
     expect(response.status).toBe(200);
     for (const name of [
       "get_kitchen_context",
+      "add_pantry_item",
+      "update_pantry_item",
+      "delete_pantry_item",
       "add_kitchen_tool",
+      "update_kitchen_tool",
+      "delete_kitchen_tool",
       "set_pantry_item_quantity",
       "consume_pantry_item",
       "restock_pantry_item",
