@@ -10,7 +10,6 @@ import {
   createMiseHttpServer,
   handleMiseMcpRequest,
 } from "@/mcp/server";
-import { kitchenWidgetResource } from "@/mcp/kitchen-widget.generated";
 
 let httpServer: Server;
 let mcpUrl: string;
@@ -431,7 +430,6 @@ describe("Mise MCP OAuth wire contract", () => {
         serverInfo: { name: "mise", version: "0.1.0" },
         capabilities: {
           tools: {},
-          resources: {},
         },
         instructions: expect.stringContaining(
           "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes",
@@ -489,11 +487,11 @@ describe("Mise MCP OAuth wire contract", () => {
       required: ["pantry", "tools"],
     });
     expect(tool?.securitySchemes).toEqual(expectedSchemes);
-    expect(tool?._meta).toMatchObject({
-      securitySchemes: expectedSchemes,
-      ui: { resourceUri: kitchenWidgetResource.uri },
-      "openai/outputTemplate": kitchenWidgetResource.uri,
-    });
+    expect(tool?._meta).toMatchObject({ securitySchemes: expectedSchemes });
+    expect((tool?._meta as Record<string, unknown>).ui).toBeUndefined();
+    expect(
+      (tool?._meta as Record<string, unknown>)["openai/outputTemplate"],
+    ).toBeUndefined();
   });
 
   it("calls the shared kitchen service with the authenticated user ID", async () => {
@@ -2088,57 +2086,6 @@ describe("Mise MCP OAuth wire contract", () => {
     expect(unauthenticated.status).toBe(401);
     expect(unauthenticated.headers.get("www-authenticate")).toContain(
       'resource_metadata="https://mcp.mise.example/.well-known/oauth-protected-resource/mcp"',
-    );
-  });
-
-  it("delivers the widget resource with an explicit no-network CSP", async () => {
-    // This is a regression budget, not a documented host limit. It prevents
-    // the bundler from silently selecting CommonJS SDK entry points again.
-    expect(Buffer.byteLength(kitchenWidgetResource.html)).toBeLessThan(800_000);
-
-    const response = await postMcp({
-      jsonrpc: "2.0",
-      id: 8,
-      method: "resources/read",
-      params: { uri: kitchenWidgetResource.uri },
-    }, "test-token");
-    const body = await response.json() as {
-      result: {
-        contents: Array<{
-          uri: string;
-          mimeType: string;
-          text: string;
-          _meta: {
-            ui: {
-              csp: {
-                connectDomains: string[];
-                resourceDomains: string[];
-              };
-            };
-          };
-        }>;
-      };
-    };
-
-    expect(response.status).toBe(200);
-    expect(body.result.contents[0]).toMatchObject({
-      uri: kitchenWidgetResource.uri,
-      mimeType: "text/html;profile=mcp-app",
-      _meta: {
-        ui: {
-          csp: {
-            connectDomains: [],
-            resourceDomains: [],
-          },
-        },
-      },
-    });
-    expect(body.result.contents[0].text).toContain('<div id="root"></div>');
-    expect(body.result.contents[0].text).toContain(
-      "No pantry items saved yet.",
-    );
-    expect(body.result.contents[0].text).toContain(
-      "No kitchen tools saved yet.",
     );
   });
 

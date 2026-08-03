@@ -128,13 +128,11 @@ remove it with an explicit `delete_pantry_item` call.
 In MCP Inspector:
 
 1. Initialize the connection and list tools.
-2. Confirm `get_kitchen_context` advertises OAuth, the generated `ui.resourceUri`, the output
-   schema, and accurate read-only/idempotent annotations.
-3. Call the tool while authenticated and open its resource.
-4. Confirm the app completes `ui/initialize`, receives `ui/notifications/tool-result`, renders
-   the result, and produces no browser-console errors.
-5. Confirm the resource CSP has empty `connectDomains` and `resourceDomains`; the widget needs
-   no browser network access.
+2. Confirm `get_kitchen_context` advertises OAuth, its output schema, and accurate
+   read-only/idempotent annotations without `ui.resourceUri` or `openai/outputTemplate`.
+3. Call the tool while authenticated and confirm its text and structured kitchen result.
+4. Continue from that read into a representative lifecycle action to prove the tool-only
+   response does not block the conversation.
 
 With read and write tools present, server-level instructions define their shared boundary: read
 before edits, deletes, relative changes, or receipt mutations; use stable IDs and exact current
@@ -143,6 +141,6 @@ receipt action only after exact line confirmation; pass explicit structured expe
 refresh after rejection or conflict; and never infer a write from an image or recipe planning.
 Each descriptor still carries its own narrow “when to use” guidance.
 
-The older `ui://widget/kitchen-context-v*.html` resources are compatibility aliases for historical
-ChatGPT messages that may re-read their original resource URI. Remove them only after production
-evidence shows those messages no longer request the aliases.
+The retired kitchen-context widget and its historical URI aliases are intentionally absent.
+Add a future widget only for an independently useful interaction, and validate it in ChatGPT
+Developer Mode before attaching it to a production tool.

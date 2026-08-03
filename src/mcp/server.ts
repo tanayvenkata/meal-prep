@@ -13,11 +13,7 @@ import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-import {
-  registerAppResource,
-  registerAppTool,
-  RESOURCE_MIME_TYPE,
-} from "@modelcontextprotocol/ext-apps/server";
+import { registerAppTool } from "@modelcontextprotocol/ext-apps/server";
 import { z } from "zod";
 import {
   getMcpAuthChallenge,
@@ -26,7 +22,6 @@ import {
   verifyMcpAccessToken,
   MCP_SCOPES,
 } from "./auth";
-import { kitchenWidgetResource as generatedKitchenWidgetResource } from "./kitchen-widget.generated";
 import {
   applyReviewedReceiptImport as importReviewedReceipt,
   adjustPantryItemQuantities as adjustPantryQuantities,
@@ -44,7 +39,6 @@ import {
   type AdjustPantryItemQuantityOutcome,
 } from "@/lib/kitchen-service";
 import { PANTRY_QUANTITY_UNITS } from "@/lib/pantry-quantity";
-import type { KitchenWidgetResource } from "./build-widget";
 
 const MCP_PATH = "/mcp";
 const KITCHEN_CONTEXT_TOOL = "get_kitchen_context";
@@ -76,15 +70,6 @@ const AUTHENTICATED_MISE_TOOLS = new Set([
   APPLY_PANTRY_ADJUSTMENTS_TOOL,
   APPLY_REVIEWED_RECEIPT_IMPORT_TOOL,
 ]);
-const LEGACY_KITCHEN_WIDGET_URIS = [
-  // Historical ChatGPT messages can re-read the resource URI captured in their
-  // original tool result. Keep these aliases until production evidence shows
-  // those retries no longer need compatibility support.
-  "ui://widget/kitchen-context-v1.html",
-  "ui://widget/kitchen-context-v2.html",
-  "ui://widget/kitchen-context-v3.html",
-  "ui://widget/kitchen-context-v4.html",
-] as const;
 
 type KitchenContext = Awaited<ReturnType<typeof loadKitchenContext>>;
 type KitchenContextLoader = (userId: string) => Promise<KitchenContext>;
@@ -100,7 +85,6 @@ type KitchenToolUpdater = typeof editKitchenTool;
 type KitchenToolDeleter = typeof removeKitchenTool;
 
 type MiseServerOptions = {
-  kitchenWidgetResource?: KitchenWidgetResource;
   loadKitchenContext?: KitchenContextLoader;
   setPantryItemQuantity?: PantryQuantityUpdater;
   adjustPantryItemQuantity?: PantryQuantityAdjuster;
@@ -759,7 +743,6 @@ class OpenAiCompatibleWebStandardStreamableHTTPServerTransport extends WebStanda
 
 export async function createMiseServer(
   {
-    kitchenWidgetResource = generatedKitchenWidgetResource,
     loadKitchenContext: getKitchenContext = loadKitchenContext,
     setPantryItemQuantity = updatePantryItemQuantity,
     adjustPantryItemQuantity = adjustPantryQuantity,
@@ -773,10 +756,6 @@ export async function createMiseServer(
     deleteKitchenTool = removeKitchenTool,
   }: MiseServerOptions = {},
 ) {
-  const kitchenWidgetUris = [
-    ...LEGACY_KITCHEN_WIDGET_URIS,
-    kitchenWidgetResource.uri,
-  ];
   const server = new McpServer(
     { name: "mise", version: "0.1.0" },
     {
@@ -784,35 +763,6 @@ export async function createMiseServer(
         "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; deletes require explicit delete intent. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying.",
     },
   );
-
-  for (const [index, widgetUri] of kitchenWidgetUris.entries()) {
-    registerAppResource(
-      server,
-      `kitchen-context-widget-v${index + 1}`,
-      widgetUri,
-      {},
-      async () => ({
-          contents: [
-            {
-              uri: widgetUri,
-              mimeType: RESOURCE_MIME_TYPE,
-              text: kitchenWidgetResource.html,
-              _meta: {
-                ui: {
-                  prefersBorder: true,
-                  csp: {
-                    connectDomains: [],
-                    resourceDomains: [],
-                  },
-                },
-                "openai/widgetDescription":
-                  "Displays a compact snapshot of the user's Mise kitchen context.",
-              },
-            },
-          ],
-        }),
-    );
-  }
 
   registerAppTool(
     server,
@@ -830,8 +780,6 @@ export async function createMiseServer(
       },
       _meta: {
         securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
-        ui: { resourceUri: kitchenWidgetResource.uri },
-        "openai/outputTemplate": kitchenWidgetResource.uri,
         "openai/toolInvocation/invoking": "Checking your kitchen…",
         "openai/toolInvocation/invoked": "Kitchen ready.",
       },
@@ -1512,7 +1460,6 @@ type VerifyAccessToken = (token: string) => Promise<AuthInfo>;
 
 type MiseHttpServerOptions = {
   verifyAccessToken?: VerifyAccessToken;
-  kitchenWidgetResource?: KitchenWidgetResource;
   loadKitchenContext?: KitchenContextLoader;
   setPantryItemQuantity?: PantryQuantityUpdater;
   adjustPantryItemQuantity?: PantryQuantityAdjuster;
@@ -1680,7 +1627,6 @@ export async function handleMiseMcpRequest(
 
 export function createMiseHttpServer({
   verifyAccessToken = verifyMcpAccessToken,
-  kitchenWidgetResource = generatedKitchenWidgetResource,
   loadKitchenContext: getKitchenContext = loadKitchenContext,
   setPantryItemQuantity = updatePantryItemQuantity,
   adjustPantryItemQuantity = adjustPantryQuantity,
@@ -1764,7 +1710,6 @@ export function createMiseHttpServer({
     // This server is deliberately stateless: every MCP request gets a
     // short-lived server and transport.
     const server = await createMiseServer({
-      kitchenWidgetResource,
       loadKitchenContext: getKitchenContext,
       setPantryItemQuantity,
       adjustPantryItemQuantity,
