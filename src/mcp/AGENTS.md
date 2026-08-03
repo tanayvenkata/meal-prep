@@ -1,7 +1,7 @@
 # Mise MCP app guidance
 
-This directory contains Mise's MCP server and MCP App widget. Keep changes
-small and teach the protocol boundary before adding product complexity.
+This directory contains Mise's MCP server. Keep changes small and teach the
+protocol boundary before adding product complexity.
 
 ## Docs-first and SDK-first rule
 
@@ -31,8 +31,10 @@ transitive dependencies.
 
 ## Architecture
 
-- Treat core MCP as the tool and data contract. Treat MCP Apps as the optional
-  open UI extension rendered by compatible hosts.
+- Treat core MCP as the tool and data contract. The current Mise surface is
+  intentionally tool-only: do not attach a UI resource to `get_kitchen_context`.
+  Treat any future MCP App as an optional extension with an independently useful
+  interaction, not a prerequisite for kitchen reads or writes.
 - Target ChatGPT first, but use the standard MCP Apps bridge from
   `@modelcontextprotocol/ext-apps` for widget lifecycle and tool results.
 - Do not hand-roll the initialization handshake with raw `postMessage` calls.

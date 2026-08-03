@@ -91,9 +91,9 @@ in, send a message in the chat to get a recipe reply.
 
 ## ChatGPT app development
 
-Mise also has an experimental MCP Apps surface for ChatGPT. Supabase OAuth 2.1 identifies
+Mise also has an experimental MCP surface for ChatGPT. Supabase OAuth 2.1 identifies
 the connected Mise user. `get_kitchen_context` returns only that user's pantry and kitchen
-tools in an inline widget, including stable resource IDs for follow-up actions. Focused
+tools as model-readable structured content, including stable IDs for follow-up actions. Focused
 actions cover the full pantry and kitchen-tool lifecycle: create, edit, and explicitly
 delete, plus exact quantity set/consume/restock commands. Edits and deletes require a fresh
 ID and exact display name so stale model context fails closed. A confirmed list can also
@@ -132,7 +132,7 @@ For local development, run the same MCP app as a standalone process:
 # Terminal 1: Next app (login + OAuth consent screen)
 npm run dev
 
-# Terminal 2: MCP server with widget rebuilds and local Supabase credentials
+# Terminal 2: MCP server with local Supabase credentials
 npm run mcp:dev
 
 # Terminal 3: temporary public HTTPS tunnel for ChatGPT Developer Mode

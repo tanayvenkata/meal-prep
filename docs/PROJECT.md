@@ -37,7 +37,7 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
   pantry-aware recipes → auth → tests + CI/CD → voice → Mise redesign; plus rate limiting
   and a stop button. (Per-milestone detail: git history.)
 - **Experimental ChatGPT surface:** a Streamable HTTP MCP server exposes
-  `get_kitchen_context`, its read-only MCP Apps widget, and focused pantry/kitchen-tool
+  a tool-only `get_kitchen_context` read and focused pantry/kitchen-tool
   create, edit, and delete actions plus exact-set, consume, and restock commands. Supabase OAuth 2.1 maps the connector
   token to a Mise user; every tool uses the same user-scoped kitchen service as the
   website. Kitchen reads return stable resource IDs; edits and deletes also carry the exact
@@ -48,8 +48,10 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
   CRUD, implicit upsert, or MCP access to conversations/account data. A separately confirmed receipt proposal can call
   one idempotent atomic action whose lines explicitly choose new-item creation or an
   existing-item restock; the image or draft proposal never authorizes that call. The
-  complete tool → resource → widget handshake works
-  in MCP Inspector and ChatGPT Developer Mode, including light and dark themes. End-to-end
+  tool schemas, structured results, authentication, and lifecycle actions work
+  in MCP Inspector and ChatGPT Developer Mode. The obsolete kitchen-context widget was
+  removed after a ChatGPT host runtime failure blocked an otherwise successful tool flow;
+  future widgets must prove an independently useful interaction before being attached. End-to-end
   account linking was first proven through the ngrok development connector. The same
   deliberately stateless server now also runs through the existing Vercel app at `/mcp`;
   ngrok remains the loop for uncommitted local changes.
@@ -68,8 +70,8 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
 
 **Experimental third loop:**
 - **ChatGPT app:** ChatGPT → hosted Next `/mcp` route → `src/mcp/server.ts` →
-  authenticated read or exact-quantity action → `kitchen-service.ts`; reads may continue
-  through the MCP Apps resource → inline React widget. Local development uses ngrok as an
+  authenticated read or exact-quantity action → `kitchen-service.ts`; tool results return
+  text plus model-readable structured content. Local development uses ngrok as an
   HTTPS tunnel to the standalone process on port `8787`; production uses a short-lived
   Web-standard MCP transport per Vercel request.
 
