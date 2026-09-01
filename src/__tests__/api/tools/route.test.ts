@@ -248,4 +248,32 @@ describe("PUT and DELETE /api/tools", () => {
     expect(missingDelete.status).toBe(404);
     expect((await missingDelete.json()).code).toBe("not_found");
   });
+
+  it("maps a stale tool update to a safe typed 409", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockUpdateKitchenTool.mockResolvedValue({
+      ok: true,
+      value: { status: "conflict", id: tool.id, tool },
+    });
+
+    const response = await PUT(new Request("http://localhost/api/tools", {
+      method: "PUT",
+      body: JSON.stringify({
+        id: tool.id,
+        name: "Convection oven",
+        kind: "appliance",
+      }),
+    }));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      code: "conflict",
+      error: "That kitchen tool changed. Refresh and try again.",
+      id: tool.id,
+      tool: toolResponse,
+    });
+  });
 });

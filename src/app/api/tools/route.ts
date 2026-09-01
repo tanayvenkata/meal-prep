@@ -89,6 +89,16 @@ export async function PUT(request: Request) {
           },
           { status: 404 },
         );
+      case "conflict":
+        return Response.json(
+          {
+            code: "conflict",
+            error: "That kitchen tool changed. Refresh and try again.",
+            id: result.value.id,
+            tool: toKitchenToolResponse(result.value.tool),
+          },
+          { status: 409 },
+        );
       case "name_conflict":
         return Response.json(
           {
@@ -102,6 +112,8 @@ export async function PUT(request: Request) {
           { status: 409 },
         );
     }
+
+    result.value satisfies never;
   } catch (err) {
     console.error("PUT /api/tools failed:", err);
     return Response.json({ error: "failed to update kitchen tool" }, { status: 500 });

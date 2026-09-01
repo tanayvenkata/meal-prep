@@ -337,6 +337,41 @@ describe("PUT /api/pantry", () => {
     });
   });
 
+  it("maps a stale item update to a safe typed 409", async () => {
+    mockGetRequestAuth.mockResolvedValue({
+      userId: "user-123",
+      oauthClientId: null,
+    });
+    mockUpdatePantryItem.mockResolvedValue({
+      ok: true,
+      value: { status: "conflict", id: 1, item: fakeItem({ name: "Eggs" }) },
+    });
+
+    const response = await PUT(new Request("http://localhost/api/pantry", {
+      method: "PUT",
+      body: JSON.stringify({ id: 1, name: "eggs" }),
+    }));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      code: "conflict",
+      error: "That pantry item changed. Refresh and try again.",
+      id: 1,
+      item: {
+        id: 1,
+        name: "Eggs",
+        quantity: "12",
+        quantityDetails: {
+          mode: "structured",
+          amount: "12",
+          unit: "count",
+        },
+        turnover: "high",
+        created_at: "2024-01-01",
+      },
+    });
+  });
+
   it("maps a rename collision to a typed 409 with safe conflict details", async () => {
     mockGetRequestAuth.mockResolvedValue({
       userId: "user-123",
