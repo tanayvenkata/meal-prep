@@ -277,7 +277,7 @@ beforeEach(async () => {
         name: "Cast iron skillet",
         name_key: "cast iron skillet",
         kind: "cookware",
-        created_at: "2026-07-23T22:00:00Z",
+        created_at: new Date("2026-07-23T22:00:00Z") as unknown as string,
       },
     },
   });
@@ -296,7 +296,7 @@ beforeEach(async () => {
         quantity_value: "1",
         quantity_unit: "carton",
         turnover: "high",
-        created_at: "2026-07-24T22:00:00Z",
+        created_at: new Date("2026-07-24T22:00:00Z") as unknown as string,
       },
     },
   });
@@ -315,7 +315,7 @@ beforeEach(async () => {
         quantity_value: "1",
         quantity_unit: "package",
         turnover: "high",
-        created_at: "2026-07-24T22:00:00Z",
+        created_at: new Date("2026-07-24T22:00:00Z") as unknown as string,
       },
     },
   });
@@ -335,7 +335,7 @@ beforeEach(async () => {
         name: "Enameled Dutch oven",
         name_key: "enameled dutch oven",
         kind: "cookware",
-        created_at: "2026-07-23T22:00:00Z",
+        created_at: new Date("2026-07-23T22:00:00Z") as unknown as string,
       },
     },
   });
@@ -492,6 +492,7 @@ describe("Mise MCP OAuth wire contract", () => {
     expect(
       (tool?._meta as Record<string, unknown>)["openai/outputTemplate"],
     ).toBeUndefined();
+    expect(JSON.stringify(tool)).not.toContain("template");
   });
 
   it("calls the shared kitchen service with the authenticated user ID", async () => {
@@ -739,7 +740,7 @@ describe("Mise MCP OAuth wire contract", () => {
           id: "00000000-0000-4000-8000-000000000010",
           name: "Cast iron skillet",
           kind: "cookware",
-          created_at: "2026-07-23T22:00:00Z",
+          created_at: "2026-07-23T22:00:00.000Z",
         },
       },
     });
@@ -760,7 +761,7 @@ describe("Mise MCP OAuth wire contract", () => {
           name: "Cast iron skillet",
           name_key: "cast iron skillet",
           kind: "cookware",
-          created_at: "2026-07-23T22:00:00Z",
+          created_at: new Date("2026-07-23T22:00:00Z") as unknown as string,
         },
       },
     });
@@ -1016,7 +1017,7 @@ describe("Mise MCP OAuth wire contract", () => {
           quantity_value: "1",
           quantity_unit: "carton",
           turnover: "high",
-          created_at: "2026-07-24T22:00:00Z",
+          created_at: new Date("2026-07-24T22:00:00Z") as unknown as string,
         },
       },
     });
