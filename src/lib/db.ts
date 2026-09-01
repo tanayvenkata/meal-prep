@@ -1379,6 +1379,9 @@ export async function deleteKitchenTool(
   });
 }
 
+// Legacy native-chat persistence. Production still contains user history, so these
+// types and helpers remain for preservation/compatibility only. New product work
+// must use the MCP kitchen-data boundaries above rather than these tables.
 export type Conversation = {
   id: string;
   user_id: string;

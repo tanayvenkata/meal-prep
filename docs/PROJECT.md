@@ -180,6 +180,12 @@ The open-work list lives on the board, not here, so it can't drift. This section
 the few non-obvious *facts about the current system* that would make me write wrong code if I
 didn't know them — the architectural truths a tracker title can't carry.
 
+- 🗄️ **Native-chat history is legacy data, not an active product surface.** The production
+  `conversations` and `messages` tables contained 16 and 166 rows respectively when audited
+  on 2026-09-01, so they were preserved rather than dropped. Their helpers, types, and RLS
+  tests remain for compatibility and data safety only. Do not build new features on them;
+  revisit export/retention and deletion deliberately before any future removal.
+
 - 🔐 **RLS is a real second authorization layer.** The application pool connects as the
   non-owner, `NOBYPASSRLS`, `NOINHERIT` `mise_app` role and enters the authenticated role
   only inside `withUserContext`, which stamps the trusted user ID for ownership policies.
