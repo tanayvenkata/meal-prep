@@ -18,7 +18,6 @@
   --light-olive: #5c6b3f;
   --light-sand: #e6dcc8;
   --light-muted: #8a8073;
-  --light-error-border: #e6c4ba;
   /* Bare ember TEXT on a light surface (not a fill). Darker/more saturated
      than --light-ember: text-on-surface must clear WCAG AA 4.5:1, which the
      button-tuned --light-ember only reaches on --light-surface (4.64), not on
@@ -42,7 +41,6 @@
   --dark-olive: #7c8c5c;
   --dark-sand: #4a4030;
   --dark-muted: #a89e8e;
-  --dark-error-border: #6b4038;
   /* Dark-mode counterpart of --light-ember-text. Lightened well past
      --dark-ember (which is button-tuned dark and only reaches 3.38:1 as bare
      text on --dark-surface) to clear 4.5:1 on every dark surface it lands on
@@ -99,23 +97,13 @@
      with --accent automatically in dark mode without its own override. */
   --accent-soft: color-mix(in srgb, var(--accent) 40%, white);
 
-  /* --danger and --danger-outline are deliberately two different primitives
-     despite the shared prefix: --danger reuses the accent/ember hue (no
-     dedicated danger hex exists) for error text/bg/border built from ember
-     today; --danger-outline is the genuinely distinct pale hue used only for
-     ChatWindow's dedicated error-card border. Don't merge them. */
+  /* Error text/bg/borders reuse the accent/ember hue; no separate danger hue exists. */
   --danger: var(--light-ember);
-  --danger-outline: var(--light-error-border);
 
   --outline: var(--light-border);
   /* Focus/hover emphasis border — shares ink's value with text-primary
      today, same reasoning as fill-inverse above. */
   --outline-strong: var(--light-ink);
-
-  /* Intentionally not redefined under .dark — a modal backdrop should
-     always darken regardless of theme, unlike text/fill tokens which flip
-     polarity, which is why HistoryDrawer's overlay uses this instead. */
-  --overlay-scrim: #000000;
 
   /* Shadow COLOR, split from shape (kept at each call site) so shadows can
      be redefined per theme without touching components. Named --shadow-color-*
@@ -147,7 +135,6 @@
   --text-accent: var(--dark-ember-text);
   --text-danger: var(--dark-ember-text);
   --danger: var(--dark-ember);
-  --danger-outline: var(--dark-error-border);
 
   --outline: var(--dark-border);
   --outline-strong: var(--dark-ink);
@@ -177,10 +164,8 @@
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
-  --color-danger-outline: var(--danger-outline);
   --color-outline: var(--outline);
   --color-outline-strong: var(--outline-strong);
-  --color-overlay-scrim: var(--overlay-scrim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-serif: var(--font-spectral);
@@ -234,7 +219,6 @@ body {
     --fill-inverse: var(--light-ink);
     --accent: var(--light-ember);
     --danger: var(--light-ember);
-    --danger-outline: var(--light-error-border);
     --outline: var(--light-border);
     --outline-strong: var(--light-ink);
     color-scheme: light;
