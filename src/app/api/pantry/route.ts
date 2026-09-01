@@ -118,6 +118,16 @@ export async function PUT(request: Request) {
           },
           { status: 404 },
         );
+      case "conflict":
+        return Response.json(
+          {
+            code: "conflict",
+            error: "That pantry item changed. Refresh and try again.",
+            id: outcome.id,
+            item: toPantryItemResponse(outcome.item),
+          },
+          { status: 409 },
+        );
       case "name_conflict":
         return Response.json(
           {
@@ -129,6 +139,8 @@ export async function PUT(request: Request) {
           { status: 409 },
         );
     }
+
+    outcome satisfies never;
   } catch (err) {
     console.error("PUT /api/pantry failed:", err);
     return Response.json({ error: "failed to update item" }, { status: 500 });
