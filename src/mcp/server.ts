@@ -13,7 +13,6 @@ import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-import { registerAppTool } from "@modelcontextprotocol/ext-apps/server";
 import { z } from "zod";
 import {
   getMcpAuthChallenge,
@@ -575,7 +574,7 @@ function toPublicPantryItem(item: {
   name: string;
   quantity: string;
   turnover: "high" | "low";
-  created_at: string;
+  created_at: string | Date;
 }) {
   const id = Number(item.id);
   if (!Number.isSafeInteger(id) || id <= 0) {
@@ -586,7 +585,7 @@ function toPublicPantryItem(item: {
     name: item.name,
     quantity: item.quantity,
     turnover: item.turnover,
-    created_at: item.created_at,
+    created_at: serializeTimestamp(item.created_at),
   };
 }
 
@@ -594,14 +593,18 @@ function toPublicKitchenTool(tool: {
   id: string;
   name: string;
   kind: "appliance" | "cookware" | "bakeware";
-  created_at: string;
+  created_at: string | Date;
 }) {
   return {
     id: tool.id,
     name: tool.name,
     kind: tool.kind,
-    created_at: tool.created_at,
+    created_at: serializeTimestamp(tool.created_at),
   };
+}
+
+function serializeTimestamp(timestamp: string | Date): string {
+  return timestamp instanceof Date ? timestamp.toISOString() : timestamp;
 }
 
 function formatStructuredToolQuantity(
@@ -764,8 +767,7 @@ export async function createMiseServer(
     },
   );
 
-  registerAppTool(
-    server,
+  server.registerTool(
     KITCHEN_CONTEXT_TOOL,
     {
       title: "Show kitchen context",
