@@ -1,6 +1,9 @@
-# Mise — meal prep assistant
+# Mise — ChatGPT kitchen companion
 
-Pantry-aware recipe chat powered by Claude. Built with Next.js 16, Supabase, and the Anthropic SDK.
+Mise gives ChatGPT persistent, user-owned kitchen context through a focused MCP
+tool surface. It stores pantry items and kitchen tools, supports safe inventory
+changes, and keeps the data visible through a small Next.js account and kitchen
+management site. Built with Next.js 16, Supabase, and the MCP TypeScript SDK.
 
 Live: https://meal-prep-tawny-kappa.vercel.app
 
@@ -89,9 +92,9 @@ in, send a message in the chat to get a recipe reply.
 > CLI doesn't exist — Vercel and CI inject the same secrets their own way. On your laptop,
 > use `build:local`, which wraps `next build` in `doppler run` to supply those secrets.
 
-## ChatGPT app development
+## Primary product: ChatGPT MCP app
 
-Mise also has an experimental MCP surface for ChatGPT. Supabase OAuth 2.1 identifies
+ChatGPT is Mise's primary conversational surface. Supabase OAuth 2.1 identifies
 the connected Mise user. `get_kitchen_context` returns only that user's pantry and kitchen
 tools as model-readable structured content, including stable IDs for follow-up actions. Focused
 actions cover the full pantry and kitchen-tool lifecycle: create, edit, and explicitly
@@ -165,7 +168,7 @@ Do not use the hosted configuration for automated tests. Exercise write tools ag
 fixtures first, then perform only the issue's named production dogfood action.
 
 Use a fresh tool call to test new data. Historical ChatGPT messages retain their original
-tool-result snapshot. Widget implementation and host-testing rules live in
+tool-result snapshot. MCP implementation and host-testing rules live in
 [`src/mcp/AGENTS.md`](src/mcp/AGENTS.md).
 
 ### Before running integration tests
@@ -203,11 +206,17 @@ After setup, `npm run dev` works normally.
 ## Architecture
 
 ```
-Browser (Next.js)          Server (API routes)         External
-page.tsx                   /api/recipes/route.ts   →   Anthropic Claude
-ChatWindow.tsx      →      auth.ts + db.ts         →   Supabase Postgres
-                           ai.ts
+ChatGPT                    Mise server                  Storage
+MCP tool call       →      /mcp route            →      kitchen-service.ts
+OAuth bearer token        MCP auth + schemas            db.ts → Supabase
+
+Browser                    Mise server
+account/kitchen UI  →      auth + website APIs    →      same kitchen service
 ```
+
+The website is a supporting control surface for sign-in, OAuth consent, and direct
+kitchen-data inspection or correction. New conversational product work belongs in the
+ChatGPT MCP flow unless a browser-only need is demonstrated.
 
 All secrets live in [Doppler](https://dashboard.doppler.com) under the `meal-prep` project. `dev` config flows to local via CLI; `prd` config syncs to Vercel automatically.
 

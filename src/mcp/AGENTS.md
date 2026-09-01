@@ -35,12 +35,9 @@ transitive dependencies.
   intentionally tool-only: do not attach a UI resource to `get_kitchen_context`.
   Treat any future MCP App as an optional extension with an independently useful
   interaction, not a prerequisite for kitchen reads or writes.
-- Target ChatGPT first, but use the standard MCP Apps bridge from
-  `@modelcontextprotocol/ext-apps` for widget lifecycle and tool results.
-- Do not hand-roll the initialization handshake with raw `postMessage` calls.
-- Keep widget code under `src/mcp/widget/`: `index.tsx` owns host lifecycle,
-  `bridge.ts` owns the standard MCP Apps connection, and `components/` owns
-  presentation built from Apps SDK UI components.
+- Target ChatGPT first. If a future workflow earns a widget, use the standard MCP Apps
+  bridge from `@modelcontextprotocol/ext-apps` and do not hand-roll the initialization
+  handshake with raw `postMessage` calls.
 - Use `window.openai` only when a documented ChatGPT-specific capability is
   necessary, and keep the standard MCP Apps path functional where possible.
 - Keep server data access separate from widget rendering. Demo fixtures may
@@ -89,9 +86,7 @@ to transport or authentication, preserve automated coverage for:
   pantry items and kitchen tools, including duplicate, unchanged, stale-name,
   missing/foreign, and caller-supplied-identity cases;
 - security schemes in both the standard top-level descriptor field and any
-  compatibility metadata required by supported hosts; and
-- widget initialization and tool-result delivery through the standard MCP Apps
-  bridge.
+  compatibility metadata required by supported hosts.
 
 After automated checks, verify the vertical slice in MCP Inspector and then in
 ChatGPT Developer Mode through the development HTTPS endpoint. If current docs
@@ -99,7 +94,7 @@ and observed host behavior differ, preserve the smallest standards-compatible
 adapter proven to interoperate, cover it with a focused contract test, and
 record why it exists instead of silently hand-rolling more of the protocol.
 
-## UI defaults
+## Future UI defaults
 
 - Prefer semantic HTML and host-provided design tokens over a custom visual
   system while the MCP flow is still being established.
@@ -115,17 +110,15 @@ record why it exists instead of silently hand-rolling more of the protocol.
 
 ## Delivery order
 
-1. Make one tool-to-widget flow correct in MCP Inspector.
+1. Make one tool flow correct in MCP Inspector.
 2. Verify the same flow in ChatGPT Developer Mode.
 3. Add authentication before reading real Supabase user data.
-4. Add component actions and additional tools one small vertical slice at a
-   time.
-5. Revisit stronger Mise visual differentiation only after the lifecycle,
-   data, auth, error, loading, empty, light, dark, and keyboard states work.
+4. Add additional tools one small vertical slice at a time.
+5. Add a widget only when a named workflow needs interaction or visualization that
+   ChatGPT's ordinary tool result cannot provide.
 
-For every widget change, verify the MCP Apps initialization handshake, tool
-result rendering, loading and error behavior, and absence of browser console
-errors.
+For any future widget, verify the MCP Apps initialization handshake, tool-result
+rendering, loading and error behavior, and absence of browser console errors.
 
 ## Local development loop
 
@@ -173,29 +166,16 @@ The production connector runs through the existing Next.js deployment:
   The production OAuth connection is only proven after the stable production
   hostname serves the matching code and the ChatGPT app is reconnected there.
 
-## Widget refresh and test rules
+## Host refresh and future-widget test rules
 
-- MCP Inspector is the fast inner loop for resources, tools, bridge behavior,
-  and initial visual checks. ChatGPT Developer Mode is the required host-level
+- MCP Inspector is the fast inner loop for tools and protocol behavior. ChatGPT
+  Developer Mode is the required host-level
   verification. Record those host checks with the direct, indirect, negative,
-  empty, auth-failure, mobile/widget, and two-user cases in
+  empty, auth-failure, and two-user cases in
   `docs/mcp-golden-prompts.md`.
-- Derive the widget resource URI from a short content hash of the assembled
-  HTML, CSS, and JavaScript. Do not maintain handwritten `v1`, `v2`, and similar
-  development counters. Keep old URI aliases only when retrying historical
-  messages is intentionally supported.
-- Keep the generated widget on package ESM/browser export paths. The repository
-  lives below an unrelated Yarn PnP manifest, so the widget build resolves this
-  project's package export maps explicitly; preserve the protocol test's bundle
-  budget when adding SDK UI components.
-- A historical ChatGPT message retains its original tool result. Retrying or
-  refreshing its widget may load new widget code, but it does not fetch new
-  pantry data. Make a fresh prompt to test a new tool result.
+- A historical ChatGPT message retains its original tool result. Make a fresh prompt to
+  test new tool data.
 - After each change, verify in order: TypeScript and lint, refresh the app in
   MCP Inspector, then refresh the ChatGPT development app metadata when its
-  tool contract or generated widget URI changed before making a fresh tool call
+  tool contract changed before making a fresh tool call
   through the ngrok connector.
-- In MCP Inspector v0.22.0, changing the shell theme while an app is mounted
-  can fail to notify the iframe with `Error: Not connected`. To test a theme,
-  select Light or Dark first, close the mounted app, then reopen it. Verify the
-  newly mounted iframe instead of treating the stale frame as an app CSS bug.

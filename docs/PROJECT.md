@@ -26,17 +26,34 @@
 
 ## The vision (eventual)
 
-A personal cooking app: stores my pantry, lets me add to it (eventually via a photo of a
-receipt), and suggests recipes based on what I have, my mood, and my time — like chatting
-with an assistant that has persistent memory of my kitchen. Stretch: voice / hands-free cooking.
-**Learning project first, product second.** 
+A personal kitchen memory for ChatGPT: Mise stores my pantry and kitchen tools, lets
+ChatGPT read that context, and applies only explicit, safe inventory changes. ChatGPT
+already owns the conversation, voice, and image inputs; Mise owns durable kitchen data,
+authentication, and mutation invariants. The website remains a small supporting control
+surface for account linking and direct data inspection or correction.
+**Learning project first, product second.**
+
+## Product direction — 2026-09-01
+
+- **ChatGPT is the primary product surface.** New cooking interactions should begin as
+  focused MCP user intents, not duplicated website chat features.
+- **The MCP server is currently tool-only.** A custom widget returns only when a workflow
+  has an independently useful visual or interactive job that plain tool results cannot do.
+- **The website is supporting infrastructure.** Keep login, OAuth consent, pantry/tool
+  management, health routes, and the shared domain service. Maintain existing web chat
+  while consolidation is evaluated, but do not extend its product roadmap by default.
+- **Old roadmap threads are evidence, not commitments.** Before reviving an issue, verify
+  that it serves the ChatGPT-first loop. Close or archive web-only and speculative work
+  when it does not.
+- **Deletion follows dependency proof.** Remove a web capability only after showing that
+  MCP hosting, OAuth, data correction, operations, tests, or deployment do not rely on it.
 
 ## Current state
 
 - **Done: M1–M6.5 + pre-M7 hardening.** Streaming chat → Vercel deploy → pantry CRUD →
   pantry-aware recipes → auth → tests + CI/CD → voice → Mise redesign; plus rate limiting
   and a stop button. (Per-milestone detail: git history.)
-- **Experimental ChatGPT surface:** a Streamable HTTP MCP server exposes
+- **Primary ChatGPT surface:** a Streamable HTTP MCP server exposes
   a tool-only `get_kitchen_context` read and focused pantry/kitchen-tool
   create, edit, and delete actions plus exact-set, consume, and restock commands. Supabase OAuth 2.1 maps the connector
   token to a Mise user; every tool uses the same user-scoped kitchen service as the
@@ -55,20 +72,21 @@ with an assistant that has persistent memory of my kitchen. Stretch: voice / han
   account linking was first proven through the ngrok development connector. The same
   deliberately stateless server now also runs through the existing Vercel app at `/mcp`;
   ngrok remains the loop for uncommitted local changes.
-- **What's next** lives on the Mise Board (sort by the Priority field), not here — M7 (OCR),
-  the nav-model change, history, and gamification are all tracked issues.
+- **What's next** lives on the Mise Board (sort by the Priority field). Existing web,
+  navigation, history, and gamification issues must be revalidated against the
+  ChatGPT-first direction before work resumes.
 - **Deployed:** https://meal-prep-tawny-kappa.vercel.app — auto-deploys on push to `main`.
 - **Open source:** https://github.com/tanayvenkata/meal-prep is an MIT-licensed learning
   and portfolio project. Others may use, modify, and redistribute the owned source under
   the license terms; dependencies retain their own licenses.
 
-**The two live loops:**
+**Supporting website loops:**
 - **Chat:** `page.tsx` → `ChatWindow.tsx` → `api/chat/route.ts` → `ratelimit.ts` →
-  `db.ts` + `ai.ts` → Anthropic (streamed back, abortable).
+  `db.ts` + `ai.ts` → OpenAI Agents SDK (streamed back, abortable).
 - **Pantry:** `pantry/page.tsx` → browser-only `pantry-api.ts` →
   `api/pantry/route.ts` → `kitchen-service.ts` → `db.ts` → Supabase.
 
-**Experimental third loop:**
+**Primary product loop:**
 - **ChatGPT app:** ChatGPT → hosted Next `/mcp` route → `src/mcp/server.ts` →
   authenticated read or exact-quantity action → `kitchen-service.ts`; tool results return
   text plus model-readable structured content. Local development uses ngrok as an
@@ -83,25 +101,25 @@ Design = Mise system
 ## Architecture (the lightweight system design)
 
 ```
-   BROWSER (frontend)          SERVER (backend)              ANTHROPIC
-   src/app/page.tsx            src/app/api/chat/route.ts     Anthropic
-   - ChatWindow component      - fetches pantry from DB      - the model
-   - message list              - builds system prompt
-   - pill input bar            - holds the SECRET api key
-        |  POST /api/chat             |  stream                    |
-        | ------------------------>  | -----------------------> |
-        | <------ stream tokens ---- | <----- stream tokens ----|
+CHATGPT                       MISE SERVER                    SUPABASE
+MCP tools ----------------->  /mcp transport ------------> kitchen data
+OAuth bearer token            auth + exact schemas          RLS + Postgres
+                               kitchen-service.ts
+
+BROWSER                       MISE SERVER
+account/kitchen controls -->  auth + website APIs --------> same service/data
 ```
 
-- **Why a server step at all?** The API key must NEVER reach the browser (readable in dev
-  tools). The backend is the only place the key lives.
-- **Why Next.js?** Frontend AND backend in one project (`page.tsx` = browser,
-  `api/.../route.ts` = server) — no juggling two repos while learning.
+- **Why an MCP server?** ChatGPT supplies the conversation and multimodal agent loop;
+  Mise supplies authenticated, durable, narrowly scoped kitchen capabilities.
+- **Why keep Next.js?** It hosts `/mcp`, OAuth/account routes, and the supporting website
+  in one deployment. That is useful consolidation, even if the browser UI shrinks.
 
 ## Tech stack
 
 - **Next.js 16 (App Router) + TypeScript + Tailwind** — via `create-next-app`.
-- **AI: native Anthropic SDK**, behind `src/lib/ai.ts`.
+- **Website chat AI: OpenAI Agents SDK**, behind `src/lib/ai.ts`. This is a supporting
+  legacy surface, separate from ChatGPT's host-owned agent loop.
 - **DB: Postgres via Supabase**, behind `src/lib/db.ts` (raw SQL via `postgres` driver).
 - **Auth: Supabase Auth** (`@supabase/ssr`, cookie sessions). **Secrets: Doppler.**
   **Rate limiting: Upstash Redis.** Dev runs Node 26 / npm 11; supported floor is

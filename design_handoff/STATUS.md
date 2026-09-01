@@ -3,6 +3,11 @@
 Tracks which screens from `README.md` are done, partial, or not started.
 Update this file as each screen is implemented. "Visual only" means colors/fonts/layout only — no new backend.
 
+> **Status as of 2026-09-01:** this is a historical implementation record, not the active
+> product roadmap. ChatGPT is now the primary product surface and the website is a
+> supporting account/kitchen control surface. Revalidate every unbuilt screen against
+> that direction before scheduling it.
+
 ---
 
 ## Deferred backlog (features designed but held off — consolidated from the ⬜ rows below)
