@@ -95,8 +95,10 @@ that kicked off this whole session (localhost writes appeared in prod).
   Prereqs folded in: confirm local `items` table exists; create `supabase/seed.sql`; verify prod
   is untouched after a local write.
 - **Step 2** (later) — separate dev/prod Anthropic key. Teaches "secrets differ per env."
-- **Step 3** (deferred, named not built) — staging, GitHub Environments, Docker. Add when the need
-  is real (a second dev, preview deploys, moving off Vercel).
+- **Step 3** — keep production credentials out of Vercel Preview. Preview deploys prove the build;
+  runtime routes deliberately fail closed without their environment. ✅
+- **Step 4** (deferred, named not built) — add a staging Supabase project only when another person
+  needs to exercise a deployed branch before merge. Docker remains deferred until moving off Vercel.
 
 ## Database login role — fail closed under RLS (issue #64)
 
@@ -132,9 +134,10 @@ questions — trace them separately.
 | Place | Script run | Who fills the box | Mechanism | DB it hits |
 |---|---|---|---|---|
 | **Tests** (laptop or CI) | `vitest` | `vitest.config.ts` `env:` | clobbers — wins over the shell | local `127.0.0.1:54322` |
-| **Local dev** | `dev` = `doppler run -- next dev` | Doppler `dev` config | **injects** live, every run | prod ⚠️ *(the bug — value still points at prod until Step 1)* |
+| **Local dev** | `dev` = `doppler run -- next dev` | Doppler `dev` config | **injects** live, every run | local `127.0.0.1:54322` |
 | **CI build step** | `build` = `next build` | `ci.yml` `env:` block | plain shell env | local-on-the-runner |
-| **Vercel** | `build` then `start` | Vercel's own env store | **synced** from Doppler `prd` ahead of time | prod cloud |
+| **Vercel Production** | `build` then `start` | Vercel Production env store, synced from Doppler `prd` | copied ahead of time | prod cloud |
+| **Vercel Preview** | `build` then `start` | no project env vars | deliberately credential-free | no database |
 
 Two mechanisms, don't confuse them:
 - **inject** (local dev): `doppler run` pulls the config and hands it to the child process LIVE, every run, via the CLI wrapper. Doppler is present at runtime.
@@ -232,9 +235,36 @@ scoped test/setup work only. New user-owned tables still need RLS enabled plus e
 
 ---
 
-# Staging — how to build it when the need is real (Step 3, deferred)
+# Preview isolation now; staging only when earned
 
-Researched 2026-06-25 (via Supabase docs). Captured for when preview deploys / external QA actually happen.
+Decision updated 2026-09-01 after the hosted MCP baseline was proven. Mise is a solo learning project:
+the maintenance and cost of a third live environment do not currently buy enough risk reduction.
+
+## The current two-environment model
+
+```
+local development + integration tests  -> local Supabase
+main / production                      -> production Supabase
+pull-request previews                  -> no database or service credentials
+```
+
+Vercel project variables are scoped to **Production only**. A Preview proves that the branch builds,
+but it is not a runnable rehearsal. Missing database,
+Supabase, MCP, OpenAI, Redis, and Doppler variables are intentional: any route that needs them must
+fail closed instead of falling through to production. A runtime `500` caused by missing required
+configuration is expected in this mode; CI and the completed Vercel build are the review signals.
+Do not copy production values into Preview to make a review convenient.
+
+This keeps the useful boundary—the workbench never writes production—without pretending a solo
+project needs enterprise environment ceremony. Local Supabase remains necessary because migrations,
+RLS, destructive integration tests, and manual development need a safe writable database.
+
+## When staging earns its place
+
+Create staging when someone other than the developer must test an authenticated, data-backed branch
+before it merges, or when a production migration needs a cloud rehearsal that local integration tests
+cannot represent. At that point staging must use its own complete Supabase environment: database,
+Auth, signing keys, and storage travel together.
 
 ## Why staging's DB must be its OWN cloud DB (not local, not prod)
 - **Not local (`127.0.0.1`):** Vercel Preview runs on Vercel's SERVERS, not your laptop. `127.0.0.1`
@@ -268,16 +298,13 @@ Researched 2026-06-25 (via Supabase docs). Captured for when preview deploys / e
   rows; it *could* seed, but doesn't need to). **Staging** → same file as local, or a richer dedicated
   one. **Prod** → NO seed, only real user data.
 
-## Vercel Preview is a FULL app, not "light UI testing"
-Same `next build`/`next start`, same API routes, same capabilities as prod — curl-able, streamable,
-full auth/CRUD/rate-limit. The ONLY difference between Preview and Production is the **env/secrets**
-(chiefly its own Supabase instance = its own DB+auth+storage), NOT the code. So "the difference is the
-data" is the headline, but precisely: *same code, different secrets; the DB+auth travel together as one
-Supabase instance.* (Caveat: Vercel deployment-protection may put a login wall in front of Preview URLs
-— may need a bypass token to raw-curl. The app is fully capable; that's just Vercel's gate.)
+## A future data-backed Preview is a full app
 
-## The merge flow staging unlocks (the rehearsal step we lack today)
-Today: branch → CI check → merge to main → straight to prod (no rehearsal of the running app).
-With staging: branch → PR → CI check + Preview deploy (its own DB) → review/test the RUNNING app on the
-Preview URL → merge to main only after it looks good. The PR's Preview URL IS the staging gate — no
-separate long-lived `staging` branch required.
+If staging is added, the Preview runs the same application and capabilities as production; only its
+environment values differ. Database and Auth must point to the same isolated Supabase instance to
+avoid split-brain identity. Vercel deployment protection may still put a login wall in front of the
+Preview URL; that gate is separate from application authentication.
+
+Until then the merge flow is: branch → local database verification → CI + credential-free Preview
+build → merge to `main` → production. A future staging gate would add authenticated Preview
+verification before the merge; no long-lived `staging` git branch is required.

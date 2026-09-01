@@ -195,10 +195,11 @@ didn't know them — the architectural truths a tracker title can't carry.
   identity and reject OAuth clients outside the same read-only website-API boundary.
   The MCP server may expose a separately reviewed narrow action through the authenticated
   kitchen service without widening direct OAuth/Data API permissions.
-- ⚠️ **Local dev ↔ prod are isolated by Doppler, but staging is NOT.** The `dev` config points
-  the running app at the LOCAL Supabase stack (`127.0.0.1`); `prd` is prod. BUT `dev`/`stg`/
-  `prd` ALL share the same prod DB at the cloud level — so a Vercel Preview reads/writes PROD.
-  Don't treat a Preview as a sandbox. **Mental model + the staging build plan:
+- 🔐 **Local dev and Vercel Preview cannot write production.** The `dev` config points the running
+  app at the LOCAL Supabase stack (`127.0.0.1`); only Vercel Production receives the `prd` database,
+  Supabase, MCP, OpenAI, Redis, and Doppler variables. Preview is deliberately credential-free: it
+  proves the build, while runtime routes fail closed without required config. Add a real
+  staging Supabase project only when external authenticated QA earns it. **Mental model and trigger:
   `docs/environments.md`.**
 - 🔧 **Dev session ritual:** OrbStack → `supabase start` → `npm run dev`. Skipping
   `supabase start` → `ECONNREFUSED 127.0.0.1:54322` (the dev app and the db tests both need
