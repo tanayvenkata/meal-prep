@@ -82,6 +82,56 @@ describe("POST /api/auth/login", () => {
     });
   });
 
+  it("creates an account and returns directly to OAuth consent", async () => {
+    signUp.mockResolvedValue({
+      data: { session: { access_token: "token" } },
+      error: null,
+    });
+
+    const response = await POST(
+      request({
+        email: "new@mise.test",
+        password: "password123",
+        intent: "sign-up",
+        returnTo: "/oauth/consent?authorization_id=request-123",
+      }),
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3000/oauth/consent?authorization_id=request-123",
+    );
+    expect(signUp).toHaveBeenCalledWith({
+      email: "new@mise.test",
+      password: "password123",
+    });
+    expect(signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  it("keeps the OAuth context while email confirmation is pending", async () => {
+    signUp.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+
+    const response = await POST(
+      request({
+        email: "new@mise.test",
+        password: "password123",
+        intent: "sign-up",
+        returnTo: "/oauth/consent?authorization_id=request-123",
+      }),
+    );
+    const location = new URL(response.headers.get("location")!);
+
+    expect(response.status).toBe(303);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("returnTo")).toBe(
+      "/oauth/consent?authorization_id=request-123",
+    );
+    expect(location.searchParams.get("error")).toBe("check_email");
+  });
+
   it("rejects a cross-origin login submission", async () => {
     const response = await POST(
       request(

@@ -40,8 +40,8 @@ surface for account linking and direct data inspection or correction.
 - **The MCP server is currently tool-only.** A custom widget returns only when a workflow
   has an independently useful visual or interactive job that plain tool results cannot do.
 - **The website is supporting infrastructure.** Keep login, OAuth consent, pantry/tool
-  management, health routes, and the shared domain service. Maintain existing web chat
-  while consolidation is evaluated, but do not extend its product roadmap by default.
+  management, health routes, and the shared domain service. The redundant native chat and
+  history surface was removed in #183.
 - **Old roadmap threads are evidence, not commitments.** Before reviving an issue, verify
   that it serves the ChatGPT-first loop. Close or archive web-only and speculative work
   when it does not.
@@ -81,10 +81,12 @@ surface for account linking and direct data inspection or correction.
   the license terms; dependencies retain their own licenses.
 
 **Supporting website loops:**
-- **Chat:** `page.tsx` → `ChatWindow.tsx` → `api/chat/route.ts` → `ratelimit.ts` →
-  `db.ts` + `ai.ts` → OpenAI Agents SDK (streamed back, abortable).
 - **Pantry:** `pantry/page.tsx` → browser-only `pantry-api.ts` →
   `api/pantry/route.ts` → `kitchen-service.ts` → `db.ts` → Supabase.
+- **Kitchen tools:** `tools/page.tsx` → `api/tools/route.ts` →
+  `kitchen-service.ts` → `db.ts` → Supabase.
+- **Account linking:** ChatGPT authorization → `oauth/consent` → sign-up/sign-in when
+  needed → explicit approval → ChatGPT callback.
 
 **Primary product loop:**
 - **ChatGPT app:** ChatGPT → hosted Next `/mcp` route → `src/mcp/server.ts` →
@@ -118,12 +120,10 @@ account/kitchen controls -->  auth + website APIs --------> same service/data
 ## Tech stack
 
 - **Next.js 16 (App Router) + TypeScript + Tailwind** — via `create-next-app`.
-- **Website chat AI: OpenAI Agents SDK**, behind `src/lib/ai.ts`. This is a supporting
-  legacy surface, separate from ChatGPT's host-owned agent loop.
 - **DB: Postgres via Supabase**, behind `src/lib/db.ts` (raw SQL via `postgres` driver).
 - **Auth: Supabase Auth** (`@supabase/ssr`, cookie sessions). **Secrets: Doppler.**
-  **Rate limiting: Upstash Redis.** Dev runs Node 26 / npm 11; supported floor is
-  Node 22+ (README) — Next.js 16 itself needs ≥20.9.
+  Dev runs Node 26 / npm 11; supported floor is Node 22+ (README) — Next.js 16 itself
+  needs ≥20.9.
 
 ## Principles (the transferable "why" — these guide every decision)
 
@@ -134,19 +134,19 @@ are in git (commits + PRs); these are the patterns worth carrying to the next pr
   rule. Postgres waited until state vanished on refresh; auth waited until there were users;
   Doppler waited until secrets crossed ~4; RLS waited until users existed. Each was felt as
   a pain *first*, then added — never speculatively.
-- **One boundary file per external dependency.** `ai.ts` (the model), `db.ts` (the DB +
-  connection string + driver), `auth.ts` (JWT → userId), `ratelimit.ts` (Upstash). Swapping
-  a vendor = editing one file. The secret only ever lives behind its boundary, server-side.
+- **One boundary file per external dependency.** `db.ts` owns the DB connection and
+  driver; `auth.ts` owns JWT-to-user identity. Swapping a vendor means changing its
+  boundary instead of every caller. Secrets only live server-side.
 - **The secret/logic boundary is server-side, always.** API key, system prompt, SQL —
   built and held in the route, never sent to the browser. Same principle from M1's chat to
   M4's recipe prompt.
 - **Learn the fundamental, not the abstraction.** Raw SQL not an ORM; our own `/api/pantry`
   not browser→DB-direct via supabase-js. More code, but the *transferable* kind — reach for
   the abstraction later, once you can read what it generates and choose it on purpose.
-- **Extract when the duplication is logic, not just a shared import.** `ChatWindow`, `db.ts`,
-  `auth.ts`, and `kitchen-service.ts` were extracted when real behavior needed another
-  caller. The kitchen service now gives website and MCP transports one home for normalized
-  pantry/tool operations without becoming a second SQL layer.
+- **Extract when the duplication is logic, not just a shared import.** `db.ts`, `auth.ts`,
+  and `kitchen-service.ts` were extracted when real behavior needed another caller. The
+  kitchen service gives website and MCP transports one home for normalized pantry/tool
+  operations without becoming a second SQL layer.
 - **DB is the source of truth; the screen mirrors it.** Re-fetch after every change rather
   than tracking local state. Optimise to optimistic/cached only when lag is actually felt.
 - **User-facing identity rules belong in the database.** Pantry items and kitchen tools

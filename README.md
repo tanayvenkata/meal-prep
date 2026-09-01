@@ -71,7 +71,7 @@ supabase db reset   # re-runs migrations + seed.sql against the local stack
 ```
 
 Then log in again — the test user is recreated with a matching password hash. Once logged
-in, send a message in the chat to get a recipe reply.
+in, use the Pantry and Tools pages to inspect or correct the kitchen data ChatGPT sees.
 
 ## Commands
 
@@ -171,6 +171,20 @@ Use a fresh tool call to test new data. Historical ChatGPT messages retain their
 tool-result snapshot. MCP implementation and host-testing rules live in
 [`src/mcp/AGENTS.md`](src/mcp/AGENTS.md).
 
+## Supporting website
+
+The website has a deliberately narrow role:
+
+- During ChatGPT account linking, `/oauth/consent` sends an unauthenticated user to
+  `/login`. That page can create a Mise account or sign into an existing one, then return
+  to the pending consent request.
+- `/pantry` and `/tools` provide a direct way to inspect and correct the same kitchen data
+  exposed through MCP.
+- `/mcp`, the OAuth metadata routes, and the health endpoint host the production
+  integration.
+
+There is no separate website chat or conversation history. ChatGPT owns that experience.
+
 ### Before running integration tests
 
 ```bash
@@ -214,7 +228,7 @@ Browser                    Mise server
 account/kitchen UI  →      auth + website APIs    →      same kitchen service
 ```
 
-The website is a supporting control surface for sign-in, OAuth consent, and direct
+The website is a supporting control surface for sign-up/sign-in, OAuth consent, and direct
 kitchen-data inspection or correction. New conversational product work belongs in the
 ChatGPT MCP flow unless a browser-only need is demonstrated.
 

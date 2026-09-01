@@ -7,6 +7,9 @@ Update this file as each screen is implemented. "Visual only" means colors/fonts
 > product roadmap. ChatGPT is now the primary product surface and the website is a
 > supporting account/kitchen control surface. Revalidate every unbuilt screen against
 > that direction before scheduling it.
+>
+> The native website chat and history implementation was removed in #183. The screen
+> details below preserve the earlier design record; they do not describe current routes.
 
 ---
 
@@ -130,7 +133,7 @@ Surfaced here so they don't get lost in the per-screen tables. Grouped by what u
 ### Screen 8 — Error (session timed out)
 | Element | Status | Notes |
 |---|---|---|
-| Inline error banner with ember "!" disc | ✅ Done | In `ChatWindow.tsx` |
+| Inline error banner with ember "!" disc | Retired | Removed with the native chat surface (#183) |
 | Conversation dimmed behind banner | ⬜ Not started | Would need overlay logic |
 | Input disabled on 401 | ⬜ Not started | Currently just shows banner |
 
