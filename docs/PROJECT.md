@@ -122,8 +122,8 @@ account/kitchen controls -->  auth + website APIs --------> same service/data
 - **Next.js 16 (App Router) + TypeScript + Tailwind** — via `create-next-app`.
 - **DB: Postgres via Supabase**, behind `src/lib/db.ts` (raw SQL via `postgres` driver).
 - **Auth: Supabase Auth** (`@supabase/ssr`, cookie sessions). **Secrets: Doppler.**
-  Dev runs Node 26 / npm 11; supported floor is Node 22+ (README) — Next.js 16 itself
-  needs ≥20.9.
+  Local development, CI, and Vercel target Node 24 LTS through `.nvmrc`, the CI
+  setup, and `package.json#engines`. Next.js 16 itself needs ≥20.9.
 
 ## Principles (the transferable "why" — these guide every decision)
 
