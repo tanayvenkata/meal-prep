@@ -14,6 +14,8 @@ export type ConversationResult = {
 /** Bounded evaluation host adapter; not a simulation of ChatGPT orchestration. */
 export async function runConversation(options: {
   prompt: string;
+  followUps?: string[];
+  onUserTurnComplete?: (turn: { index: number; prompt: string; answer: string }) => Promise<void>;
   complete: (input: ResponseInput) => Promise<ModelTurn>;
   callTool: (name: string, args: Record<string, unknown>) => Promise<unknown>;
   maxTurns?: number;
@@ -21,6 +23,8 @@ export async function runConversation(options: {
 }): Promise<ConversationResult> {
   const input: ResponseInput = [{ role: "user", content: options.prompt }];
   const result: ConversationResult = { answer: "", completed: false, modelRequests: 0, toolAttempts: 0, observedErrors: [] };
+  let userTurn = 0;
+  const userPrompts = [options.prompt, ...(options.followUps ?? [])];
   const fail = (error: Failure) => ({ ...result, error });
   for (let step = 0; step < (options.maxTurns ?? 6); step++) {
     let response: ModelTurn;
@@ -32,7 +36,14 @@ export async function runConversation(options: {
       else return fail("unsupported_output");
     }
     const calls = response.output.filter(item => item.type === "function_call");
-    if (!calls.length) return { ...result, answer: response.output_text, completed: response.output_text.trim().length > 0 };
+    if (!calls.length) {
+      result.answer = response.output_text;
+      if (!response.output_text.trim()) return { ...result, completed: false };
+      await options.onUserTurnComplete?.({ index: userTurn, prompt: userPrompts[userTurn], answer: response.output_text });
+      if (userTurn === userPrompts.length - 1) return { ...result, completed: true };
+      input.push({ role: "user", content: userPrompts[++userTurn] });
+      continue;
+    }
     for (const call of calls) {
       if (result.toolAttempts >= (options.maxTools ?? 12)) return fail("tool_limit");
       result.toolAttempts++;

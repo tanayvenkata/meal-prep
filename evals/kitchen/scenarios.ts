@@ -2,6 +2,8 @@ export type PantryExpectation = { name: string; quantity: string };
 export type Scenario = {
   id: string;
   prompt: string;
+  followUps?: string[];
+  checkpoints?: Array<{ pantry: PantryExpectation[]; forbidWrites?: boolean }>;
   seed: Array<{ name: string; quantity?: { amount: string; unit: string } }>;
   pantry: PantryExpectation[];
   equipment: Array<{ name: string; kind: string }>;
@@ -47,4 +49,12 @@ export const everydayScenarios: Scenario[] = [
   { id: "everyday-remove-absent", prompt: "Remove mayo from my pantry.", seed: [{ name: "Rice", quantity: { amount: "2", unit: "bag" } }], pantry: [{ name: "rice", quantity: "2 bag" }], equipment: [], preserveIds: true },
   { id: "everyday-new-purchase", prompt: "Bought 12 eggs. Add them to the pantry.", seed: [], pantry: [{ name: "eggs", quantity: "12" }], equipment: [] },
   { id: "everyday-purchase-again", prompt: "We ran out of eggs earlier, but I just bought six. Save them.", seed: [{ name: "Eggs", quantity: { amount: "0", unit: "count" } }], pantry: [{ name: "eggs", quantity: "6" }], equipment: [], preserveIds: true },
+];
+
+// Scripted user follow-ups are supplied after an assistant answer, not generated
+// by a model. Intermediate state is checked before supplying the next message.
+export const dialogueScenarios: Scenario[] = [
+  { id: "dialogue-purchase-amount", prompt: "Bought more eggs. Update my pantry.", followUps: ["Twelve more eggs."], seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }], checkpoints: [{ pantry: [{ name: "eggs", quantity: "4" }], forbidWrites: true }, { pantry: [{ name: "eggs", quantity: "16" }] }], pantry: [{ name: "eggs", quantity: "16" }], equipment: [], preserveIds: true },
+  { id: "dialogue-correct-total", prompt: "I counted 12 eggs. Update the total.", followUps: ["Actually, ten eggs total. I miscounted."], seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }], checkpoints: [{ pantry: [{ name: "eggs", quantity: "12" }] }, { pantry: [{ name: "eggs", quantity: "10" }] }], pantry: [{ name: "eggs", quantity: "10" }], equipment: [], preserveIds: true },
+  { id: "dialogue-distinct-purchases", prompt: "Bought six more eggs. Add them.", followUps: ["I made another trip and bought another six eggs. Add those too."], seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }], checkpoints: [{ pantry: [{ name: "eggs", quantity: "10" }] }, { pantry: [{ name: "eggs", quantity: "16" }] }], pantry: [{ name: "eggs", quantity: "16" }], equipment: [], preserveIds: true },
 ];

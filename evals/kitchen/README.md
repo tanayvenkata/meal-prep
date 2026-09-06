@@ -138,3 +138,21 @@ Mini retains its historical conservative uncached estimate; Luna prices reported
 cache reads/writes and charges missing cache-write detail conservatively. State
 this distinction when comparing estimated costs. Do not infer production ChatGPT
 latency or recipe quality from these API kitchen-write cases.
+
+## Multi-turn workflow checks
+
+`pnpm run eval:kitchen --dialogue` runs three two-turn conversations: an
+unspecified purchase followed by its amount, a correction to an absolute total,
+and two distinct purchases of the same amount. `--all` includes all 26 cases.
+The runner preserves actual assistant/tool history and supplies the next scripted
+user message only after an assistant answer. It records independent database
+snapshots and calls after each user turn. The missing-amount case forbids writes
+before the follow-up; intermediate snapshots prevent a later correction from
+hiding an incorrect earlier state. Model/tool limits cover the whole conversation.
+
+These are scripted continuations, not a simulated human. The next message is
+supplied regardless of the precise preceding answer. The judge checks factual
+grounding across the recorded turns; it does not certify that each clarification
+was necessary or well phrased. Review the recorded questions separately before
+claiming clarification quality. No future user message is visible to the actor
+until that turn.

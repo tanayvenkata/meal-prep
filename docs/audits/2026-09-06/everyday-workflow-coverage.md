@@ -16,13 +16,13 @@ correction, and a later purchase separately from a retry.
 | I have mayo; add it | Absent / already present | Save presence; preserve existing quantity on duplicate | Covered |
 | Bought 12 more eggs | Present with count / unknown amount / absent | Add to known count; never invent the previous amount | Known-count and absent cases added; unknown baseline remains missing |
 | Add eggs | Already present | Do not silently assume a new purchase or add an arbitrary amount | Duplicate Mayo analogue only |
-| Bought more eggs | Present, delta unspecified | Clarify amount if tracking counts; never fabricate a delta | Missing; needs conversational case |
+| Bought more eggs | Present, delta unspecified | Clarify amount if tracking counts; never fabricate a delta | Scripted two-turn amount case added; unknown existing amount remains missing |
 | Eggs are finished | Known quantity / unknown / already zero / absent | User chose removal on 2026-09-06; partial use is not removal | Finished-item case added; baseline incorrectly retained zero |
 | Remove the mayo | One match / ambiguous matches / absent | Remove intended item; avoid guessing among plausible matches | Present/absent cases added; absent first run asked unnecessary clarification |
 | I have 12 eggs now | Existing count differs | Replace total, unlike “12 more” | Added alongside purchase-more comparison |
 | I used two eggs | Sufficient / insufficient / unknown count | Subtract known delta, reject impossible arithmetic or clarify | Happy path covered; boundaries missing from model suite |
 | Plan dinner with eggs | Available / finished | Read only; don't infer consumption | Covered for available eggs |
-| Actually, I meant six | After clarification / after committed write | Resolve which prior quantity is being corrected; preserve identity | Missing; needs conversational case |
+| Actually, I meant six | After clarification / after committed write | Resolve which prior quantity is being corrected; preserve identity | Scripted total-correction case added; ambiguous referents remain missing |
 | Save this shopping haul | Mixed new/existing items; incomplete quantities | Distinguish creates from restocks and report partial/atomic semantics truthfully | Multi-add covered; mixed purchase missing |
 | Request times out | Write committed / not committed / concurrent update | Read before retry; distinguish success, safe failure, unknown effect | Two injected fault cases; concurrency remains limited |
 
@@ -85,3 +85,9 @@ failure. One correct lost-response recovery was flagged by the answer judge desp
 its ordinary-confirmation rule. Preserve that raw failure and evaluate judge
 consistency separately; a single run is not a reliability estimate. Cumulative
 model spend is $1.295346 of the existing $5 allowance.
+
+Three two-turn cases subsequently passed on Luna, preserving intermediate state:
+purchase amount clarification (4 → 4 → 16), correcting a total (4 → 12 → 10), and
+two distinct purchases (4 → 10 → 16). The first answer was inspected and asked
+how many eggs were bought without writing. Broader ambiguity and mixed-purchase
+coverage remain open; these scripted conversations do not simulate arbitrary users.

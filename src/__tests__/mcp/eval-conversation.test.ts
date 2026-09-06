@@ -55,3 +55,36 @@ it("does not retry provider errors or expose private diagnostics", async () => {
   expect(JSON.stringify(result)).not.toContain("private credential");
   expect(complete).toHaveBeenCalledTimes(1);
 });
+
+const textTurn = (text: string): Turn => ({ status: "completed", output_text: text, output: [{ type: "message", id: "msg-test", status: "completed", role: "assistant", content: [{ type: "output_text", text, annotations: [] }] }] });
+
+it("preserves dialogue history and observes state before supplying the next user message", async () => {
+  let checkpointObserved = false;
+  const complete = vi.fn().mockImplementationOnce(async input => {
+    expect(JSON.stringify(input)).not.toContain("Twelve more");
+    return textTurn("How many more eggs did you buy?");
+  }).mockImplementationOnce(async input => {
+    expect(checkpointObserved).toBe(true);
+    expect(JSON.stringify(input)).toContain("How many more eggs did you buy?");
+    expect(input.at(-1)).toEqual({ role: "user", content: "Twelve more" });
+    return textTurn("You bought twelve more eggs.");
+  });
+  const checkpoint = vi.fn(async () => { checkpointObserved = true; });
+  const result = await runConversation({ prompt: "Bought more eggs", followUps: ["Twelve more"], complete, callTool: vi.fn(), onUserTurnComplete: checkpoint });
+  expect(result).toMatchObject({ completed: true, modelRequests: 2 });
+  expect(checkpoint).toHaveBeenCalledTimes(2);
+});
+
+it("keeps the model-request bound across user follow-ups", async () => {
+  const complete = vi.fn().mockResolvedValue(textTurn("Please clarify."));
+  const result = await runConversation({ prompt: "Start", followUps: ["Second", "Third"], complete, callTool: vi.fn(), maxTurns: 2 });
+  expect(result).toMatchObject({ completed: false, error: "model_limit", modelRequests: 2 });
+});
+
+it("does not supply a scripted follow-up after an incomplete response", async () => {
+  const complete = vi.fn().mockResolvedValue({ ...textTurn("How many?"), status: "incomplete" });
+  const checkpoint = vi.fn();
+  expect(await runConversation({ prompt: "Bought more", followUps: ["Twelve"], complete, callTool: vi.fn(), onUserTurnComplete: checkpoint })).toMatchObject({ completed: false, error: "incomplete_response" });
+  expect(complete).toHaveBeenCalledTimes(1);
+  expect(checkpoint).not.toHaveBeenCalled();
+});

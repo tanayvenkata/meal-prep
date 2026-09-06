@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import OpenAI from "openai";
 import { runConversation } from "./conversation";
 import { kitchenFixture, LOCAL_APP_DATABASE } from "./fixture";
-import { scenarios, recoveryScenarios, validationScenarios, everydayScenarios, type Scenario } from "./scenarios";
+import { scenarios, recoveryScenarios, validationScenarios, everydayScenarios, dialogueScenarios, type Scenario } from "./scenarios";
 import { EvaluationBudget } from "./budget";
 import { startKitchenTelemetry } from "../../src/lib/telemetry";
 import { evaluationProvenance } from "./provenance";
@@ -53,9 +53,24 @@ async function main() {
         const tools = catalog.tools.map(tool => ({ type: "function" as const, name: tool.name, description: tool.description, parameters: tool.inputSchema, strict: false }));
         const instructions = kitchen.client.getInstructions() ?? "";
         let lostResponseAt: number | undefined;
+        const turns: Array<{ index: number; prompt: string; answer: string; state: Awaited<ReturnType<typeof kitchen.state>>; calls: typeof kitchen.calls; statePass: boolean; noUnauthorizedWrite: boolean }> = [];
+        let priorCallCount = 0;
         const actorStartedAt = performance.now();
         const conversation = await runConversation({
           prompt: scenario.prompt,
+          followUps: scenario.followUps,
+          onUserTurnComplete: async turn => {
+            if (!scenario.followUps) return;
+            const state = await kitchen.state();
+            const calls = kitchen.calls.slice(priorCallCount);
+            priorCallCount = kitchen.calls.length;
+            const expected = scenario.checkpoints?.[turn.index];
+            const pantry = state.pantry.map(item => ({ name: String(item.name).toLowerCase(), quantity: item.quantity })).sort((a, b) => a.name.localeCompare(b.name));
+            turns.push({ ...turn, state, calls,
+              statePass: !!expected && JSON.stringify(pantry) === JSON.stringify(expected.pantry) && JSON.stringify(state.equipment) === JSON.stringify(initial.equipment),
+              noUnauthorizedWrite: !expected?.forbidWrites || calls.every(call => call.name === "get_kitchen_context"),
+            });
+          },
           callTool: async (name, args) => {
             const result = await kitchen.call(name, args);
             if (scenario.fault === "lose_add_response" && lostResponseAt === undefined && name === "add_pantry_item" && !result.isError) {
@@ -93,10 +108,11 @@ async function main() {
           noUnauthorizedWrite: !scenario.forbidWrites || kitchen.calls.every(call => call.name === "get_kitchen_context"),
           stableIdentity: !scenario.preserveIds || JSON.stringify(initial.pantry.map(item => item.id).sort()) === JSON.stringify(final.pantry.map(item => item.id).sort()),
           completed: completed && !error,
+          intermediateStates: !scenario.followUps || (turns.length === scenario.followUps.length + 1 && turns.every(turn => turn.statePass && turn.noUnauthorizedWrite)),
         };
         const answerEvaluation = await gradeAnswer(api, budget, {
-          prompt: scenario.prompt, initial, final, answer,
-          events: kitchen.calls.map((call, index) => JSON.stringify({ tool: call.name, arguments: call.arguments, serverResult: call.result,
+          prompt: [scenario.prompt, ...(scenario.followUps ?? [])].join("\nNext user turn: "), initial, final, answer: turns.length ? turns.map(turn => `Assistant turn ${turn.index + 1}: ${turn.answer}`).join("\n") : answer,
+          events: turns.length ? turns.map(turn => JSON.stringify(turn)) : kitchen.calls.map((call, index) => JSON.stringify({ tool: call.name, arguments: call.arguments, serverResult: call.result,
             assistantObservation: index === lostResponseAt ? "Successful result withheld. Assistant received effect-unknown transport error." : call.result })),
         });
         cost += answerEvaluation.cost;
@@ -110,15 +126,15 @@ async function main() {
         const taskSuccess = statePass && answerPass;
         const safeFailure = !checks.expectedState && JSON.stringify(initial) === JSON.stringify(final) && completed && !error && answerPass && faultExercised;
         const acceptancePass = (scenario.expectedOutcome === "safe_failure" ? safeFailure : taskSuccess) && faultExercised && recoveryRead;
-        const output = { scenario: scenario.id, actorDurationMs, actorCostUsd, actorModel: MODEL, checks, statePass, answerPass, answerEvaluation, taskSuccess, safeFailure, acceptancePass, faultExercised, recoveryRead, lostResponseAt, unavailableAttempts, conversation, pass: taskSuccess, initial, final, answer, error, calls: kitchen.calls, responses, catalogHash: hash(JSON.stringify(catalog)), instructionsHash: hash(instructions) };
+        const output = { scenario: scenario.id, turns, actorDurationMs, actorCostUsd, actorModel: MODEL, checks, statePass, answerPass, answerEvaluation, taskSuccess, safeFailure, acceptancePass, faultExercised, recoveryRead, lostResponseAt, unavailableAttempts, conversation, pass: taskSuccess, initial, final, answer, error, calls: kitchen.calls, responses, catalogHash: hash(JSON.stringify(catalog)), instructionsHash: hash(instructions) };
         outcomes.push({ scenario: scenario.id, taskSuccess, safeFailure, acceptancePass });
         writeFileSync(`${directory}/${reportId}-${scenario.id}.json`, JSON.stringify({ version, definition: scenario, catalog, instructions, cost, requests, ...output }, null, 2));
         console.log(`${scenario.id}: ${acceptancePass ? (taskSuccess ? "TASK_PASS" : "SAFE_FAILURE") : "FAIL"} ($${cost.toFixed(4)})`);
         return { output, cost, tokenUsage: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens, numRequests: requests } };
       } finally { await kitchen.close(); }
     }
-    const allScenarios = [...scenarios, ...recoveryScenarios, ...validationScenarios, ...everydayScenarios];
-    const selected = process.argv[2] === "--everyday" ? everydayScenarios : process.argv[2] === "--recovery" ? recoveryScenarios : process.argv[2] === "--validation" ? validationScenarios : process.argv[2] === "--all" ? allScenarios : process.argv[2] ? allScenarios.filter(scenario => scenario.id === process.argv[2]) : scenarios;
+    const allScenarios = [...scenarios, ...recoveryScenarios, ...validationScenarios, ...everydayScenarios, ...dialogueScenarios];
+    const selected = process.argv[2] === "--dialogue" ? dialogueScenarios : process.argv[2] === "--everyday" ? everydayScenarios : process.argv[2] === "--recovery" ? recoveryScenarios : process.argv[2] === "--validation" ? validationScenarios : process.argv[2] === "--all" ? allScenarios : process.argv[2] ? allScenarios.filter(scenario => scenario.id === process.argv[2]) : scenarios;
     if (!selected.length) throw new Error("Unknown scenario");
     const result = await evaluate({
       description: "Mise local kitchen state baseline v1", writeLatestResults: false,

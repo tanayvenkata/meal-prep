@@ -1,0 +1,752 @@
+{
+  "cases": [
+    {
+      "scenario": "dialogue-correct-total",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "3a4a04c372b4273505bce49bc58e884e8c6c3e23",
+        "sourceHash": "34f42938484356535f6a715d6de19e84fba49eead5674ec2a877afd7a38f7448"
+      },
+      "definition": {
+        "id": "dialogue-correct-total",
+        "prompt": "I counted 12 eggs. Update the total.",
+        "followUps": [
+          "Actually, ten eggs total. I miscounted."
+        ],
+        "seed": [
+          {
+            "name": "Eggs",
+            "quantity": {
+              "amount": "4",
+              "unit": "count"
+            }
+          }
+        ],
+        "checkpoints": [
+          {
+            "pantry": [
+              {
+                "name": "eggs",
+                "quantity": "12"
+              }
+            ]
+          },
+          {
+            "pantry": [
+              {
+                "name": "eggs",
+                "quantity": "10"
+              }
+            ]
+          }
+        ],
+        "pantry": [
+          {
+            "name": "eggs",
+            "quantity": "10"
+          }
+        ],
+        "equipment": [],
+        "preserveIds": true
+      },
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 9625.044208999998,
+      "actorCostUsd": 0.0008122699999999483,
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The explanation matches the recorded tool calls and state transitions: Eggs started at 4, were updated to 12 in the first turn, then updated to 10 in the second turn. The final pantry state also shows Eggs at 10."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 1168,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 106,
+          "output_tokens_details": {
+            "reasoning_tokens": 37
+          },
+          "total_tokens": 1274
+        },
+        "cost": 0.001353,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The explanation matches the recorded tool calls and state transitions: Eggs started at 4, were updated to 12 in the first turn, then updated to 10 in the second turn. The final pantry state also shows Eggs at 10.\"}"
+      },
+      "turns": [
+        {
+          "index": 0,
+          "prompt": "I counted 12 eggs. Update the total.",
+          "answer": "Updated **Eggs** from 4 to **12**.",
+          "state": {
+            "pantry": [
+              {
+                "id": "4539",
+                "name": "Eggs",
+                "quantity": "12",
+                "quantity_text": "",
+                "quantity_value": "12",
+                "quantity_unit": "count"
+              }
+            ],
+            "equipment": []
+          },
+          "calls": [
+            {
+              "name": "get_kitchen_context",
+              "arguments": {},
+              "durationMs": 31.96520799999962,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Returned your Mise kitchen context."
+                  }
+                ],
+                "structuredContent": {
+                  "pantry": [
+                    {
+                      "id": 4539,
+                      "name": "Eggs",
+                      "quantity": "4",
+                      "turnover": "high",
+                      "quantityMode": "structured",
+                      "quantityAmount": "4",
+                      "quantityUnit": "count"
+                    }
+                  ],
+                  "tools": []
+                }
+              },
+              "traceId": "1e9a6080a081220722af1b396ecc99d9"
+            },
+            {
+              "name": "set_pantry_item_quantity",
+              "arguments": {
+                "name": "Eggs",
+                "quantity": {
+                  "amount": "12",
+                  "unit": "count"
+                }
+              },
+              "durationMs": 31.461750000000393,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Set Eggs from 4 to 12."
+                  }
+                ],
+                "structuredContent": {
+                  "status": "updated",
+                  "name": "Eggs",
+                  "beforeQuantity": "4",
+                  "quantity": "12"
+                }
+              },
+              "traceId": "5b590a378c37bb92eccb0077ddc7777a"
+            }
+          ],
+          "statePass": true,
+          "noUnauthorizedWrite": true
+        },
+        {
+          "index": 1,
+          "prompt": "Actually, ten eggs total. I miscounted.",
+          "answer": "Updated **Eggs** to **10**.",
+          "state": {
+            "pantry": [
+              {
+                "id": "4539",
+                "name": "Eggs",
+                "quantity": "10",
+                "quantity_text": "",
+                "quantity_value": "10",
+                "quantity_unit": "count"
+              }
+            ],
+            "equipment": []
+          },
+          "calls": [
+            {
+              "name": "get_kitchen_context",
+              "arguments": {},
+              "durationMs": 9.73712499999965,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Returned your Mise kitchen context."
+                  }
+                ],
+                "structuredContent": {
+                  "pantry": [
+                    {
+                      "id": 4539,
+                      "name": "Eggs",
+                      "quantity": "12",
+                      "turnover": "high",
+                      "quantityMode": "structured",
+                      "quantityAmount": "12",
+                      "quantityUnit": "count"
+                    }
+                  ],
+                  "tools": []
+                }
+              },
+              "traceId": "2fcf72d86def835286037d88af0a3889"
+            },
+            {
+              "name": "set_pantry_item_quantity",
+              "arguments": {
+                "name": "Eggs",
+                "quantity": {
+                  "amount": "10",
+                  "unit": "count"
+                }
+              },
+              "durationMs": 32.953082999996695,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Set Eggs from 12 to 10."
+                  }
+                ],
+                "structuredContent": {
+                  "status": "updated",
+                  "name": "Eggs",
+                  "beforeQuantity": "12",
+                  "quantity": "10"
+                }
+              },
+              "traceId": "41820fed82c0081c28bcf7d7499aa3c7"
+            }
+          ],
+          "statePass": true,
+          "noUnauthorizedWrite": true
+        }
+      ],
+      "taskSuccess": true,
+      "cost": 0.0021652699999999483
+    },
+    {
+      "scenario": "dialogue-distinct-purchases",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "3a4a04c372b4273505bce49bc58e884e8c6c3e23",
+        "sourceHash": "34f42938484356535f6a715d6de19e84fba49eead5674ec2a877afd7a38f7448"
+      },
+      "definition": {
+        "id": "dialogue-distinct-purchases",
+        "prompt": "Bought six more eggs. Add them.",
+        "followUps": [
+          "I made another trip and bought another six eggs. Add those too."
+        ],
+        "seed": [
+          {
+            "name": "Eggs",
+            "quantity": {
+              "amount": "4",
+              "unit": "count"
+            }
+          }
+        ],
+        "checkpoints": [
+          {
+            "pantry": [
+              {
+                "name": "eggs",
+                "quantity": "10"
+              }
+            ]
+          },
+          {
+            "pantry": [
+              {
+                "name": "eggs",
+                "quantity": "16"
+              }
+            ]
+          }
+        ],
+        "pantry": [
+          {
+            "name": "eggs",
+            "quantity": "16"
+          }
+        ],
+        "equipment": [],
+        "preserveIds": true
+      },
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 8789.081459,
+      "actorCostUsd": 0.0008856000000000419,
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer matches the tool results and final state: the first restock applied 6 eggs to 4, bringing the total to 10, and the second restock applied another 6, bringing the total to 16. The final pantry also shows 16 eggs."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 1343,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 114,
+          "output_tokens_details": {
+            "reasoning_tokens": 38
+          },
+          "total_tokens": 1457
+        },
+        "cost": 0.00152025,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The answer matches the tool results and final state: the first restock applied 6 eggs to 4, bringing the total to 10, and the second restock applied another 6, bringing the total to 16. The final pantry also shows 16 eggs.\"}"
+      },
+      "turns": [
+        {
+          "index": 0,
+          "prompt": "Bought six more eggs. Add them.",
+          "answer": "Added 6 eggs. You now have **10 eggs**.",
+          "state": {
+            "pantry": [
+              {
+                "id": "4540",
+                "name": "Eggs",
+                "quantity": "10",
+                "quantity_text": "",
+                "quantity_value": "10",
+                "quantity_unit": "count"
+              }
+            ],
+            "equipment": []
+          },
+          "calls": [
+            {
+              "name": "get_kitchen_context",
+              "arguments": {},
+              "durationMs": 23.060083000000304,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Returned your Mise kitchen context."
+                  }
+                ],
+                "structuredContent": {
+                  "pantry": [
+                    {
+                      "id": 4540,
+                      "name": "Eggs",
+                      "quantity": "4",
+                      "turnover": "high",
+                      "quantityMode": "structured",
+                      "quantityAmount": "4",
+                      "quantityUnit": "count"
+                    }
+                  ],
+                  "tools": []
+                }
+              },
+              "traceId": "ed098467e3b5763847f81a921db56173"
+            },
+            {
+              "name": "restock_pantry_item",
+              "arguments": {
+                "name": "Eggs",
+                "expectedQuantity": {
+                  "amount": "4",
+                  "unit": "count"
+                },
+                "deltaQuantity": {
+                  "amount": "6",
+                  "unit": "count"
+                }
+              },
+              "durationMs": 41.64354199999798,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Restocked Eggs by 6 count. Quantity is now 10."
+                  }
+                ],
+                "structuredContent": {
+                  "outcome": {
+                    "status": "applied",
+                    "operation": "restock",
+                    "name": "Eggs",
+                    "beforeQuantity": "4",
+                    "quantity": "10",
+                    "before": {
+                      "mode": "structured",
+                      "amount": "4",
+                      "unit": "count",
+                      "text": null
+                    },
+                    "delta": {
+                      "mode": "structured",
+                      "amount": "6",
+                      "unit": "count",
+                      "text": null
+                    },
+                    "after": {
+                      "mode": "structured",
+                      "amount": "10",
+                      "unit": "count",
+                      "text": null
+                    }
+                  }
+                }
+              },
+              "traceId": "f96f5af45adc45d76ff4cd98b774c504"
+            }
+          ],
+          "statePass": true,
+          "noUnauthorizedWrite": true
+        },
+        {
+          "index": 1,
+          "prompt": "I made another trip and bought another six eggs. Add those too.",
+          "answer": "Added 6 more eggs. You now have **16 eggs**.",
+          "state": {
+            "pantry": [
+              {
+                "id": "4540",
+                "name": "Eggs",
+                "quantity": "16",
+                "quantity_text": "",
+                "quantity_value": "16",
+                "quantity_unit": "count"
+              }
+            ],
+            "equipment": []
+          },
+          "calls": [
+            {
+              "name": "get_kitchen_context",
+              "arguments": {},
+              "durationMs": 16.354959000000235,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Returned your Mise kitchen context."
+                  }
+                ],
+                "structuredContent": {
+                  "pantry": [
+                    {
+                      "id": 4540,
+                      "name": "Eggs",
+                      "quantity": "10",
+                      "turnover": "high",
+                      "quantityMode": "structured",
+                      "quantityAmount": "10",
+                      "quantityUnit": "count"
+                    }
+                  ],
+                  "tools": []
+                }
+              },
+              "traceId": "9d466293ddd5b552fccd277890597d62"
+            },
+            {
+              "name": "restock_pantry_item",
+              "arguments": {
+                "name": "Eggs",
+                "expectedQuantity": {
+                  "amount": "10",
+                  "unit": "count"
+                },
+                "deltaQuantity": {
+                  "amount": "6",
+                  "unit": "count"
+                }
+              },
+              "durationMs": 25.283250000000407,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Restocked Eggs by 6 count. Quantity is now 16."
+                  }
+                ],
+                "structuredContent": {
+                  "outcome": {
+                    "status": "applied",
+                    "operation": "restock",
+                    "name": "Eggs",
+                    "beforeQuantity": "10",
+                    "quantity": "16",
+                    "before": {
+                      "mode": "structured",
+                      "amount": "10",
+                      "unit": "count",
+                      "text": null
+                    },
+                    "delta": {
+                      "mode": "structured",
+                      "amount": "6",
+                      "unit": "count",
+                      "text": null
+                    },
+                    "after": {
+                      "mode": "structured",
+                      "amount": "16",
+                      "unit": "count",
+                      "text": null
+                    }
+                  }
+                }
+              },
+              "traceId": "6e8a3e3cd48cdb1ecc5836ec69656ae3"
+            }
+          ],
+          "statePass": true,
+          "noUnauthorizedWrite": true
+        }
+      ],
+      "taskSuccess": true,
+      "cost": 0.002405850000000042
+    },
+    {
+      "scenario": "dialogue-purchase-amount",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "3a4a04c372b4273505bce49bc58e884e8c6c3e23",
+        "sourceHash": "34f42938484356535f6a715d6de19e84fba49eead5674ec2a877afd7a38f7448"
+      },
+      "definition": {
+        "id": "dialogue-purchase-amount",
+        "prompt": "Bought more eggs. Update my pantry.",
+        "followUps": [
+          "Twelve more eggs."
+        ],
+        "seed": [
+          {
+            "name": "Eggs",
+            "quantity": {
+              "amount": "4",
+              "unit": "count"
+            }
+          }
+        ],
+        "checkpoints": [
+          {
+            "pantry": [
+              {
+                "name": "eggs",
+                "quantity": "4"
+              }
+            ],
+            "forbidWrites": true
+          },
+          {
+            "pantry": [
+              {
+                "name": "eggs",
+                "quantity": "16"
+              }
+            ]
+          }
+        ],
+        "pantry": [
+          {
+            "name": "eggs",
+            "quantity": "16"
+          }
+        ],
+        "equipment": [],
+        "preserveIds": true
+      },
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 7053.964915999999,
+      "actorCostUsd": 0.0006264700000000456,
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final answer says \"Added 12 eggs. Your pantry now has 16 eggs,\" which matches the tool result and final state: Eggs increased from 4 to 16 after a restock of 12. The initial clarification question is also consistent with the first tool read showing 4 eggs."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 1019,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 79,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 1098
+        },
+        "cost": 0.00111975,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final answer says \\\"Added 12 eggs. Your pantry now has 16 eggs,\\\" which matches the tool result and final state: Eggs increased from 4 to 16 after a restock of 12. The initial clarification question is also consistent with the first tool read showing 4 eggs.\"}"
+      },
+      "turns": [
+        {
+          "index": 0,
+          "prompt": "Bought more eggs. Update my pantry.",
+          "answer": "How many eggs did you buy? Your pantry currently has 4 eggs.",
+          "state": {
+            "pantry": [
+              {
+                "id": "4538",
+                "name": "Eggs",
+                "quantity": "4",
+                "quantity_text": "",
+                "quantity_value": "4",
+                "quantity_unit": "count"
+              }
+            ],
+            "equipment": []
+          },
+          "calls": [
+            {
+              "name": "get_kitchen_context",
+              "arguments": {},
+              "durationMs": 49.141459000000395,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Returned your Mise kitchen context."
+                  }
+                ],
+                "structuredContent": {
+                  "pantry": [
+                    {
+                      "id": 4538,
+                      "name": "Eggs",
+                      "quantity": "4",
+                      "turnover": "high",
+                      "quantityMode": "structured",
+                      "quantityAmount": "4",
+                      "quantityUnit": "count"
+                    }
+                  ],
+                  "tools": []
+                }
+              },
+              "traceId": "c6832940c4894e03130728223081b7ce"
+            }
+          ],
+          "statePass": true,
+          "noUnauthorizedWrite": true
+        },
+        {
+          "index": 1,
+          "prompt": "Twelve more eggs.",
+          "answer": "Added 12 eggs. Your pantry now has **16 eggs**.",
+          "state": {
+            "pantry": [
+              {
+                "id": "4538",
+                "name": "Eggs",
+                "quantity": "16",
+                "quantity_text": "",
+                "quantity_value": "16",
+                "quantity_unit": "count"
+              }
+            ],
+            "equipment": []
+          },
+          "calls": [
+            {
+              "name": "restock_pantry_item",
+              "arguments": {
+                "name": "Eggs",
+                "expectedQuantity": {
+                  "amount": "4",
+                  "unit": "count"
+                },
+                "deltaQuantity": {
+                  "amount": "12",
+                  "unit": "count"
+                }
+              },
+              "durationMs": 40.58170799999971,
+              "result": {
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Restocked Eggs by 12 count. Quantity is now 16."
+                  }
+                ],
+                "structuredContent": {
+                  "outcome": {
+                    "status": "applied",
+                    "operation": "restock",
+                    "name": "Eggs",
+                    "beforeQuantity": "4",
+                    "quantity": "16",
+                    "before": {
+                      "mode": "structured",
+                      "amount": "4",
+                      "unit": "count",
+                      "text": null
+                    },
+                    "delta": {
+                      "mode": "structured",
+                      "amount": "12",
+                      "unit": "count",
+                      "text": null
+                    },
+                    "after": {
+                      "mode": "structured",
+                      "amount": "16",
+                      "unit": "count",
+                      "text": null
+                    }
+                  }
+                }
+              },
+              "traceId": "d34710805341b0b24844cd903316cc50"
+            }
+          ],
+          "statePass": true,
+          "noUnauthorizedWrite": true
+        }
+      ],
+      "taskSuccess": true,
+      "cost": 0.0017462200000000457
+    }
+  ],
+  "budget": {
+    "capUsd": 5,
+    "chargedUsd": 1.459994,
+    "updatedAt": "2026-09-06T23:23:21.226Z"
+  },
+  "review": "Agent inspection: first missing-amount answer asks how many eggs; no write before reply. Scripted follow-ups are not conditional user simulation."
+}
