@@ -1,6 +1,6 @@
 # Four-tool experiment — issue #203
 
-Status: input contracts and tested transaction/retry primitives. These tools are not registered, do not execute writes,
+Status: input contracts and tested transaction/retry primitives. Service handlers execute local writes, but the MCP tools are not registered
 and have not been evaluated by a model. The baseline remains the 12-tool server.
 
 The candidate is a tool-only app: `read_kitchen`, `add_items`, `edit_items`, and
@@ -37,7 +37,10 @@ when selecting this candidate for evaluation.
    concurrent duplicates, owner-scoped IDs, rejection rollback, and infrastructure
    rollback. Migration 20260906235058 extends the existing receipt kind constraint
    without changing grants or RLS. Applied only to the isolated local test stack.
-   The service handlers still need to convert domain failures into list rejection.
+   The add/edit/remove service handlers now convert domain failures into list
+   rejection, lock target rows in consistent order, preserve stable IDs, and
+   omit user identity from results. Thirteen local transaction/command tests pass.
+   The adapter translates measured quantities into the existing service format.
 4. Preserve mixed create/restock receipt imports within the four-tool surface:
    explicitly reviewed line decisions, one transaction, and one request identity.
    The current candidate schema does not yet cover this requirement.

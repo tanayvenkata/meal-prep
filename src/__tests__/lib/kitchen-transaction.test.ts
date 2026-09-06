@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { addItem, addKitchenTool, getItems, getKitchenTools, withKitchenTransaction, runKitchenWrite, KitchenWriteRejection } from "@/lib/db";
+import { addKitchenItems, editKitchenItems, removeKitchenItems } from "@/lib/kitchen-commands";
 import { UNKNOWN_PANTRY_QUANTITY } from "@/lib/pantry-quantity";
 
 const admin = postgres(process.env.ADMIN_DATABASE_URL!);
@@ -97,5 +98,56 @@ describe("durable kitchen request receipt", () => {
     await expect(runKitchenWrite(userA, id, "add_items", {}, async () => { await addItem(userA, "Failed infrastructure mayo", UNKNOWN_PANTRY_QUANTITY); throw new Error("dependency_failed"); })).rejects.toThrow("dependency_failed");
     expect((await getItems(userA)).some(x => x.name === "Failed infrastructure mayo")).toBe(false);
     expect(await runKitchenWrite(userA, id, "add_items", {}, async () => [])).toEqual({ status: "applied", requestId: id, results: [], replayed: false });
+  });
+});
+
+
+async function seedCommandEggs() {
+  const name = `Eggs ${randomUUID()}`;
+  expect((await addKitchenItems(userA, { requestId: randomUUID(), items: [{ collection: "pantry", name, quantity: { amount: "4", unit: "count" } }] })).status).toBe("applied");
+  return (await getItems(userA)).find(x => x.name === name)!;
+}
+
+describe("candidate command effects", () => {
+  it("adds unknown food and equipment in one list with safe replay", async () => {
+    const command = { requestId: randomUUID(), items: [{ collection: "pantry", name: "Command mayo" }, { collection: "equipment", name: "Command skillet", kind: "cookware" }] };
+    const first = await addKitchenItems(userA, command);
+    expect(first.status).toBe("applied");
+    expect(JSON.stringify(first)).not.toContain("user_id");
+    expect(first).toMatchObject({ results: [{ item: { id: expect.any(Number) } }, { tool: { id: expect.any(String) } }] });
+    expect(await addKitchenItems(userA, command)).toEqual({ ...first, replayed: true });
+    const mayo = (await getItems(userA)).find(x => x.name === "Command mayo")!;
+    expect(mayo.quantity_value).toBeNull();
+    expect((await getKitchenTools(userA)).some(x => x.name === "Command skillet")).toBe(true);
+  });
+  it("distinguishes more eggs from a total and prevents a delayed replay after reset", async () => {
+    const eggs = await seedCommandEggs();
+    const ref = { collection: "pantry", id: Number(eggs.id), expectedName: eggs.name };
+    const purchase = { requestId: randomUUID(), items: [{ ...ref, operation: "increase", expectedQuantity: { amount: "4", unit: "count" }, delta: { amount: "12", unit: "count" } }] };
+    expect((await editKitchenItems(userA, purchase)).status).toBe("applied");
+    expect((await getItems(userA)).find(x => x.id === eggs.id)!.quantity_value).toBe("16");
+    expect((await editKitchenItems(userA, { requestId: randomUUID(), items: [{ ...ref, operation: "replace", quantity: { amount: "4", unit: "count" } }] })).status).toBe("applied");
+    const replay = await editKitchenItems(userA, purchase);
+    expect("replayed" in replay && replay.replayed).toBe(true);
+    expect((await getItems(userA)).find(x => x.id === eggs.id)!.quantity_value).toBe("4");
+  });
+  it("rolls back an earlier edit when the next target is missing", async () => {
+    const eggs = await seedCommandEggs();
+    const result = await editKitchenItems(userA, { requestId: randomUUID(), items: [
+      { collection: "pantry", id: Number(eggs.id), expectedName: eggs.name, operation: "replace", name: "Should roll back" },
+      { collection: "equipment", id: randomUUID(), expectedName: "Missing", name: "Still missing", kind: "cookware" },
+    ] });
+    expect(result.status).toBe("rejected");
+    expect((await getItems(userA)).find(x => x.id === eggs.id)!.name).toBe(eggs.name);
+  });
+  it("rejects foreign removal and permits an owned removal with replay", async () => {
+    const eggs = await seedCommandEggs();
+    const items = [{ collection: "pantry", id: Number(eggs.id), expectedName: eggs.name }];
+    expect((await removeKitchenItems(userB, { requestId: randomUUID(), items })).status).toBe("rejected");
+    const command = { requestId: randomUUID(), items };
+    const first = await removeKitchenItems(userA, command);
+    expect(first.status).toBe("applied");
+    expect(await removeKitchenItems(userA, command)).toEqual({ ...first, replayed: true });
+    expect((await getItems(userA)).some(x => x.id === eggs.id)).toBe(false);
   });
 });

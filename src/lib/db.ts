@@ -423,6 +423,19 @@ async function withUserContext<T>(
   }) as Promise<T>;
 }
 
+export type KitchenWriteValue = postgres.JSONValue;
+
+/** Lock existing targets in a consistent order inside the candidate transaction. */
+export async function lockKitchenWriteTargets(userId: string, pantryIds: number[], equipmentIds: string[]): Promise<void> {
+  if (!kitchenTransaction.getStore()) throw new Error("kitchen_transaction_required");
+  await withUserContext(userId, async (tx) => {
+    await tx`select id from items where user_id = ${userId}
+      and id = any(${tx.array(pantryIds)}::bigint[]) order by id for update`;
+    await tx`select id from kitchen_tools where user_id = ${userId}
+      and id = any(${tx.array(equipmentIds)}::uuid[]) order by id for update`;
+  });
+}
+
 export type KitchenWriteOutcome =
   | { status: "applied"; requestId: string; results: postgres.JSONValue[]; replayed: boolean }
   | { status: "rejected"; requestId: string; index: number; reason: string; replayed: boolean }
