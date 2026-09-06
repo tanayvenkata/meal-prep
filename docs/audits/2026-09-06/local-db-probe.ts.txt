@@ -1,0 +1,37 @@
+import { randomUUID } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
+async function main() {
+  process.env.DATABASE_URL='postgresql://mise_app:mise_app_local@127.0.0.1:54322/postgres';
+  process.env.NEXT_PUBLIC_SUPABASE_URL='https://audit.invalid';
+  process.env.MCP_PUBLIC_URL='https://audit.invalid/mcp';
+  const {default:postgres}=await import(`${process.cwd()}/node_modules/postgres/src/index.js`);
+  const {handleMiseMcpRequest}=await import(`${process.cwd()}/src/mcp/server.ts`);
+  const admin=postgres('postgresql://postgres:postgres@127.0.0.1:54322/postgres');
+  const user=randomUUID();
+  console.info=()=>{};
+  let seq=0;
+  const outcomes=[];
+  const verifyAccessToken=async()=>({token:'fixture',clientId:'fixture',scopes:['openid'],expiresAt:Math.floor(Date.now()/1000)+600,extra:{userId:user}});
+  async function call(name:string,args:unknown){
+    const response=await handleMiseMcpRequest(new Request('https://audit.invalid/mcp',{method:'POST',headers:{accept:'application/json, text/event-stream',authorization:'Bearer fixture','content-type':'application/json','mcp-protocol-version':'2025-11-25'},body:JSON.stringify({jsonrpc:'2.0',id:++seq,method:'tools/call',params:{name,arguments:args}})}),{verifyAccessToken});
+    return {httpStatus:response.status,...await response.json()};
+  }
+  try {
+    await admin`insert into auth.users(id,email,encrypted_password,email_confirmed_at,created_at,updated_at,raw_app_meta_data,raw_user_meta_data) values(${user},${user+'@audit.invalid'},'x',now(),now(),now(),'{}','{}')`;
+    outcomes.push({case:'add_mayo_without_quantity',response:await call('add_pantry_item',{name:'Mayo'})});
+    outcomes.push({case:'repeat_same_add',response:await call('add_pantry_item',{name:'Mayo'})});
+    outcomes.push({case:'read_after_add',response:await call('get_kitchen_context',{})});
+    const [row]=await admin`select id from items where user_id=${user}`;
+    outcomes.push({case:'set_exact_quantity',response:await call('set_pantry_item_quantity',{name:'Mayo',quantity:{amount:'1',unit:'jar'}})});
+    outcomes.push({case:'rename',response:await call('update_pantry_item',{id:Number(row.id),expectedName:'Mayo',name:'Mayonnaise'})});
+    outcomes.push({case:'read_after_rename',response:await call('get_kitchen_context',{})});
+    const report={date:'2026-09-06',runtime:process.version,scope:'Real hosted MCP transport, schemas, kitchen service, local Postgres mise_app/RLS; synthetic injected authentication; isolated random fixture user; not ChatGPT or production OAuth.',outcomes};
+    writeFileSync('/tmp/mise-audit-local-db.json',JSON.stringify(report,null,2)+'\n');
+    process.stdout.write(JSON.stringify(outcomes.map(r=>({case:r.case,httpStatus:r.response.httpStatus,isError:r.response.result?.isError??false,status:r.response.result?.structuredContent?.status,pantry:r.response.result?.structuredContent?.pantry})),null,2)+'\n');
+  } finally {
+    await admin`delete from items where user_id=${user}`;
+    await admin`delete from auth.users where id=${user}`;
+    await admin.end();
+  }
+}
+main().then(()=>process.exit(0)).catch(e=>{console.error(e);process.exit(1)});

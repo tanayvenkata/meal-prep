@@ -1,0 +1,167 @@
+{
+  "date": "2026-09-06",
+  "runtime": "v26.8.1",
+  "scope": "Real hosted MCP transport, schemas, kitchen service, local Postgres mise_app/RLS; synthetic injected authentication; isolated random fixture user; not ChatGPT or production OAuth.",
+  "outcomes": [
+    {
+      "case": "add_mayo_without_quantity",
+      "response": {
+        "httpStatus": 200,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Added Mayo to your pantry."
+            }
+          ],
+          "structuredContent": {
+            "status": "created",
+            "item": {
+              "id": 3094,
+              "name": "Mayo",
+              "quantity": "",
+              "turnover": "high",
+              "created_at": "2026-09-06T20:20:17.473Z"
+            }
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 1
+      }
+    },
+    {
+      "case": "repeat_same_add",
+      "response": {
+        "httpStatus": 200,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Mayo is already in your pantry."
+            }
+          ],
+          "structuredContent": {
+            "status": "already_exists",
+            "item": {
+              "id": 3094,
+              "name": "Mayo",
+              "quantity": "",
+              "turnover": "high",
+              "created_at": "2026-09-06T20:20:17.473Z"
+            }
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 2
+      }
+    },
+    {
+      "case": "read_after_add",
+      "response": {
+        "httpStatus": 200,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Returned your Mise kitchen context."
+            }
+          ],
+          "structuredContent": {
+            "pantry": [
+              {
+                "id": 3094,
+                "name": "Mayo",
+                "quantity": "",
+                "turnover": "high",
+                "quantityMode": "unknown",
+                "quantityAmount": null,
+                "quantityUnit": null
+              }
+            ],
+            "tools": []
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 3
+      }
+    },
+    {
+      "case": "set_exact_quantity",
+      "response": {
+        "httpStatus": 200,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Set Mayo from  to 1 jar."
+            }
+          ],
+          "structuredContent": {
+            "status": "updated",
+            "name": "Mayo",
+            "beforeQuantity": "",
+            "quantity": "1 jar"
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 4
+      }
+    },
+    {
+      "case": "rename",
+      "response": {
+        "httpStatus": 200,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Updated Mayonnaise."
+            }
+          ],
+          "structuredContent": {
+            "status": "updated",
+            "item": {
+              "id": 3094,
+              "name": "Mayonnaise",
+              "quantity": "1 jar",
+              "turnover": "high",
+              "created_at": "2026-09-06T20:20:17.473Z"
+            }
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 5
+      }
+    },
+    {
+      "case": "read_after_rename",
+      "response": {
+        "httpStatus": 200,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Returned your Mise kitchen context."
+            }
+          ],
+          "structuredContent": {
+            "pantry": [
+              {
+                "id": 3094,
+                "name": "Mayonnaise",
+                "quantity": "1 jar",
+                "turnover": "high",
+                "quantityMode": "structured",
+                "quantityAmount": "1",
+                "quantityUnit": "jar"
+              }
+            ],
+            "tools": []
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 6
+      }
+    }
+  ]
+}
