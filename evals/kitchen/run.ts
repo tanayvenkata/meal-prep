@@ -1,18 +1,17 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import OpenAI from "openai";
 import { runConversation } from "./conversation";
 import { kitchenFixture, LOCAL_APP_DATABASE } from "./fixture";
 import { scenarios, recoveryScenarios, validationScenarios, everydayScenarios, dialogueScenarios, type Scenario } from "./scenarios";
-import { EvaluationBudget } from "./budget";
+import { RunUsage } from "./usage";
 import { startKitchenTelemetry } from "../../src/lib/telemetry";
 import { evaluationProvenance } from "./provenance";
 import { gradeAnswer } from "./grade-answer";
 
-import { actorModel, actorProfiles, actorUsageCost } from "./models";
+import { actorModel, actorUsageCost } from "./models";
 
 const MODEL = actorModel(process.env.KITCHEN_EVAL_MODEL);
-const RESERVATION_USD = actorProfiles[MODEL].reservationUsd;
 const MAX_OUTPUT = 2048;
 const directory = ".eval-results/kitchen";
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -22,15 +21,14 @@ async function main() {
   process.env.DATABASE_URL = LOCAL_APP_DATABASE;
   process.env.PROMPTFOO_DISABLE_TELEMETRY = "1";
   mkdirSync(directory, { recursive: true });
-  // A process-wide lock protects the cumulative budget across concurrent runs.
-  const budget = new EvaluationBudget(directory);
+  const usage = new RunUsage();
   let telemetry: ReturnType<typeof startKitchenTelemetry> | undefined;
   try {
     const version = evaluationProvenance(MODEL);
     telemetry = startKitchenTelemetry({ release: version.sourceHash });
     const api = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: "https://api.openai.com/v1", maxRetries: 0, timeout: 60_000 });
     const { evaluate } = await import("promptfoo");
-    const reportId = new Date().toISOString().replaceAll(":", "-");
+    const reportId = `${new Date().toISOString().replaceAll(":", "-")}-${randomUUID().slice(0, 8)}`;
     const outcomes: Array<{ scenario: string; taskSuccess: boolean; safeFailure: boolean; acceptancePass: boolean }> = [];
     async function run(scenario: Scenario) {
       let unavailableAttempts = 0;
@@ -38,6 +36,7 @@ async function main() {
         createPantryItem: async () => { unavailableAttempts++; throw new Error("synthetic_dependency_failure"); },
       } : {});
       let cost = 0;
+      const unknownBefore = usage.unknownCostRequests;
       let inputTokens = 0;
       let outputTokens = 0;
       let requests = 0;
@@ -80,14 +79,13 @@ async function main() {
             return result;
           },
           complete: async input => {
-            const reservation = budget.reserve(RESERVATION_USD);
-            cost += RESERVATION_USD;
+            const recordCost = usage.startRequest();
             requests++;
             const response = await api.responses.create({ model: MODEL, instructions, input, tools, store: false, max_output_tokens: MAX_OUTPUT, reasoning: { effort: "low" }, service_tier: "default", parallel_tool_calls: false });
             if (response.usage) {
               const estimate = actorUsageCost(MODEL, response.usage);
-              reservation.settle(estimate);
-              cost += estimate - RESERVATION_USD;
+              recordCost(estimate);
+              cost += estimate;
               inputTokens += response.usage.input_tokens;
               outputTokens += response.usage.output_tokens;
             }
@@ -96,7 +94,7 @@ async function main() {
           },
         });
         const actorDurationMs = performance.now() - actorStartedAt;
-        const actorCostUsd = cost;
+        const actorCostUsd = usage.unknownCostRequests === unknownBefore ? cost : null;
         const { answer, completed, error } = conversation;
         const final = await kitchen.state();
         const normalized = {
@@ -110,12 +108,12 @@ async function main() {
           completed: completed && !error,
           intermediateStates: !scenario.followUps || (turns.length === scenario.followUps.length + 1 && turns.every(turn => turn.statePass && turn.noUnauthorizedWrite)),
         };
-        const answerEvaluation = await gradeAnswer(api, budget, {
+        const answerEvaluation = await gradeAnswer(api, usage, {
           prompt: [scenario.prompt, ...(scenario.followUps ?? [])].join("\nNext user turn: "), initial, final, answer: turns.length ? turns.map(turn => `Assistant turn ${turn.index + 1}: ${turn.answer}`).join("\n") : answer,
           events: turns.length ? turns.map(turn => JSON.stringify(turn)) : kitchen.calls.map((call, index) => JSON.stringify({ tool: call.name, arguments: call.arguments, serverResult: call.result,
             assistantObservation: index === lostResponseAt ? "Successful result withheld. Assistant received effect-unknown transport error." : call.result })),
         });
-        cost += answerEvaluation.cost;
+        cost += answerEvaluation.cost ?? 0;
         requests++;
         inputTokens += answerEvaluation.usage?.input_tokens ?? 0;
         outputTokens += answerEvaluation.usage?.output_tokens ?? 0;
@@ -126,11 +124,12 @@ async function main() {
         const taskSuccess = statePass && answerPass;
         const safeFailure = !checks.expectedState && JSON.stringify(initial) === JSON.stringify(final) && completed && !error && answerPass && faultExercised;
         const acceptancePass = (scenario.expectedOutcome === "safe_failure" ? safeFailure : taskSuccess) && faultExercised && recoveryRead;
-        const output = { scenario: scenario.id, turns, actorDurationMs, actorCostUsd, actorModel: MODEL, checks, statePass, answerPass, answerEvaluation, taskSuccess, safeFailure, acceptancePass, faultExercised, recoveryRead, lostResponseAt, unavailableAttempts, conversation, pass: taskSuccess, initial, final, answer, error, calls: kitchen.calls, responses, catalogHash: hash(JSON.stringify(catalog)), instructionsHash: hash(instructions) };
+        const unknownCostRequests = usage.unknownCostRequests - unknownBefore;
+        const output = { scenario: scenario.id, knownCostUsd: cost, unknownCostRequests, turns, actorDurationMs, actorCostUsd, actorModel: MODEL, checks, statePass, answerPass, answerEvaluation, taskSuccess, safeFailure, acceptancePass, faultExercised, recoveryRead, lostResponseAt, unavailableAttempts, conversation, pass: taskSuccess, initial, final, answer, error, calls: kitchen.calls, responses, catalogHash: hash(JSON.stringify(catalog)), instructionsHash: hash(instructions) };
         outcomes.push({ scenario: scenario.id, taskSuccess, safeFailure, acceptancePass });
-        writeFileSync(`${directory}/${reportId}-${scenario.id}.json`, JSON.stringify({ version, definition: scenario, catalog, instructions, cost, requests, ...output }, null, 2));
-        console.log(`${scenario.id}: ${acceptancePass ? (taskSuccess ? "TASK_PASS" : "SAFE_FAILURE") : "FAIL"} ($${cost.toFixed(4)})`);
-        return { output, cost, tokenUsage: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens, numRequests: requests } };
+        writeFileSync(`${directory}/${reportId}-${scenario.id}.json`, JSON.stringify({ version, definition: scenario, catalog, instructions, cost: unknownCostRequests ? null : cost, requests, ...output }, null, 2));
+        console.log(`${scenario.id}: ${acceptancePass ? (taskSuccess ? "TASK_PASS" : "SAFE_FAILURE") : "FAIL"} ($${cost.toFixed(4)} known${unknownCostRequests ? ", incomplete usage" : ""})`);
+        return { output, ...(unknownCostRequests ? {} : { cost }), tokenUsage: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens, numRequests: requests } };
       } finally { await kitchen.close(); }
     }
     const allScenarios = [...scenarios, ...recoveryScenarios, ...validationScenarios, ...everydayScenarios, ...dialogueScenarios];
@@ -144,10 +143,10 @@ async function main() {
     }, { maxConcurrency: 1, cache: false });
     const summary = await result.toEvaluateSummary();
     const taskMetrics = { evaluated: outcomes.length, taskSuccesses: outcomes.filter(o => o.taskSuccess).length, safeFailures: outcomes.filter(o => o.safeFailure).length, accepted: outcomes.filter(o => o.acceptancePass).length };
-    writeFileSync(`${directory}/${reportId}-summary.json`, JSON.stringify({ version, budgetChargedUsd: budget.chargedUsd, taskMetrics, outcomes, summary }, null, 2));
-    console.log(JSON.stringify({ results: summary.stats, taskMetrics, budgetChargedUsd: budget.chargedUsd, directory }));
+    writeFileSync(`${directory}/${reportId}-summary.json`, JSON.stringify({ version, knownCostUsd: usage.knownCostUsd, unknownCostRequests: usage.unknownCostRequests, taskMetrics, outcomes, summary }, null, 2));
+    console.log(JSON.stringify({ results: summary.stats, taskMetrics, knownCostUsd: usage.knownCostUsd, unknownCostRequests: usage.unknownCostRequests, directory }));
     if (summary.stats.failures || summary.stats.errors) process.exitCode = 1;
-  } finally { try { await telemetry?.shutdown(); } finally { budget.close(); } }
+  } finally { await telemetry?.shutdown(); }
 }
 
-main().then(() => process.exit(process.exitCode ?? 0)).catch(() => { console.error("Kitchen evaluation stopped. Check local setup and retained budget ledger; no credentials were logged."); process.exit(1); });
+main().then(() => process.exit(process.exitCode ?? 0)).catch(() => { console.error("Kitchen evaluation stopped. Check local setup and per-run reports; no credentials were logged."); process.exit(1); });

@@ -8,12 +8,12 @@ not instructions or permanent product requirements.
 | Requirement | Evidence | Status |
 | --- | --- | --- |
 | Repeatable local command | `pnpm run eval:kitchen --all`; isolated synthetic users, actual MCP HTTP client and local restricted Postgres writes | Verified on the pnpm dependency baseline |
-| Versioned natural-language cases | Ten baseline, two fault, four observed validation, seven everyday cases in `evals/kitchen/scenarios.ts` | Latest: 22/23 accepted; 21 task passes, one expected safe failure, one inconsistent answer-judge flag |
+| Versioned natural-language cases | Ten baseline, two fault, four observed validation, seven everyday cases in `evals/kitchen/scenarios.ts` | Latest full Luna run: 26/26 accepted; 25 task passes and one expected safe failure |
 | Effects independently checked | Initial/final SQL snapshots, expected state, duplicate prevention, stable identities, forbidden writes; 14 real MCP/database cases | Verified; not a guarantee for every possible retry history |
 | Semantic outcomes and correlation | Command/tool/HTTP outcomes, safe logs, OTel traces and local Grafana collector; `docs/OBSERVABILITY.md` | Local evidence available; production collection not deployed |
 | Answer correctness evaluated | Versioned grader, explicit false-success controls, 12 calibration examples, one user-adjudicated answer | Implemented; fallible model score, most labels remain agent-authored |
 | Failures and recovery observable | Response-loss and persistent-service-failure cases; actual server result distinguished from model observation | Verified in the evaluation adapter, not ChatGPT |
-| Reproducibility and spend | Model snapshot, source/catalog/instruction hashes, pnpm lock/config hash, usage and shared atomic ledger | Recorded; cumulative estimate $1.459994 of $5 |
+| Reproducibility and spend | Model, source/catalog/instruction hashes, pnpm lock/config hash and per-run usage | Recorded; cumulative cap/ledger removed by user direction |
 | Comparable simplification experiment | `docs/audits/2026-09-06/kitchen-evaluation.md`: quantity uncertainty before/after | Recorded; existing schema columns reused |
 | Automated validation | 250 unit tests, 181 integration tests, TypeScript and lint on reconciled pnpm branch; pre-push build | Local checks and exact-head CI pass at `de30fa6` |
 | Real host/account linking | Updated `docs/mcp-golden-prompts.md`, including unknown/text/cleared quantities | Pending actual authenticated ChatGPT development check |
@@ -71,3 +71,7 @@ purchase amount, total correction, and distinct repeated purchases. Evidence:
 the corpus to 26; the previously reported 23-case run is not a claim that all 26
 have been run together on Luna. Scripted continuations do not prove general
 clarification quality.
+
+Full Luna evidence after dialogue support: [26-case verification](audits/2026-09-06/luna-full-verification.json).
+The judge remains fallible despite no flags in this run. User direction removed
+the cumulative budget and ledger; per-run usage remains automatic.

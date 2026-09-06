@@ -2,8 +2,8 @@
 // https://developers.openai.com/api/docs/pricing
 // Unknown cache-write usage is charged conservatively, never assumed free.
 export const actorProfiles = {
-  "gpt-5.4-mini-2026-03-17": { reservationUsd: 0.32 },
-  "gpt-5.6-luna": { reservationUsd: 0.60 },
+  "gpt-5.4-mini-2026-03-17": {},
+  "gpt-5.6-luna": {},
 } as const;
 export type ActorModel = keyof typeof actorProfiles;
 export function actorModel(value = "gpt-5.6-luna"): ActorModel {

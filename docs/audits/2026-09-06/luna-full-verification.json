@@ -1,0 +1,1654 @@
+{
+  "version": {
+    "model": "gpt-5.6-luna",
+    "node": "v24.20.0",
+    "head": "cf0f4062df788a427b2c4eb1a0e0a159803f7e80",
+    "sourceHash": "63e570e3789c01bae4bc4995eb120fbf3b893d8a175b88834b0b7d4b7055bd58"
+  },
+  "taskMetrics": {
+    "evaluated": 26,
+    "taskSuccesses": 25,
+    "safeFailures": 1,
+    "accepted": 26
+  },
+  "cases": [
+    {
+      "scenario": "add-unknown",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Added mayo to your pantry.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The response matches the final state: the pantry contains a mayo item, and the tool event shows mayo was created successfully."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 696,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 71,
+          "output_tokens_details": {
+            "reasoning_tokens": 26
+          },
+          "total_tokens": 767
+        },
+        "cost": 0.0008415,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The response matches the final state: the pantry contains a mayo item, and the tool event shows mayo was created successfully.\"}"
+      },
+      "initial": {
+        "pantry": [],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4541",
+            "name": "mayo",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 4328.715042,
+      "cost": 0.0012373699999999649
+    },
+    {
+      "scenario": "clear-quantity",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Mayo\u2019s quantity is now cleared and marked as unknown.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry state shows the existing Mayo item kept with quantity cleared: the item id 4545 remains, and its quantity is empty with null structured quantity fields. The update event also explicitly reports \"Updated Mayo\" after setting quantity mode to unknown."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 831,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 93,
+          "output_tokens_details": {
+            "reasoning_tokens": 22
+          },
+          "total_tokens": 924
+        },
+        "cost": 0.00104175,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry state shows the existing Mayo item kept with quantity cleared: the item id 4545 remains, and its quantity is empty with null structured quantity fields. The update event also explicitly reports \\\"Updated Mayo\\\" after setting quantity mode to unknown.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4545",
+            "name": "Mayo",
+            "quantity": "1 jar",
+            "quantity_text": "",
+            "quantity_value": "1",
+            "quantity_unit": "jar"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4545",
+            "name": "Mayo",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 3809.525249999999,
+      "cost": 0.0014420000000001018
+    },
+    {
+      "scenario": "consume-eggs",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Updated your pantry: **Eggs \u2014 4 remaining**.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer says the pantry was updated to 4 eggs remaining. The final state shows Eggs quantity changed from 6 to 4, and the tool result confirms 2 eggs were consumed and the operation was applied."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 924,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 62,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 986
+        },
+        "cost": 0.000972,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The answer says the pantry was updated to 4 eggs remaining. The final state shows Eggs quantity changed from 6 to 4, and the tool result confirms 2 eggs were consumed and the operation was applied.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4546",
+            "name": "Eggs",
+            "quantity": "6",
+            "quantity_text": "",
+            "quantity_value": "6",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4546",
+            "name": "Eggs",
+            "quantity": "4",
+            "quantity_text": "",
+            "quantity_value": "4",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 4709.3812080000025,
+      "cost": 0.001406780000000079
+    },
+    {
+      "scenario": "dialogue-correct-total",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Updated **Eggs** from 12 to **10**.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The explanation matches the evidence: the first turn updated Eggs from 4 to 12, and the second turn updated Eggs from 12 to 10. The final pantry state also shows Eggs at 10, consistent with the reported sequence."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 1177,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 98,
+          "output_tokens_details": {
+            "reasoning_tokens": 29
+          },
+          "total_tokens": 1275
+        },
+        "cost": 0.00132375,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The explanation matches the evidence: the first turn updated Eggs from 4 to 12, and the second turn updated Eggs from 12 to 10. The final pantry state also shows Eggs at 10, consistent with the reported sequence.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4567",
+            "name": "Eggs",
+            "quantity": "4",
+            "quantity_text": "",
+            "quantity_value": "4",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4567",
+            "name": "Eggs",
+            "quantity": "10",
+            "quantity_text": "",
+            "quantity_value": "10",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 10028.627541000023,
+      "cost": 0.0021334599999998528
+    },
+    {
+      "scenario": "dialogue-distinct-purchases",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Added another 6 eggs. You now have **16 eggs**.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer matches the tool results and final state: the first restock increased Eggs from 4 to 10, and the second restock increased Eggs from 10 to 16. The final pantry quantity is 16 eggs, consistent with the response."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 1345,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 108,
+          "output_tokens_details": {
+            "reasoning_tokens": 36
+          },
+          "total_tokens": 1453
+        },
+        "cost": 0.00149475,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The answer matches the tool results and final state: the first restock increased Eggs from 4 to 10, and the second restock increased Eggs from 10 to 16. The final pantry quantity is 16 eggs, consistent with the response.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4568",
+            "name": "Eggs",
+            "quantity": "4",
+            "quantity_text": "",
+            "quantity_value": "4",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4568",
+            "name": "Eggs",
+            "quantity": "16",
+            "quantity_text": "",
+            "quantity_value": "16",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 9352.597374999983,
+      "cost": 0.0024005400000000174
+    },
+    {
+      "scenario": "dialogue-purchase-amount",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Added 12 eggs. Your pantry now has **16 eggs**.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer matches the tool result and final state: the pantry started with 4 eggs, the restock call applied a delta of 12, and the final pantry quantity is 16 eggs. The statement \"Added 12 eggs\" and \"Your pantry now has 16 eggs\" are both grounded in the evidence."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 1028,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 124,
+          "output_tokens_details": {
+            "reasoning_tokens": 39
+          },
+          "total_tokens": 1152
+        },
+        "cost": 0.001329,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The answer matches the tool result and final state: the pantry started with 4 eggs, the restock call applied a delta of 12, and the final pantry quantity is 16 eggs. The statement \\\"Added 12 eggs\\\" and \\\"Your pantry now has 16 eggs\\\" are both grounded in the evidence.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4566",
+            "name": "Eggs",
+            "quantity": "4",
+            "quantity_text": "",
+            "quantity_value": "4",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4566",
+            "name": "Eggs",
+            "quantity": "16",
+            "quantity_text": "",
+            "quantity_value": "16",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 7268.573791999981,
+      "cost": 0.0019163399999999363
+    },
+    {
+      "scenario": "duplicate-add",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Mayo is already in your pantry.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The response matches the evidence: the initial pantry already contained Mayo, the add_pantry_item tool returned status already_exists, and the final pantry still contains the same Mayo item. The wording does not falsely claim a change was made."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 803,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 95,
+          "output_tokens_details": {
+            "reasoning_tokens": 28
+          },
+          "total_tokens": 898
+        },
+        "cost": 0.00102975,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The response matches the evidence: the initial pantry already contained Mayo, the add_pantry_item tool returned status already_exists, and the final pantry still contains the same Mayo item. The wording does not falsely claim a change was made.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4542",
+            "name": "Mayo",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4542",
+            "name": "Mayo",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 4059.4771250000003,
+      "cost": 0.0014306000000000082
+    },
+    {
+      "scenario": "equipment",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Added a skillet to your kitchen equipment.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final state shows an equipment item named \"skillet\" with kind \"cookware,\" matching the answer\u2019s claim that a skillet was added to kitchen equipment. The event log also shows the add_kitchen_tool call succeeded."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 751,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 91,
+          "output_tokens_details": {
+            "reasoning_tokens": 25
+          },
+          "total_tokens": 842
+        },
+        "cost": 0.00097275,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final state shows an equipment item named \\\"skillet\\\" with kind \\\"cookware,\\\" matching the answer\u2019s claim that a skillet was added to kitchen equipment. The event log also shows the add_kitchen_tool call succeeded.\"}"
+      },
+      "initial": {
+        "pantry": [],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [],
+        "equipment": [
+          {
+            "id": "43fcbfca-d22c-457d-a697-eda37f5c71a2",
+            "name": "skillet",
+            "kind": "cookware"
+          }
+        ]
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 3963.243583999996,
+      "cost": 0.0013677199999999946
+    },
+    {
+      "scenario": "everyday-correct-total",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Updated **Eggs** to **12**.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final state shows Eggs changed from 4 to 12, and the tool result says \"Set Eggs from 4 to 12.\" The answer accurately reports that update."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 775,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 75,
+          "output_tokens_details": {
+            "reasoning_tokens": 19
+          },
+          "total_tokens": 850
+        },
+        "cost": 0.00091875,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final state shows Eggs changed from 4 to 12, and the tool result says \\\"Set Eggs from 4 to 12.\\\" The answer accurately reports that update.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4560",
+            "name": "Eggs",
+            "quantity": "4",
+            "quantity_text": "",
+            "quantity_value": "4",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4560",
+            "name": "Eggs",
+            "quantity": "12",
+            "quantity_text": "",
+            "quantity_value": "12",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 4176.956749999998,
+      "cost": 0.0013174000000000558
+    },
+    {
+      "scenario": "everyday-finished",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Removed Eggs from your pantry.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry no longer contains Eggs, and the event log shows `delete_pantry_item` with id 4557 succeeded (`status\":\"deleted\"`). The response accurately reports that Eggs were removed."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 835,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 87,
+          "output_tokens_details": {
+            "reasoning_tokens": 26
+          },
+          "total_tokens": 922
+        },
+        "cost": 0.00101775,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry no longer contains Eggs, and the event log shows `delete_pantry_item` with id 4557 succeeded (`status\\\":\\\"deleted\\\"`). The response accurately reports that Eggs were removed.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4557",
+            "name": "Eggs",
+            "quantity": "4",
+            "quantity_text": "",
+            "quantity_value": "4",
+            "quantity_unit": "count"
+          },
+          {
+            "id": "4558",
+            "name": "Rice",
+            "quantity": "2 bag",
+            "quantity_text": "",
+            "quantity_value": "2",
+            "quantity_unit": "bag"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4558",
+            "name": "Rice",
+            "quantity": "2 bag",
+            "quantity_text": "",
+            "quantity_value": "2",
+            "quantity_unit": "bag"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 4709.627292000005,
+      "cost": 0.0014012199999999413
+    },
+    {
+      "scenario": "everyday-new-purchase",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Added **12 eggs** to your pantry.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry contains exactly 12 eggs, matching the answer\u2019s claim that 12 eggs were added. The event log also shows the add_pantry_item call succeeded with 12 eggs created."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 718,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 89,
+          "output_tokens_details": {
+            "reasoning_tokens": 29
+          },
+          "total_tokens": 807
+        },
+        "cost": 0.000939,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry contains exactly 12 eggs, matching the answer\u2019s claim that 12 eggs were added. The event log also shows the add_pantry_item call succeeded with 12 eggs created.\"}"
+      },
+      "initial": {
+        "pantry": [],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4564",
+            "name": "eggs",
+            "quantity": "12",
+            "quantity_text": "",
+            "quantity_value": "12",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 4133.977042000013,
+      "cost": 0.0022443900000000726
+    },
+    {
+      "scenario": "everyday-purchase-again",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Saved: **6 eggs**.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry shows Eggs updated from 0 to 6, and the tool result says the restock was applied with quantity now 6. The answer accurately confirms that 6 eggs were saved."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 929,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 82,
+          "output_tokens_details": {
+            "reasoning_tokens": 21
+          },
+          "total_tokens": 1011
+        },
+        "cost": 0.00106575,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry shows Eggs updated from 0 to 6, and the tool result says the restock was applied with quantity now 6. The answer accurately confirms that 6 eggs were saved.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4565",
+            "name": "Eggs",
+            "quantity": "0",
+            "quantity_text": "",
+            "quantity_value": "0",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4565",
+            "name": "Eggs",
+            "quantity": "6",
+            "quantity_text": "",
+            "quantity_value": "6",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 4441.694499999998,
+      "cost": 0.0015511299999999798
+    },
+    {
+      "scenario": "everyday-purchase-more",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Added 12 eggs. You now have **16 eggs**.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer matches the evidence: initial Eggs quantity was 4, the tool restocked by 12, and the final quantity became 16. The response does not make any unsupported history claim."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 932,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 58,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 990
+        },
+        "cost": 0.00096,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The answer matches the evidence: initial Eggs quantity was 4, the tool restocked by 12, and the final quantity became 16. The response does not make any unsupported history claim.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4559",
+            "name": "Eggs",
+            "quantity": "4",
+            "quantity_text": "",
+            "quantity_value": "4",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4559",
+            "name": "Eggs",
+            "quantity": "16",
+            "quantity_text": "",
+            "quantity_value": "16",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 5049.034040999992,
+      "cost": 0.001392470000000018
+    },
+    {
+      "scenario": "everyday-remove-absent",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Mayo isn\u2019t saved in your pantry, so nothing was removed.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The pantry snapshot shows only Rice initially and finally, with no mayo present. Saying \u201cMayo isn\u2019t saved in your pantry, so nothing was removed\u201d matches the evidence and does not claim an unsupported change."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 649,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 100,
+          "output_tokens_details": {
+            "reasoning_tokens": 37
+          },
+          "total_tokens": 749
+        },
+        "cost": 0.00093675,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The pantry snapshot shows only Rice initially and finally, with no mayo present. Saying \u201cMayo isn\u2019t saved in your pantry, so nothing was removed\u201d matches the evidence and does not claim an unsupported change.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4563",
+            "name": "Rice",
+            "quantity": "2 bag",
+            "quantity_text": "",
+            "quantity_value": "2",
+            "quantity_unit": "bag"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4563",
+            "name": "Rice",
+            "quantity": "2 bag",
+            "quantity_text": "",
+            "quantity_value": "2",
+            "quantity_unit": "bag"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 2860.6124169999966,
+      "cost": 0.0011844200000000332
+    },
+    {
+      "scenario": "everyday-remove",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Removed Mayo from your pantry.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry snapshot no longer contains Mayo, and the event log shows a successful delete_pantry_item call for id 4561 with status deleted. The response accurately reports that Mayo was removed."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 826,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 86,
+          "output_tokens_details": {
+            "reasoning_tokens": 26
+          },
+          "total_tokens": 912
+        },
+        "cost": 0.0010065,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry snapshot no longer contains Mayo, and the event log shows a successful delete_pantry_item call for id 4561 with status deleted. The response accurately reports that Mayo was removed.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4561",
+            "name": "Mayo",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          },
+          {
+            "id": "4562",
+            "name": "Rice",
+            "quantity": "2 bag",
+            "quantity_text": "",
+            "quantity_value": "2",
+            "quantity_unit": "bag"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4562",
+            "name": "Rice",
+            "quantity": "2 bag",
+            "quantity_text": "",
+            "quantity_value": "2",
+            "quantity_unit": "bag"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 4849.775792,
+      "cost": 0.0013863099999999805
+    },
+    {
+      "scenario": "half-jar",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Added **Mayo \u2014 \u00bd jar** to your pantry.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry contains a Mayo item with quantity 0.5 jar, matching the response \u201cAdded Mayo \u2014 \u00bd jar to your pantry.\u201d The event log also shows the add_pantry_item tool succeeded with that same item."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 736,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 96,
+          "output_tokens_details": {
+            "reasoning_tokens": 29
+          },
+          "total_tokens": 832
+        },
+        "cost": 0.000984,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry contains a Mayo item with quantity 0.5 jar, matching the response \u201cAdded Mayo \u2014 \u00bd jar to your pantry.\u201d The event log also shows the add_pantry_item tool succeeded with that same item.\"}"
+      },
+      "initial": {
+        "pantry": [],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4544",
+            "name": "Mayo",
+            "quantity": "0.5 jar",
+            "quantity_text": "",
+            "quantity_value": "0.5",
+            "quantity_unit": "jar"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 5102.337291999998,
+      "cost": 0.0013898399999999907
+    },
+    {
+      "scenario": "lost-add-response",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Mayo is already saved in your pantry.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry contains exactly one mayo item, and the reply is an ordinary confirmation of current state. The evidence from `get_kitchen_context` shows mayo present, so saying it is saved in your pantry is grounded."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 714,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 139,
+          "output_tokens_details": {
+            "reasoning_tokens": 74
+          },
+          "total_tokens": 853
+        },
+        "cost": 0.001161,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry contains exactly one mayo item, and the reply is an ordinary confirmation of current state. The evidence from `get_kitchen_context` shows mayo present, so saying it is saved in your pantry is grounded.\"}"
+      },
+      "initial": {
+        "pantry": [],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4552",
+            "name": "mayo",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 3771.796209,
+      "cost": 0.00249765000000005
+    },
+    {
+      "scenario": "multi-add",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Added **Rice** and **Cumin** to your pantry with unknown quantities.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry contains Rice and Cumin, and both have empty quantity fields/unknown quantities. The answer matches the recorded tool results and final state."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 826,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 84,
+          "output_tokens_details": {
+            "reasoning_tokens": 33
+          },
+          "total_tokens": 910
+        },
+        "cost": 0.0009975,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry contains Rice and Cumin, and both have empty quantity fields/unknown quantities. The answer matches the recorded tool results and final state.\"}"
+      },
+      "initial": {
+        "pantry": [],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4549",
+            "name": "Cumin",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          },
+          {
+            "id": "4548",
+            "name": "Rice",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 4501.804749999996,
+      "cost": 0.0014266699999999786
+    },
+    {
+      "scenario": "planning-no-write",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "You could make a **vegetable omelet**: whisk 2\u20133 eggs, cook them in a lightly oiled pan, and fill with any vegetables, cheese, or herbs you have. Fold it over and serve with toast if available.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The response only suggests a possible dish and does not claim any additional ingredients are present or that anything was cooked. It stays conditional with phrases like \"if available,\" and the pantry/final state still shows only eggs, which does not contradict the suggestion."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 699,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 178,
+          "output_tokens_details": {
+            "reasoning_tokens": 107
+          },
+          "total_tokens": 877
+        },
+        "cost": 0.00132525,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The response only suggests a possible dish and does not claim any additional ingredients are present or that anything was cooked. It stays conditional with phrases like \\\"if available,\\\" and the pantry/final state still shows only eggs, which does not contradict the suggestion.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4550",
+            "name": "Eggs",
+            "quantity": "6",
+            "quantity_text": "",
+            "quantity_value": "6",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4550",
+            "name": "Eggs",
+            "quantity": "6",
+            "quantity_text": "",
+            "quantity_value": "6",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 3648.2338329999984,
+      "cost": 0.0016207499999998931
+    },
+    {
+      "scenario": "rename",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Renamed **Mayo** to **Mayonnaise** in your pantry.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry snapshot shows item id 4547 renamed from \"Mayo\" to \"Mayonnaise,\" and the update tool returned status \"updated.\" The answer accurately reports that rename."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 809,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 86,
+          "output_tokens_details": {
+            "reasoning_tokens": 28
+          },
+          "total_tokens": 895
+        },
+        "cost": 0.00099375,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry snapshot shows item id 4547 renamed from \\\"Mayo\\\" to \\\"Mayonnaise,\\\" and the update tool returned status \\\"updated.\\\" The answer accurately reports that rename.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4547",
+            "name": "Mayo",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4547",
+            "name": "Mayonnaise",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 4222.535582999997,
+      "cost": 0.0013921300000000315
+    },
+    {
+      "scenario": "text-quantity",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Added **Rice** to your pantry with the quantity noted as **\u201ca little left.\u201d**",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry contains Rice with quantity text \"a little left,\" matching the answer. The add_pantry_item event also reports the item was created with that text."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 749,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 83,
+          "output_tokens_details": {
+            "reasoning_tokens": 29
+          },
+          "total_tokens": 832
+        },
+        "cost": 0.00093525,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry contains Rice with quantity text \\\"a little left,\\\" matching the answer. The add_pantry_item event also reports the item was created with that text.\"}"
+      },
+      "initial": {
+        "pantry": [],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4551",
+            "name": "Rice",
+            "quantity": "a little left",
+            "quantity_text": "a little left",
+            "quantity_value": null,
+            "quantity_unit": null
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 5984.23775,
+      "cost": 0.0013906900000000845
+    },
+    {
+      "scenario": "unavailable-add",
+      "checks": {
+        "expectedState": false,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": false,
+      "safeFailure": true,
+      "acceptancePass": true,
+      "answer": "I couldn\u2019t add \u201cmayo\u201d right now because the pantry service failed.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer says it couldn\u2019t add \u201cmayo\u201d because the pantry service failed. That matches the tool event: `add_pantry_item` returned `synthetic_dependency_failure` with `isError: true`. The final pantry is still empty, so the failure report is grounded."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 592,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 114,
+          "output_tokens_details": {
+            "reasoning_tokens": 36
+          },
+          "total_tokens": 706
+        },
+        "cost": 0.000957,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The answer says it couldn\u2019t add \u201cmayo\u201d because the pantry service failed. That matches the tool event: `add_pantry_item` returned `synthetic_dependency_failure` with `isError: true`. The final pantry is still empty, so the failure report is grounded.\"}"
+      },
+      "initial": {
+        "pantry": [],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 3746.000874999998,
+      "cost": 0.0013726300000000001
+    },
+    {
+      "scenario": "validation-consume",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Recorded: you used 3 eggs. **5 eggs remaining.**",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer matches the tool result and final state: 3 eggs were consumed from an initial 8, leaving 5 eggs. The wording does not make any unsupported historical claim."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 936,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 85,
+          "output_tokens_details": {
+            "reasoning_tokens": 28
+          },
+          "total_tokens": 1021
+        },
+        "cost": 0.0010845,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The answer matches the tool result and final state: 3 eggs were consumed from an initial 8, leaving 5 eggs. The wording does not make any unsupported historical claim.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4554",
+            "name": "Eggs",
+            "quantity": "8",
+            "quantity_text": "",
+            "quantity_value": "8",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4554",
+            "name": "Eggs",
+            "quantity": "5",
+            "quantity_text": "",
+            "quantity_value": "5",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 4151.799915999989,
+      "cost": 0.0015145600000000098
+    },
+    {
+      "scenario": "validation-lost-response",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Dijon mustard has been added to your pantry with the amount unspecified.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry contains Dijon mustard with an unspecified/empty quantity, matching the answer\u2019s claim that it was added with the amount unspecified. The events also show the add operation and a later context read confirming the item is present."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 820,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 93,
+          "output_tokens_details": {
+            "reasoning_tokens": 27
+          },
+          "total_tokens": 913
+        },
+        "cost": 0.0010335,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry contains Dijon mustard with an unspecified/empty quantity, matching the answer\u2019s claim that it was added with the amount unspecified. The events also show the add operation and a later context read confirming the item is present.\"}"
+      },
+      "initial": {
+        "pantry": [],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4556",
+            "name": "Dijon mustard",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 6045.586374999999,
+      "cost": 0.0015691399999999483
+    },
+    {
+      "scenario": "validation-planning",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Yes. You have **4 eggs**, which is enough for an omelette for two\u2014assuming about **2 eggs per person**. Your inventory remains unchanged.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer matches the evidence that the pantry started and ended with 4 eggs, so saying the inventory remains unchanged is supported. The claim that 4 eggs is enough for two people is also consistent with the stated assumption of about 2 eggs per person."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 689,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 113,
+          "output_tokens_details": {
+            "reasoning_tokens": 41
+          },
+          "total_tokens": 802
+        },
+        "cost": 0.00102525,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The answer matches the evidence that the pantry started and ended with 4 eggs, so saying the inventory remains unchanged is supported. The claim that 4 eggs is enough for two people is also consistent with the stated assumption of about 2 eggs per person.\"}"
+      },
+      "initial": {
+        "pantry": [
+          {
+            "id": "4555",
+            "name": "Eggs",
+            "quantity": "4",
+            "quantity_text": "",
+            "quantity_value": "4",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4555",
+            "name": "Eggs",
+            "quantity": "4",
+            "quantity_text": "",
+            "quantity_value": "4",
+            "quantity_unit": "count"
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 2499.700291999994,
+      "cost": 0.001307110000000078
+    },
+    {
+      "scenario": "validation-spice",
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true,
+        "intermediateStates": true
+      },
+      "taskSuccess": true,
+      "safeFailure": false,
+      "acceptancePass": true,
+      "answer": "Saved **smoked paprika** to your pantry with the quantity marked as unknown.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v3",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry contains a new smoked paprika item with empty quantity fields, which matches the answer\u2019s claim that it was saved with quantity unknown."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 737,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 82,
+          "output_tokens_details": {
+            "reasoning_tokens": 33
+          },
+          "total_tokens": 819
+        },
+        "cost": 0.00092175,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry contains a new smoked paprika item with empty quantity fields, which matches the answer\u2019s claim that it was saved with quantity unknown.\"}"
+      },
+      "initial": {
+        "pantry": [],
+        "equipment": []
+      },
+      "final": {
+        "pantry": [
+          {
+            "id": "4553",
+            "name": "smoked paprika",
+            "quantity": "",
+            "quantity_text": "",
+            "quantity_value": null,
+            "quantity_unit": null
+          }
+        ],
+        "equipment": []
+      },
+      "actorModel": "gpt-5.6-luna",
+      "actorDurationMs": 5318.530916000003,
+      "cost": 0.001336570000000038
+    }
+  ]
+}

@@ -45,6 +45,13 @@ Before scheduling more features, prioritize observable writes and reproducible
 agent behavior. Keep a small real MCP-to-database test set alongside isolated unit
 tests. Evaluate tool-surface alternatives on the same task cases before choosing.
 
+## Evaluation spending — 2026-09-06
+
+The user removed the earlier $5 cumulative cap and ledger requirement. Run normal
+Luna evaluations with automatic per-run usage/cost reporting and bounded request
+loops. Earlier issue text, audit evidence, and ledger totals describe historical
+experiments, not an ongoing spending gate. Do not manage or update that ledger.
+
 ## Pantry availability decision — 2026-09-06
 
 The user prefers that explicit “finished” or “ran out” pantry updates remove the

@@ -41,15 +41,12 @@ against the initial/final database snapshots and tool results. Reports expose
 incomplete, or uncertain judge verdict cannot pass. This is a fallible model
 assessment, not proof of truthfulness, and it does not assess recipe quality.
 
-The persistent budget ledger reserves $0.32 before each mini request, covering the
-model's entire context window plus the configured maximum output. Known usage
-replaces the reservation with an estimate at uncached rates; uncertain requests
-retain their reservation. SDK retries are disabled. The cumulative limit is $5.
-Do not delete/reset the ledger to bypass that limit. A concurrent-run lock fails
-closed; after a crash, first verify the old process is gone before removing only
-`run.lock`. Keep `budget.json`. This caps this runner's spend, not other use of the
-same API account. Prices were checked on 2026-09-06 against the official
-[model page](https://developers.openai.com/api/docs/models/gpt-5.4-mini).
+By user direction on 2026-09-06, normal evaluations have no cumulative spending
+cap or persistent ledger. Reports automatically retain per-run token usage and
+known estimated costs. Missing usage is marked unknown, not counted as free.
+Historical `budget.json` files and earlier capped-run reports are archival only;
+normal runs neither read nor update them. SDK retries remain disabled, and request,
+tool-call, output-token, and timeout limits still bound each scenario.
 
 Only synthetic kitchen data is sent to the model or written into these reports.
 The app's existing Supabase and Vercel plans are unchanged. API evaluation through
@@ -57,11 +54,6 @@ an MCP-to-function adapter is not identical to ChatGPT's host orchestration.
 
 The [observability guide](../../docs/OBSERVABILITY.md) covers correlated command/tool
 traces, the free local Grafana viewer, the no-model smoke command, and Inspector.
-The budget guard now has deterministic tests for concurrent runs, unknown charges,
-invalid usage, changed/corrupt ledgers, and duplicate settlement. Reservations are
-written atomically and rounded conservatively to microdollars. `run.lock` records
-the owner PID; verify that process is gone before removing a stale lock.
-
 Actual ChatGPT acceptance and stronger held-out/model-answer tests remain separate
 from passing scripted protocol and state checks.
 
@@ -75,16 +67,15 @@ quantities, and a preexisting item from a write whose response was lost. One exa
 reference labels remain agent-authored and open to independent human review. Agreement on known cases is not
 held-out accuracy or a guarantee that the judge will catch every misleading answer.
 
-Normal scenario runs make one additional judge request and charge it to the same
-atomic cumulative budget ledger as actor requests. Reports retain the rubric
+Normal scenario runs make one additional judge request and record its usage
+separately from actor usage. Reports retain the rubric
 version, model snapshot, explanation, usage, and cost. The judge has no tools or
 database access; it cannot replace deterministic effect checks or modify inventory.
 No model calls run in CI. The grader's parser, evidence-field selection, incomplete
-responses, and budget/failure behavior are tested without an API key.
+responses, and usage/failure behavior are tested without an API key.
 
-When running experiments across worktrees, share the existing `.eval-results`
-directory and its lock/ledger instead of starting a fresh $5 allowance per checkout.
-Only run one paid evaluation at a time. Never reset the ledger to repeat a run.
+When running experiments across worktrees, keep reports together for comparison.
+Use matched source versions and fixtures; no shared spending lock is required.
 
 ## Failure handling and fresh validation
 
@@ -128,9 +119,8 @@ The actor defaults to `gpt-5.6-luna` by user request. Set
 to rerun the historical mini baseline.
 Only these priced actors are accepted. The answer judge remains fixed at mini
 with the recorded rubric, so changing actors does not also change grading.
-Luna reserves $0.60 per request to cover its larger context window, long-context
-rates, and cache-write premium; known usage settles the reservation. Unknown
-usage retains it. Both actors and the judge use the same cumulative $5 ledger.
+Luna usage estimates include reported cache reads/writes and the long-context
+pricing threshold. Per-run usage reporting does not authorize or stop requests.
 
 Reports include actor model, actor-only duration, actor cost, requests, tool calls,
 actual provider responses/usage, source hash, and separate judge verdict/cost.
