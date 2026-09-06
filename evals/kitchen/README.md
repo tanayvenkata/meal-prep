@@ -111,3 +111,12 @@ arguments, incomplete responses, provider/transport failures, and request/tool
 limits. Incomplete responses never dispatch writes. Provider failures are not
 retried; transport errors allow a subsequent model turn with effect-unknown
 evidence. The adapter's recovery behavior is explicit and may differ from ChatGPT.
+
+## Everyday workflow expansion
+
+`pnpm run eval:kitchen --everyday` runs seven finished-item, purchase, total-correction, and
+removal cases added after user workflow feedback. `--all` now includes these
+alongside the original 16; earlier 16-case reports remain historical evidence.
+Multi-turn clarification/correction remains pending;
+passing this subset does not establish that broader coverage. See the
+[coverage review](../../docs/audits/2026-09-06/everyday-workflow-coverage.md).

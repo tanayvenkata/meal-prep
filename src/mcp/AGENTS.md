@@ -87,7 +87,10 @@ transitive dependencies.
   kitchen read and carry the stable resource ID plus exact current display name.
   Keep create retries canonical/idempotent, distinguish missing/foreign IDs
   from stale-name conflicts without exposing ownership, and require explicit
-  current-turn delete intent.
+  current-turn removal intent. A current-turn report that a pantry item is fully
+  finished/used up/out of stock counts as removal intent (user decision 2026-09-06).
+  Partial consumption, stored zero alone, and hypothetical plans do not. Equipment
+  still requires explicit deletion intent.
 
 ## Required protocol validation
 

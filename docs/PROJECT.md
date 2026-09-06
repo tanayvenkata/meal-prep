@@ -45,6 +45,14 @@ Before scheduling more features, prioritize observable writes and reproducible
 agent behavior. Keep a small real MCP-to-database test set alongside isolated unit
 tests. Evaluate tool-surface alternatives on the same task cases before choosing.
 
+## Pantry availability decision — 2026-09-06
+
+The user prefers that explicit “finished” or “ran out” pantry updates remove the
+item, keeping the active pantry simple. Do not create a shopping-list/history
+system or retain zero-quantity entries solely for future restocking. A partial
+consumption statement does not imply removal. This is an accepted product direction;
+tool behavior and host acceptance must still be verified against it.
+
 ## Current implementation, not a permanent target
 
 ```text

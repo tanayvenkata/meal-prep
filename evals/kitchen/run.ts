@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import OpenAI from "openai";
 import { runConversation } from "./conversation";
 import { kitchenFixture, LOCAL_APP_DATABASE } from "./fixture";
-import { scenarios, recoveryScenarios, validationScenarios, type Scenario } from "./scenarios";
+import { scenarios, recoveryScenarios, validationScenarios, everydayScenarios, type Scenario } from "./scenarios";
 import { EvaluationBudget, REQUEST_RESERVATION_USD } from "./budget";
 import { startKitchenTelemetry } from "../../src/lib/telemetry";
 import { evaluationProvenance } from "./provenance";
@@ -111,8 +111,8 @@ async function main() {
         return { output, cost, tokenUsage: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens, numRequests: requests } };
       } finally { await kitchen.close(); }
     }
-    const allScenarios = [...scenarios, ...recoveryScenarios, ...validationScenarios];
-    const selected = process.argv[2] === "--recovery" ? recoveryScenarios : process.argv[2] === "--validation" ? validationScenarios : process.argv[2] === "--all" ? allScenarios : process.argv[2] ? allScenarios.filter(scenario => scenario.id === process.argv[2]) : scenarios;
+    const allScenarios = [...scenarios, ...recoveryScenarios, ...validationScenarios, ...everydayScenarios];
+    const selected = process.argv[2] === "--everyday" ? everydayScenarios : process.argv[2] === "--recovery" ? recoveryScenarios : process.argv[2] === "--validation" ? validationScenarios : process.argv[2] === "--all" ? allScenarios : process.argv[2] ? allScenarios.filter(scenario => scenario.id === process.argv[2]) : scenarios;
     if (!selected.length) throw new Error("Unknown scenario");
     const result = await evaluate({
       description: "Mise local kitchen state baseline v1", writeLatestResults: false,

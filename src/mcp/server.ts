@@ -784,7 +784,7 @@ export async function createMiseServer(
     { name: "mise", version: "0.1.0" },
     {
       instructions:
-        "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; deletes require explicit delete intent. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying.",
+        "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; finished pantry items are removed. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying.",
     },
   );
 
@@ -972,7 +972,7 @@ export async function createMiseServer(
     {
       title: "Delete pantry item",
       description:
-        "Use this only when the user explicitly asks in the current turn to permanently delete one pantry item. First call get_kitchen_context and pass the stable ID plus its exact current name. Do not treat zero quantity, consumption, receipt correction, or vague cleanup language as delete authorization.",
+        "Use this when the user in the current turn asks to remove/delete a pantry item or reports it is finished, used up, or out of stock. First read get_kitchen_context; pass the stable ID and exact current name. If absent, confirm it is not saved without deleting anything. Partial consumption, a stored zero alone, hypothetical plans, and vague cleanup do not authorize removal.",
       inputSchema: deletePantryItemInputSchema,
       outputSchema: deletePantryItemOutputSchema,
       annotations: {

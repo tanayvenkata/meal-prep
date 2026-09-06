@@ -36,3 +36,15 @@ export const validationScenarios: Scenario[] = [
   { id: "validation-planning", prompt: "If I made an omelette tomorrow, would I have enough eggs for two? I'm only planning, so leave my inventory as it is.", seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }], pantry: [{ name: "eggs", quantity: "4" }], equipment: [], preserveIds: true, forbidWrites: true },
   { id: "validation-lost-response", prompt: "Please put Dijon mustard on my pantry inventory. Leave the amount unspecified.", seed: [], pantry: [{ name: "dijon mustard", quantity: "" }], equipment: [], fault: "lose_add_response" },
 ];
+
+// Everyday purchase/removal cases prompted by user workflow feedback. Registered
+// before the first run; keep older results tied to their original definitions.
+export const everydayScenarios: Scenario[] = [
+  { id: "everyday-finished", prompt: "We finished the eggs. Update my pantry.", seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }, { name: "Rice", quantity: { amount: "2", unit: "bag" } }], pantry: [{ name: "rice", quantity: "2 bag" }], equipment: [] },
+  { id: "everyday-purchase-more", prompt: "Bought 12 more eggs. Add them to what I have.", seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }], pantry: [{ name: "eggs", quantity: "16" }], equipment: [], preserveIds: true },
+  { id: "everyday-correct-total", prompt: "Just counted: I have 12 eggs now. Update that.", seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }], pantry: [{ name: "eggs", quantity: "12" }], equipment: [], preserveIds: true },
+  { id: "everyday-remove", prompt: "Remove mayo from my pantry.", seed: [{ name: "Mayo" }, { name: "Rice", quantity: { amount: "2", unit: "bag" } }], pantry: [{ name: "rice", quantity: "2 bag" }], equipment: [] },
+  { id: "everyday-remove-absent", prompt: "Remove mayo from my pantry.", seed: [{ name: "Rice", quantity: { amount: "2", unit: "bag" } }], pantry: [{ name: "rice", quantity: "2 bag" }], equipment: [], preserveIds: true },
+  { id: "everyday-new-purchase", prompt: "Bought 12 eggs. Add them to the pantry.", seed: [], pantry: [{ name: "eggs", quantity: "12" }], equipment: [] },
+  { id: "everyday-purchase-again", prompt: "We ran out of eggs earlier, but I just bought six. Save them.", seed: [{ name: "Eggs", quantity: { amount: "0", unit: "count" } }], pantry: [{ name: "eggs", quantity: "6" }], equipment: [], preserveIds: true },
+];

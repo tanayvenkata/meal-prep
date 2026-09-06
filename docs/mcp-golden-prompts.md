@@ -43,6 +43,9 @@ into reports.
 | 9 | Suggest a meal that could use 2 eggs. | Advice may read inventory; stored quantity stays 4 count. |
 | 10 | I own a cast-iron skillet; save it as cookware. | One owned cookware entry. |
 
+Then say “We finished the eggs; update Mise.” Verify Eggs is removed and unrelated
+items remain. The user selected removal over retaining zero on 2026-09-06.
+
 Then check a clearly unrelated prompt makes no Mise call. Use a second synthetic
 account to verify the first account's entries are absent. Verify disconnected or
 invalid authentication returns account linking without data. Inspect the response
