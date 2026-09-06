@@ -784,7 +784,7 @@ export async function createMiseServer(
     { name: "mise", version: "0.1.0" },
     {
       instructions:
-        "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; deletes require explicit delete intent. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying.",
+        "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; deletes require explicit delete intent. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying. If a write response fails or is unavailable, its effect may be unknown: reread kitchen context before deciding whether to retry. Report the confirmed current state; do not infer that an item predated this request merely because it exists after an uncertain write. A response error alone does not prove nothing was saved.",
     },
   );
 

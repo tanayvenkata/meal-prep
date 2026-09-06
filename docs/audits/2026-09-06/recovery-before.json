@@ -1,0 +1,161 @@
+{
+  "phase": "before recovery guidance",
+  "summary": {
+    "successes": 1,
+    "failures": 1,
+    "errors": 0,
+    "tokenUsage": {
+      "prompt": 21352,
+      "completion": 525,
+      "cached": 0,
+      "total": 21877,
+      "numRequests": 7,
+      "completionDetails": {
+        "reasoning": 0,
+        "acceptedPrediction": 0,
+        "rejectedPrediction": 0,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0
+      },
+      "assertions": {
+        "total": 0,
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "numRequests": 0,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        }
+      }
+    },
+    "durationMs": 9768,
+    "evaluationDurationMs": 9768
+  },
+  "cases": [
+    {
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "6301b26f02e368d559556b8336b38f124726df53",
+        "sourceHash": "802c25b6eac2958041b618756ed4537861e7beff1e6a25e87dacf446e8490d96"
+      },
+      "definition": {
+        "id": "lost-add-response",
+        "prompt": "i have mayo pls add",
+        "seed": [],
+        "pantry": [
+          {
+            "name": "mayo",
+            "quantity": ""
+          }
+        ],
+        "equipment": [],
+        "fault": "lose_add_response"
+      },
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "statePass": true,
+      "answerPass": false,
+      "taskSuccess": false,
+      "safeFailure": false,
+      "acceptancePass": false,
+      "faultExercised": true,
+      "recoveryRead": true,
+      "answer": "Mayo is already in your pantry.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v1",
+        "grade": {
+          "verdict": "misleading",
+          "reason": "The final pantry does contain mayo, but the explanation says it was \"already\" there. The evidence shows the pantry started empty and a tool call added mayo during this turn, so it was not preexisting."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 573,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 115,
+          "output_tokens_details": {
+            "reasoning_tokens": 51
+          },
+          "total_tokens": 688
+        },
+        "cost": 0.00094725,
+        "rawOutput": "{\"verdict\":\"misleading\",\"reason\":\"The final pantry does contain mayo, but the explanation says it was \\\"already\\\" there. The evidence shows the pantry started empty and a tool call added mayo during this turn, so it was not preexisting.\"}"
+      },
+      "cost": 0.010878749999999982,
+      "instructionsHash": "bbd4c7bfe814e8690fbab28dd357788d0497c6b8df3a9c89b2779f89fbe827f2"
+    },
+    {
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "6301b26f02e368d559556b8336b38f124726df53",
+        "sourceHash": "802c25b6eac2958041b618756ed4537861e7beff1e6a25e87dacf446e8490d96"
+      },
+      "definition": {
+        "id": "unavailable-add",
+        "prompt": "i have mayo pls add",
+        "seed": [],
+        "pantry": [
+          {
+            "name": "mayo",
+            "quantity": ""
+          }
+        ],
+        "equipment": [],
+        "fault": "create_unavailable",
+        "expectedOutcome": "safe_failure"
+      },
+      "checks": {
+        "expectedState": false,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "statePass": false,
+      "answerPass": true,
+      "taskSuccess": false,
+      "safeFailure": true,
+      "acceptancePass": true,
+      "faultExercised": true,
+      "recoveryRead": true,
+      "answer": "I couldn\u2019t save that right now due to a temporary error. Please try again in a moment, and I can add \u201cmayo\u201d to your pantry.",
+      "answerEvaluation": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "rubricVersion": "kitchen-answer-v1",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The tool call to add_pantry_item(\"mayo\") failed with a synthetic_dependency_failure, and the final pantry remained empty. The assistant\u2019s claim that it could not save right now due to a temporary error is consistent with that evidence, and it did not falsely claim the item was added."
+        },
+        "status": "completed",
+        "usage": {
+          "input_tokens": 387,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 138,
+          "output_tokens_details": {
+            "reasoning_tokens": 58
+          },
+          "total_tokens": 525
+        },
+        "cost": 0.00091125,
+        "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The tool call to add_pantry_item(\\\"mayo\\\") failed with a synthetic_dependency_failure, and the final pantry remained empty. The assistant\u2019s claim that it could not save right now due to a temporary error is consistent with that evidence, and it did not falsely claim the item was added.\"}"
+      },
+      "cost": 0.007497749999999995,
+      "instructionsHash": "bbd4c7bfe814e8690fbab28dd357788d0497c6b8df3a9c89b2779f89fbe827f2"
+    }
+  ]
+}

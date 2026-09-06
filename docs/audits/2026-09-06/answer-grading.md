@@ -42,8 +42,8 @@ One injection control does not prove injection resistance. Review disagreements
 and sample apparently supported answers. Add independent reference labels and
 held-out cases before trusting an aggregate quality percentage.
 
-Restore the full response-loss scenario in this isolated branch and verify it
-through the combined runner. Also exercise persistent dependency failure and
-truthful inability to complete a task. Actual authenticated ChatGPT behavior remains
+The subsequent [recovery comparison](recovery-comparison.md) restores the full
+response-loss scenario, exercises persistent dependency failure, and measures a
+focused instruction change through the combined runner. Actual authenticated ChatGPT behavior remains
 a separate host-acceptance requirement. Nothing in this report establishes that
 the production deployment or ongoing MCP migration has passed those checks.

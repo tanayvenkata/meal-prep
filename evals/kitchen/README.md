@@ -85,3 +85,29 @@ responses, and budget/failure behavior are tested without an API key.
 When running experiments across worktrees, share the existing `.eval-results`
 directory and its lock/ledger instead of starting a fresh $5 allowance per checkout.
 Only run one paid evaluation at a time. Never reset the ledger to repeat a run.
+
+## Failure handling and fresh validation
+
+`npm run eval:kitchen -- --recovery` runs two explicit fault cases. The first
+executes a real local add and withholds its successful result from the model once;
+the next tool call must read state. The second injects a persistent service failure
+before create can write. The reports preserve actual server results separately
+from what the model observed. Adapter response loss is not a real network outage
+or ChatGPT host simulation.
+
+`npm run eval:kitchen -- --validation` runs four fresh validation prompts registered
+before their first observed results. `npm run eval:kitchen -- --all` runs all 16
+cases. Keep first-run results and do not call cases held out once used for tuning.
+
+Recovery reports distinguish `taskSuccess`, `safeFailure`, and `acceptancePass`.
+The persistent-failure case must leave the initial inventory unchanged, exercise
+the injected fault, terminate, and give a supported explanation. Its expected safe
+failure is accepted, but `taskSuccess` and `pass` remain false. The summary's
+`taskMetrics` separates completed tasks from safe failures; Promptfoo success
+counts represent scenario acceptance, not tasks completed.
+
+The actor loop now lives in `conversation.ts`, with no-API tests for malformed
+arguments, incomplete responses, provider/transport failures, and request/tool
+limits. Incomplete responses never dispatch writes. Provider failures are not
+retried; transport errors allow a subsequent model turn with effect-unknown
+evidence. The adapter's recovery behavior is explicit and may differ from ChatGPT.
