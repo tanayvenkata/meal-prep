@@ -7,6 +7,7 @@ import { scenarios, type Scenario } from "./scenarios";
 import { EvaluationBudget, REQUEST_RESERVATION_USD } from "./budget";
 import { startKitchenTelemetry } from "../../src/lib/telemetry";
 import { evaluationProvenance } from "./provenance";
+import { gradeAnswer } from "./grade-answer";
 
 const MODEL = "gpt-5.4-mini-2026-03-17";
 const MAX_OUTPUT = 2048;
@@ -89,7 +90,17 @@ async function main() {
           stableIdentity: !scenario.preserveIds || JSON.stringify(initial.pantry.map(item => item.id).sort()) === JSON.stringify(final.pantry.map(item => item.id).sort()),
           completed: completed && !error,
         };
-        const output = { scenario: scenario.id, checks, pass: Object.values(checks).every(Boolean), initial, final, answer, error, calls: kitchen.calls, responses, catalogHash: hash(JSON.stringify(catalog)), instructionsHash: hash(instructions) };
+        const answerEvaluation = await gradeAnswer(api, budget, {
+          prompt: scenario.prompt, initial, final, answer,
+          events: kitchen.calls.map(call => JSON.stringify({ tool: call.name, arguments: call.arguments, result: call.result })),
+        });
+        cost += answerEvaluation.cost;
+        requests++;
+        inputTokens += answerEvaluation.usage?.input_tokens ?? 0;
+        outputTokens += answerEvaluation.usage?.output_tokens ?? 0;
+        const statePass = Object.values(checks).every(Boolean);
+        const answerPass = answerEvaluation.grade?.verdict === "supported";
+        const output = { scenario: scenario.id, checks, statePass, answerPass, answerEvaluation, pass: statePass && answerPass, initial, final, answer, error, calls: kitchen.calls, responses, catalogHash: hash(JSON.stringify(catalog)), instructionsHash: hash(instructions) };
         writeFileSync(`${directory}/${reportId}-${scenario.id}.json`, JSON.stringify({ version, definition: scenario, catalog, instructions, cost, requests, ...output }, null, 2));
         console.log(`${scenario.id}: ${output.pass ? "PASS" : "FAIL"} ($${cost.toFixed(4)})`);
         return { output, cost, tokenUsage: { prompt: inputTokens, completion: outputTokens, total: inputTokens + outputTokens, numRequests: requests } };

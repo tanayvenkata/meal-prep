@@ -34,8 +34,12 @@ path executes tools and returns their content without completing a subsequent
 model turn, so `run.ts` uses the official OpenAI SDK for at most six model turns
 and twelve tool calls. Response caching is disabled. Each report records the model
 snapshot, code hash, tool results, final state, latency, usage, and estimated spend.
-The grader checks exact final inventory, forbidden writes, and stable identities;
-it does not independently grade final-answer truthfulness or recipe quality.
+Deterministic checks cover exact final inventory, forbidden writes, and stable
+identities. A separate model judge grades the factual grounding of the final answer
+against the initial/final database snapshots and tool results. Reports expose
+`statePass` and `answerPass` separately; overall `pass` requires both. A missing,
+incomplete, or uncertain judge verdict cannot pass. This is a fallible model
+assessment, not proof of truthfulness, and it does not assess recipe quality.
 
 The persistent budget ledger reserves $0.32 before each request, covering the
 model's entire context window plus the configured maximum output. Known usage
@@ -60,3 +64,24 @@ the owner PID; verify that process is gone before removing a stale lock.
 
 Actual ChatGPT acceptance and stronger held-out/model-answer tests remain separate
 from passing scripted protocol and state checks.
+
+## Answer-grader calibration
+
+Run `npm run eval:kitchen -- --calibrate-answers` before relying on answer scores.
+This makes ten paid judge requests against agent-authored reference cases in
+`answer-cases.ts`; expected labels and case IDs are withheld from the judge.
+Cases distinguish truthful failure from false success, unknown from invented
+quantities, and a preexisting item from a write whose response was lost. Calibration
+labels remain open to independent human review. Agreement on known cases is not
+held-out accuracy or a guarantee that the judge will catch every misleading answer.
+
+Normal scenario runs make one additional judge request and charge it to the same
+atomic cumulative budget ledger as actor requests. Reports retain the rubric
+version, model snapshot, explanation, usage, and cost. The judge has no tools or
+database access; it cannot replace deterministic effect checks or modify inventory.
+No model calls run in CI. The grader's parser, evidence-field selection, incomplete
+responses, and budget/failure behavior are tested without an API key.
+
+When running experiments across worktrees, share the existing `.eval-results`
+directory and its lock/ledger instead of starting a fresh $5 allowance per checkout.
+Only run one paid evaluation at a time. Never reset the ledger to repeat a run.
