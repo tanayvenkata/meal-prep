@@ -1,0 +1,1855 @@
+{
+  "design": "Two alternating passes per model across the same seven everyday cases; fixed mini judge, low reasoning, standard service, max output 2048. Caching left enabled. Not a production latency or reliability estimate.",
+  "costNormalization": "Apply published cache-read/write prices to actual reported usage for both actors. Historical mini ledger remains conservative and was not refunded.",
+  "summary": [
+    {
+      "model": "gpt-5.4-mini-2026-03-17",
+      "cases": 14,
+      "taskSuccesses": 14,
+      "actorMedianMs": 2612,
+      "normalizedActorCostUsd": 0.026094,
+      "judgeCostUsd": 0.013494
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "cases": 14,
+      "taskSuccesses": 14,
+      "actorMedianMs": 3991,
+      "normalizedActorCostUsd": 0.006367,
+      "judgeCostUsd": 0.013824
+    }
+  ],
+  "runs": [
+    {
+      "run": 1,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-correct-total",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final database snapshot shows Eggs changed from 4 to 12, and the tool result explicitly says \u201cSet Eggs from 4 to 12.\u201d The answer accurately reflects that update."
+      },
+      "actorDurationMs": 2842.1322920000002,
+      "normalizedActorCostUsd": 0.0020865,
+      "ledgerActorCostUsd": 0.009862499999999996,
+      "judgeCostUsd": 0.00092475,
+      "toolCalls": [
+        "get_kitchen_context",
+        "set_pantry_item_quantity"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4033,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 34,
+          "output_tokens_details": {
+            "reasoning_tokens": 16
+          },
+          "total_tokens": 4067
+        },
+        {
+          "input_tokens": 4143,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 73,
+          "output_tokens_details": {
+            "reasoning_tokens": 39
+          },
+          "total_tokens": 4216
+        },
+        {
+          "input_tokens": 4272,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 10,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4282
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-finished",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry state no longer includes Eggs, and the delete tool returned status deleted for id 4502. The response accurately says, \u201cI removed Eggs from your pantry.\u201d"
+      },
+      "actorDurationMs": 2452.5646659999998,
+      "normalizedActorCostUsd": 0.001992,
+      "ledgerActorCostUsd": 0.009767999999999999,
+      "judgeCostUsd": 0.000975,
+      "toolCalls": [
+        "get_kitchen_context",
+        "delete_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4029,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 43,
+          "output_tokens_details": {
+            "reasoning_tokens": 25
+          },
+          "total_tokens": 4072
+        },
+        {
+          "input_tokens": 4182,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 36,
+          "output_tokens_details": {
+            "reasoning_tokens": 7
+          },
+          "total_tokens": 4218
+        },
+        {
+          "input_tokens": 4261,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 13,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4274
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-new-purchase",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The response says 12 eggs were added to the pantry, which matches the final state showing eggs in the pantry with quantity 12. The event log also shows the add_pantry_item tool succeeded with created status."
+      },
+      "actorDurationMs": 1634.7729999999974,
+      "normalizedActorCostUsd": 0.00125925,
+      "ledgerActorCostUsd": 0.0064432500000000115,
+      "judgeCostUsd": 0.000882,
+      "toolCalls": [
+        "add_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4031,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 54,
+          "output_tokens_details": {
+            "reasoning_tokens": 21
+          },
+          "total_tokens": 4085
+        },
+        {
+          "input_tokens": 4164,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 12,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4176
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-purchase-again",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The answer matches the final pantry state, which shows Eggs at 6 count, and the event log shows the restock was applied successfully from 0 to 6."
+      },
+      "actorDurationMs": 4088.858457999999,
+      "normalizedActorCostUsd": 0.00246825,
+      "ledgerActorCostUsd": 0.01024425000000001,
+      "judgeCostUsd": 0.00104925,
+      "toolCalls": [
+        "get_kitchen_context",
+        "restock_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4036,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 83,
+          "output_tokens_details": {
+            "reasoning_tokens": 65
+          },
+          "total_tokens": 4119
+        },
+        {
+          "input_tokens": 4195,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 76,
+          "output_tokens_details": {
+            "reasoning_tokens": 29
+          },
+          "total_tokens": 4271
+        },
+        {
+          "input_tokens": 4396,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 13,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4409
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-purchase-more",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry shows Eggs quantity increased from 4 to 16, and the tool result says \u2018Restocked Eggs by 12 count. Quantity is now 16.\u2019 The answer accurately reports the final state."
+      },
+      "actorDurationMs": 5668.651124999999,
+      "normalizedActorCostUsd": 0.00214425,
+      "ledgerActorCostUsd": 0.009920249999999964,
+      "judgeCostUsd": 0.0011055,
+      "toolCalls": [
+        "get_kitchen_context",
+        "restock_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4033,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 38,
+          "output_tokens_details": {
+            "reasoning_tokens": 20
+          },
+          "total_tokens": 4071
+        },
+        {
+          "input_tokens": 4147,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 67,
+          "output_tokens_details": {
+            "reasoning_tokens": 20
+          },
+          "total_tokens": 4214
+        },
+        {
+          "input_tokens": 4339,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 13,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4352
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-remove-absent",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The context shows the pantry contained only Rice and no mayo, and the final pantry is unchanged. So saying there was no mayo to remove is grounded in the evidence."
+      },
+      "actorDurationMs": 1790.6260829999992,
+      "normalizedActorCostUsd": 0.00120675,
+      "ledgerActorCostUsd": 0.006390750000000001,
+      "judgeCostUsd": 0.000885,
+      "toolCalls": [
+        "get_kitchen_context"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4026,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 27,
+          "output_tokens_details": {
+            "reasoning_tokens": 9
+          },
+          "total_tokens": 4053
+        },
+        {
+          "input_tokens": 4129,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 34,
+          "output_tokens_details": {
+            "reasoning_tokens": 11
+          },
+          "total_tokens": 4163
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-remove",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final state shows Mayo is no longer in the pantry, and the delete tool returned `status\":\"deleted\"` for id 4506. The response accurately reports that Mayo was removed."
+      },
+      "actorDurationMs": 2789.696333,
+      "normalizedActorCostUsd": 0.00189225,
+      "ledgerActorCostUsd": 0.009668250000000045,
+      "judgeCostUsd": 0.00099075,
+      "toolCalls": [
+        "get_kitchen_context",
+        "delete_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4026,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 28,
+          "output_tokens_details": {
+            "reasoning_tokens": 10
+          },
+          "total_tokens": 4054
+        },
+        {
+          "input_tokens": 4162,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 36,
+          "output_tokens_details": {
+            "reasoning_tokens": 7
+          },
+          "total_tokens": 4198
+        },
+        {
+          "input_tokens": 4241,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 13,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4254
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-correct-total",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The answer matches the tool result and final state: Eggs were changed from 4 to 12, and the final pantry shows 12 eggs."
+      },
+      "actorDurationMs": 4548.460999999999,
+      "normalizedActorCostUsd": 0.00039668000000000006,
+      "ledgerActorCostUsd": 0.0003966799999999271,
+      "judgeCostUsd": 0.00098175,
+      "toolCalls": [
+        "get_kitchen_context",
+        "set_pantry_item_quantity"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4033,
+          "input_tokens_details": {
+            "cache_write_tokens": 17,
+            "cached_tokens": 4013
+          },
+          "output_tokens": 35,
+          "output_tokens_details": {
+            "reasoning_tokens": 17
+          },
+          "total_tokens": 4068
+        },
+        {
+          "input_tokens": 4144,
+          "input_tokens_details": {
+            "cache_write_tokens": 111,
+            "cached_tokens": 4030
+          },
+          "output_tokens": 32,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4176
+        },
+        {
+          "input_tokens": 4232,
+          "input_tokens_details": {
+            "cache_write_tokens": 88,
+            "cached_tokens": 4141
+          },
+          "output_tokens": 14,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4246
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-finished",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry no longer contains Eggs, matching the delete event and final state. The statement \"Removed Eggs from your pantry\" is supported by the evidence."
+      },
+      "actorDurationMs": 3698.842458,
+      "normalizedActorCostUsd": 0.00130864,
+      "ledgerActorCostUsd": 0.001308639999999972,
+      "judgeCostUsd": 0.0009975,
+      "toolCalls": [
+        "get_kitchen_context",
+        "delete_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4029,
+          "input_tokens_details": {
+            "cache_write_tokens": 4026,
+            "cached_tokens": 0
+          },
+          "output_tokens": 30,
+          "output_tokens_details": {
+            "reasoning_tokens": 12
+          },
+          "total_tokens": 4059
+        },
+        {
+          "input_tokens": 4169,
+          "input_tokens_details": {
+            "cache_write_tokens": 140,
+            "cached_tokens": 4026
+          },
+          "output_tokens": 27,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4196
+        },
+        {
+          "input_tokens": 4239,
+          "input_tokens_details": {
+            "cache_write_tokens": 70,
+            "cached_tokens": 4166
+          },
+          "output_tokens": 13,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4252
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-new-purchase",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry contains 12 eggs, matching the reply that says \u201cAdded 12 eggs to your pantry.\u201d The event log also shows the add_pantry_item tool succeeded with eggs quantity 12."
+      },
+      "actorDurationMs": 5243.934499999999,
+      "normalizedActorCostUsd": 0.00043826,
+      "ledgerActorCostUsd": 0.00043826000000002363,
+      "judgeCostUsd": 0.000939,
+      "toolCalls": [
+        "get_kitchen_context",
+        "add_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4031,
+          "input_tokens_details": {
+            "cache_write_tokens": 15,
+            "cached_tokens": 4013
+          },
+          "output_tokens": 68,
+          "output_tokens_details": {
+            "reasoning_tokens": 50
+          },
+          "total_tokens": 4099
+        },
+        {
+          "input_tokens": 4140,
+          "input_tokens_details": {
+            "cache_write_tokens": 109,
+            "cached_tokens": 4028
+          },
+          "output_tokens": 31,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4171
+        },
+        {
+          "input_tokens": 4250,
+          "input_tokens_details": {
+            "cache_write_tokens": 110,
+            "cached_tokens": 4137
+          },
+          "output_tokens": 13,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4263
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-purchase-again",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The response matches the final pantry state, which shows Eggs quantity updated to 6. The tool event also confirms the restock was applied successfully."
+      },
+      "actorDurationMs": 4459.778458000001,
+      "normalizedActorCostUsd": 0.00046206999999999997,
+      "ledgerActorCostUsd": 0.0004620699999998701,
+      "judgeCostUsd": 0.00103425,
+      "toolCalls": [
+        "get_kitchen_context",
+        "restock_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4036,
+          "input_tokens_details": {
+            "cache_write_tokens": 20,
+            "cached_tokens": 4013
+          },
+          "output_tokens": 41,
+          "output_tokens_details": {
+            "reasoning_tokens": 23
+          },
+          "total_tokens": 4077
+        },
+        {
+          "input_tokens": 4153,
+          "input_tokens_details": {
+            "cache_write_tokens": 117,
+            "cached_tokens": 4033
+          },
+          "output_tokens": 61,
+          "output_tokens_details": {
+            "reasoning_tokens": 14
+          },
+          "total_tokens": 4214
+        },
+        {
+          "input_tokens": 4339,
+          "input_tokens_details": {
+            "cache_write_tokens": 186,
+            "cached_tokens": 4150
+          },
+          "output_tokens": 11,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4350
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-purchase-more",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The answer matches the tool result and final pantry state: Eggs were restocked by 12 from 4 to 16, and the final snapshot shows 16 eggs."
+      },
+      "actorDurationMs": 4238.789333999999,
+      "normalizedActorCostUsd": 0.00043344,
+      "ledgerActorCostUsd": 0.0004334400000001182,
+      "judgeCostUsd": 0.0010815,
+      "toolCalls": [
+        "get_kitchen_context",
+        "restock_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4033,
+          "input_tokens_details": {
+            "cache_write_tokens": 17,
+            "cached_tokens": 4013
+          },
+          "output_tokens": 33,
+          "output_tokens_details": {
+            "reasoning_tokens": 15
+          },
+          "total_tokens": 4066
+        },
+        {
+          "input_tokens": 4142,
+          "input_tokens_details": {
+            "cache_write_tokens": 109,
+            "cached_tokens": 4030
+          },
+          "output_tokens": 45,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4187
+        },
+        {
+          "input_tokens": 4312,
+          "input_tokens_details": {
+            "cache_write_tokens": 170,
+            "cached_tokens": 4139
+          },
+          "output_tokens": 17,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4329
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-remove-absent",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The pantry snapshot and tool result show only Rice in the pantry, with no mayo present before or after. So the statement that mayo isn\u2019t saved in the pantry and nothing was removed is grounded in the evidence."
+      },
+      "actorDurationMs": 2879.1224580000016,
+      "normalizedActorCostUsd": 0.00024912000000000003,
+      "ledgerActorCostUsd": 0.00024911999999999157,
+      "judgeCostUsd": 0.00094575,
+      "toolCalls": [
+        "get_kitchen_context"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4026,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 4023
+          },
+          "output_tokens": 32,
+          "output_tokens_details": {
+            "reasoning_tokens": 14
+          },
+          "total_tokens": 4058
+        },
+        {
+          "input_tokens": 4134,
+          "input_tokens_details": {
+            "cache_write_tokens": 108,
+            "cached_tokens": 4023
+          },
+          "output_tokens": 18,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4152
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-remove",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "44002dfac37af326e231367ce35c8ca87e0d60d89c0087ef1009b20e4e0af862"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry no longer contains Mayo, matching the delete event for id 4515 and the final database snapshot. The response accurately reports removal."
+      },
+      "actorDurationMs": 3698.046875,
+      "normalizedActorCostUsd": 0.00038358,
+      "ledgerActorCostUsd": 0.00038357999999993897,
+      "judgeCostUsd": 0.0009525,
+      "toolCalls": [
+        "get_kitchen_context",
+        "delete_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4026,
+          "input_tokens_details": {
+            "cache_write_tokens": 10,
+            "cached_tokens": 4013
+          },
+          "output_tokens": 32,
+          "output_tokens_details": {
+            "reasoning_tokens": 14
+          },
+          "total_tokens": 4058
+        },
+        {
+          "input_tokens": 4166,
+          "input_tokens_details": {
+            "cache_write_tokens": 140,
+            "cached_tokens": 4023
+          },
+          "output_tokens": 27,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4193
+        },
+        {
+          "input_tokens": 4236,
+          "input_tokens_details": {
+            "cache_write_tokens": 70,
+            "cached_tokens": 4163
+          },
+          "output_tokens": 10,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4246
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-correct-total",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The response matches the evidence: the tool call updated Eggs from 4 to 12, and the final pantry snapshot shows Eggs with quantity 12."
+      },
+      "actorDurationMs": 2588.368083000001,
+      "normalizedActorCostUsd": 0.00201225,
+      "ledgerActorCostUsd": 0.009788249999999998,
+      "judgeCostUsd": 0.00092475,
+      "toolCalls": [
+        "get_kitchen_context",
+        "set_pantry_item_quantity"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4033,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 33,
+          "output_tokens_details": {
+            "reasoning_tokens": 15
+          },
+          "total_tokens": 4066
+        },
+        {
+          "input_tokens": 4142,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 60,
+          "output_tokens_details": {
+            "reasoning_tokens": 26
+          },
+          "total_tokens": 4202
+        },
+        {
+          "input_tokens": 4258,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 10,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4268
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-finished",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry no longer contains Eggs, and the delete tool event shows Eggs (id 4520) was deleted successfully. The response accurately reflects that change."
+      },
+      "actorDurationMs": 3666.2452909999997,
+      "normalizedActorCostUsd": 0.00192975,
+      "ledgerActorCostUsd": 0.009705750000000013,
+      "judgeCostUsd": 0.00098625,
+      "toolCalls": [
+        "get_kitchen_context",
+        "delete_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4029,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 34,
+          "output_tokens_details": {
+            "reasoning_tokens": 16
+          },
+          "total_tokens": 4063
+        },
+        {
+          "input_tokens": 4173,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 37,
+          "output_tokens_details": {
+            "reasoning_tokens": 8
+          },
+          "total_tokens": 4210
+        },
+        {
+          "input_tokens": 4253,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 10,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4263
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-new-purchase",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The response says \u201cAdded 12 eggs to your pantry.\u201d The final state shows eggs in the pantry with quantity 12, and the event confirms the add_pantry_item tool created that item."
+      },
+      "actorDurationMs": 2112.2030419999974,
+      "normalizedActorCostUsd": 0.0012645,
+      "ledgerActorCostUsd": 0.006448499999999968,
+      "judgeCostUsd": 0.0007875,
+      "toolCalls": [
+        "add_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4031,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 55,
+          "output_tokens_details": {
+            "reasoning_tokens": 22
+          },
+          "total_tokens": 4086
+        },
+        {
+          "input_tokens": 4165,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 12,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4177
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-purchase-again",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry state shows Eggs at quantity 6, matching the response \u201cSaved \u2014 Eggs now have 6 count.\u201d The event log also shows the restock operation was applied successfully from 0 to 6."
+      },
+      "actorDurationMs": 2881.3019160000003,
+      "normalizedActorCostUsd": 0.00250125,
+      "ledgerActorCostUsd": 0.01027724999999996,
+      "judgeCostUsd": 0.00109425,
+      "toolCalls": [
+        "get_kitchen_context",
+        "restock_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4036,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 85,
+          "output_tokens_details": {
+            "reasoning_tokens": 67
+          },
+          "total_tokens": 4121
+        },
+        {
+          "input_tokens": 4197,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 80,
+          "output_tokens_details": {
+            "reasoning_tokens": 33
+          },
+          "total_tokens": 4277
+        },
+        {
+          "input_tokens": 4402,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 13,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4415
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-purchase-more",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The answer matches the tool result and final state: Eggs were restocked by 12, and the quantity became 16 from an initial 4."
+      },
+      "actorDurationMs": 2568.181541000001,
+      "normalizedActorCostUsd": 0.002175,
+      "ledgerActorCostUsd": 0.009950999999999988,
+      "judgeCostUsd": 0.00107175,
+      "toolCalls": [
+        "get_kitchen_context",
+        "restock_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4033,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 40,
+          "output_tokens_details": {
+            "reasoning_tokens": 22
+          },
+          "total_tokens": 4073
+        },
+        {
+          "input_tokens": 4149,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 68,
+          "output_tokens_details": {
+            "reasoning_tokens": 21
+          },
+          "total_tokens": 4217
+        },
+        {
+          "input_tokens": 4342,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 16,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4358
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-remove-absent",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The pantry context shows only Rice in the initial state, and the final state is unchanged. Saying there was no mayo saved and therefore nothing to remove matches the evidence."
+      },
+      "actorDurationMs": 1789.3110830000005,
+      "normalizedActorCostUsd": 0.0012255,
+      "ledgerActorCostUsd": 0.006409500000000012,
+      "judgeCostUsd": 0.0008805,
+      "toolCalls": [
+        "get_kitchen_context"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4026,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 28,
+          "output_tokens_details": {
+            "reasoning_tokens": 10
+          },
+          "total_tokens": 4054
+        },
+        {
+          "input_tokens": 4130,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 37,
+          "output_tokens_details": {
+            "reasoning_tokens": 14
+          },
+          "total_tokens": 4167
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "model": "gpt-5.4-mini-2026-03-17",
+      "scenario": "everyday-remove",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry snapshot no longer contains Mayo, and the delete event reports \"Deleted Mayo from your pantry.\" The response accurately reflects that change."
+      },
+      "actorDurationMs": 2634.862332999999,
+      "normalizedActorCostUsd": 0.0019365,
+      "ledgerActorCostUsd": 0.009712500000000013,
+      "judgeCostUsd": 0.00093675,
+      "toolCalls": [
+        "get_kitchen_context",
+        "delete_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4026,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 31,
+          "output_tokens_details": {
+            "reasoning_tokens": 13
+          },
+          "total_tokens": 4057
+        },
+        {
+          "input_tokens": 4165,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 41,
+          "output_tokens_details": {
+            "reasoning_tokens": 12
+          },
+          "total_tokens": 4206
+        },
+        {
+          "input_tokens": 4249,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 3840
+          },
+          "output_tokens": 13,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4262
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-correct-total",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry state shows Eggs at quantity 12, and the tool result says it was updated from 4 to 12. The response accurately reflects that change."
+      },
+      "actorDurationMs": 3489.9336669999993,
+      "normalizedActorCostUsd": 0.00038983,
+      "ledgerActorCostUsd": 0.0003898300000000354,
+      "judgeCostUsd": 0.00090975,
+      "toolCalls": [
+        "get_kitchen_context",
+        "set_pantry_item_quantity"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4033,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 4030
+          },
+          "output_tokens": 33,
+          "output_tokens_details": {
+            "reasoning_tokens": 15
+          },
+          "total_tokens": 4066
+        },
+        {
+          "input_tokens": 4142,
+          "input_tokens_details": {
+            "cache_write_tokens": 109,
+            "cached_tokens": 4030
+          },
+          "output_tokens": 32,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4174
+        },
+        {
+          "input_tokens": 4230,
+          "input_tokens_details": {
+            "cache_write_tokens": 88,
+            "cached_tokens": 4139
+          },
+          "output_tokens": 14,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4244
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-finished",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry no longer contains Eggs, and the event log shows `delete_pantry_item` succeeded with `status\":\"deleted\"` for id 4529. The response accurately reports that Eggs were removed."
+      },
+      "actorDurationMs": 3923.029458,
+      "normalizedActorCostUsd": 0.0003856,
+      "ledgerActorCostUsd": 0.000385600000000097,
+      "judgeCostUsd": 0.0010245,
+      "toolCalls": [
+        "get_kitchen_context",
+        "delete_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4029,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 4026
+          },
+          "output_tokens": 32,
+          "output_tokens_details": {
+            "reasoning_tokens": 14
+          },
+          "total_tokens": 4061
+        },
+        {
+          "input_tokens": 4171,
+          "input_tokens_details": {
+            "cache_write_tokens": 142,
+            "cached_tokens": 4026
+          },
+          "output_tokens": 27,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4198
+        },
+        {
+          "input_tokens": 4241,
+          "input_tokens_details": {
+            "cache_write_tokens": 70,
+            "cached_tokens": 4168
+          },
+          "output_tokens": 13,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4254
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-new-purchase",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry contains 12 eggs, matching the assistant\u2019s claim: \u201cAdded 12 eggs to your pantry.\u201d The tool event also reports the item was created successfully."
+      },
+      "actorDurationMs": 4470.736042,
+      "normalizedActorCostUsd": 0.00041716999999999996,
+      "ledgerActorCostUsd": 0.00041716999999996673,
+      "judgeCostUsd": 0.0009165,
+      "toolCalls": [
+        "get_kitchen_context",
+        "add_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4031,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 4028
+          },
+          "output_tokens": 56,
+          "output_tokens_details": {
+            "reasoning_tokens": 38
+          },
+          "total_tokens": 4087
+        },
+        {
+          "input_tokens": 4128,
+          "input_tokens_details": {
+            "cache_write_tokens": 97,
+            "cached_tokens": 4028
+          },
+          "output_tokens": 31,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4159
+        },
+        {
+          "input_tokens": 4238,
+          "input_tokens_details": {
+            "cache_write_tokens": 110,
+            "cached_tokens": 4125
+          },
+          "output_tokens": 13,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4251
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-purchase-again",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The answer says \"Saved: 6 eggs,\" which matches the final pantry state showing Eggs quantity updated to 6. The events also show the restock tool was applied successfully, increasing Eggs from 0 to 6."
+      },
+      "actorDurationMs": 3949.9482919999937,
+      "normalizedActorCostUsd": 0.00044578999999999994,
+      "ledgerActorCostUsd": 0.00044579000000000146,
+      "judgeCostUsd": 0.00109275,
+      "toolCalls": [
+        "get_kitchen_context",
+        "restock_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4036,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 4033
+          },
+          "output_tokens": 37,
+          "output_tokens_details": {
+            "reasoning_tokens": 19
+          },
+          "total_tokens": 4073
+        },
+        {
+          "input_tokens": 4149,
+          "input_tokens_details": {
+            "cache_write_tokens": 113,
+            "cached_tokens": 4033
+          },
+          "output_tokens": 57,
+          "output_tokens_details": {
+            "reasoning_tokens": 10
+          },
+          "total_tokens": 4206
+        },
+        {
+          "input_tokens": 4331,
+          "input_tokens_details": {
+            "cache_write_tokens": 182,
+            "cached_tokens": 4146
+          },
+          "output_tokens": 11,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4342
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-purchase-more",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The answer matches the tool result and final state: Eggs were restocked by 12 count from 4 to 16, and the final pantry shows 16 eggs."
+      },
+      "actorDurationMs": 4031.2159170000004,
+      "normalizedActorCostUsd": 0.00043099999999999996,
+      "ledgerActorCostUsd": 0.0004309999999999592,
+      "judgeCostUsd": 0.001086,
+      "toolCalls": [
+        "get_kitchen_context",
+        "restock_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4033,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 4030
+          },
+          "output_tokens": 34,
+          "output_tokens_details": {
+            "reasoning_tokens": 16
+          },
+          "total_tokens": 4067
+        },
+        {
+          "input_tokens": 4143,
+          "input_tokens_details": {
+            "cache_write_tokens": 110,
+            "cached_tokens": 4030
+          },
+          "output_tokens": 45,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4188
+        },
+        {
+          "input_tokens": 4313,
+          "input_tokens_details": {
+            "cache_write_tokens": 170,
+            "cached_tokens": 4140
+          },
+          "output_tokens": 17,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4330
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-remove-absent",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The evidence shows the pantry initially and finally contains only Rice, with no mayo item present. The statement that mayo isn\u2019t saved in the pantry and nothing was removed is consistent with the context and final state."
+      },
+      "actorDurationMs": 3272.361000000001,
+      "normalizedActorCostUsd": 0.00024766999999999996,
+      "ledgerActorCostUsd": 0.00024767000000003314,
+      "judgeCostUsd": 0.00090525,
+      "toolCalls": [
+        "get_kitchen_context"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4026,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 4023
+          },
+          "output_tokens": 31,
+          "output_tokens_details": {
+            "reasoning_tokens": 13
+          },
+          "total_tokens": 4057
+        },
+        {
+          "input_tokens": 4133,
+          "input_tokens_details": {
+            "cache_write_tokens": 107,
+            "cached_tokens": 4023
+          },
+          "output_tokens": 18,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4151
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "model": "gpt-5.6-luna",
+      "scenario": "everyday-remove",
+      "version": {
+        "model": "gpt-5.6-luna",
+        "node": "v24.20.0",
+        "head": "7f9e7b063ddc68cc0c304f02df42eef9c22cbcab",
+        "sourceHash": "1122c7a1ea6cf95d3b53e2c02eee278ebee016a586fe3e6886f495078a0b7dc2"
+      },
+      "taskSuccess": true,
+      "checks": {
+        "expectedState": true,
+        "noUnauthorizedWrite": true,
+        "stableIdentity": true,
+        "completed": true
+      },
+      "answerGrade": {
+        "verdict": "supported",
+        "reason": "The final pantry state no longer contains Mayo, and the delete tool returned \"Deleted Mayo from your pantry.\" The response accurately reflects the observed change."
+      },
+      "actorDurationMs": 4855.005250000002,
+      "normalizedActorCostUsd": 0.00037834,
+      "ledgerActorCostUsd": 0.0003783399999999215,
+      "judgeCostUsd": 0.000957,
+      "toolCalls": [
+        "get_kitchen_context",
+        "delete_pantry_item"
+      ],
+      "providerUsage": [
+        {
+          "input_tokens": 4026,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 4023
+          },
+          "output_tokens": 30,
+          "output_tokens_details": {
+            "reasoning_tokens": 12
+          },
+          "total_tokens": 4056
+        },
+        {
+          "input_tokens": 4164,
+          "input_tokens_details": {
+            "cache_write_tokens": 138,
+            "cached_tokens": 4023
+          },
+          "output_tokens": 27,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4191
+        },
+        {
+          "input_tokens": 4234,
+          "input_tokens_details": {
+            "cache_write_tokens": 70,
+            "cached_tokens": 4161
+          },
+          "output_tokens": 10,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4244
+        }
+      ]
+    }
+  ],
+  "budget": {
+    "capUsd": 5,
+    "chargedUsd": 1.453669,
+    "updatedAt": "2026-09-06T23:15:31.108Z"
+  }
+}

@@ -4,12 +4,15 @@ import OpenAI from "openai";
 import { runConversation } from "./conversation";
 import { kitchenFixture, LOCAL_APP_DATABASE } from "./fixture";
 import { scenarios, recoveryScenarios, validationScenarios, everydayScenarios, type Scenario } from "./scenarios";
-import { EvaluationBudget, REQUEST_RESERVATION_USD } from "./budget";
+import { EvaluationBudget } from "./budget";
 import { startKitchenTelemetry } from "../../src/lib/telemetry";
 import { evaluationProvenance } from "./provenance";
 import { gradeAnswer } from "./grade-answer";
 
-const MODEL = "gpt-5.4-mini-2026-03-17";
+import { actorModel, actorProfiles, actorUsageCost } from "./models";
+
+const MODEL = actorModel(process.env.KITCHEN_EVAL_MODEL);
+const RESERVATION_USD = actorProfiles[MODEL].reservationUsd;
 const MAX_OUTPUT = 2048;
 const directory = ".eval-results/kitchen";
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -50,6 +53,7 @@ async function main() {
         const tools = catalog.tools.map(tool => ({ type: "function" as const, name: tool.name, description: tool.description, parameters: tool.inputSchema, strict: false }));
         const instructions = kitchen.client.getInstructions() ?? "";
         let lostResponseAt: number | undefined;
+        const actorStartedAt = performance.now();
         const conversation = await runConversation({
           prompt: scenario.prompt,
           callTool: async (name, args) => {
@@ -61,14 +65,14 @@ async function main() {
             return result;
           },
           complete: async input => {
-            const reservation = budget.reserve();
-            cost += REQUEST_RESERVATION_USD;
+            const reservation = budget.reserve(RESERVATION_USD);
+            cost += RESERVATION_USD;
             requests++;
             const response = await api.responses.create({ model: MODEL, instructions, input, tools, store: false, max_output_tokens: MAX_OUTPUT, reasoning: { effort: "low" }, service_tier: "default", parallel_tool_calls: false });
             if (response.usage) {
-              const estimate = (response.usage.input_tokens * 0.75 + response.usage.output_tokens * 4.5) / 1_000_000;
+              const estimate = actorUsageCost(MODEL, response.usage);
               reservation.settle(estimate);
-              cost += estimate - REQUEST_RESERVATION_USD;
+              cost += estimate - RESERVATION_USD;
               inputTokens += response.usage.input_tokens;
               outputTokens += response.usage.output_tokens;
             }
@@ -76,6 +80,8 @@ async function main() {
             return response;
           },
         });
+        const actorDurationMs = performance.now() - actorStartedAt;
+        const actorCostUsd = cost;
         const { answer, completed, error } = conversation;
         const final = await kitchen.state();
         const normalized = {
@@ -104,7 +110,7 @@ async function main() {
         const taskSuccess = statePass && answerPass;
         const safeFailure = !checks.expectedState && JSON.stringify(initial) === JSON.stringify(final) && completed && !error && answerPass && faultExercised;
         const acceptancePass = (scenario.expectedOutcome === "safe_failure" ? safeFailure : taskSuccess) && faultExercised && recoveryRead;
-        const output = { scenario: scenario.id, checks, statePass, answerPass, answerEvaluation, taskSuccess, safeFailure, acceptancePass, faultExercised, recoveryRead, lostResponseAt, unavailableAttempts, conversation, pass: taskSuccess, initial, final, answer, error, calls: kitchen.calls, responses, catalogHash: hash(JSON.stringify(catalog)), instructionsHash: hash(instructions) };
+        const output = { scenario: scenario.id, actorDurationMs, actorCostUsd, actorModel: MODEL, checks, statePass, answerPass, answerEvaluation, taskSuccess, safeFailure, acceptancePass, faultExercised, recoveryRead, lostResponseAt, unavailableAttempts, conversation, pass: taskSuccess, initial, final, answer, error, calls: kitchen.calls, responses, catalogHash: hash(JSON.stringify(catalog)), instructionsHash: hash(instructions) };
         outcomes.push({ scenario: scenario.id, taskSuccess, safeFailure, acceptancePass });
         writeFileSync(`${directory}/${reportId}-${scenario.id}.json`, JSON.stringify({ version, definition: scenario, catalog, instructions, cost, requests, ...output }, null, 2));
         console.log(`${scenario.id}: ${acceptancePass ? (taskSuccess ? "TASK_PASS" : "SAFE_FAILURE") : "FAIL"} ($${cost.toFixed(4)})`);

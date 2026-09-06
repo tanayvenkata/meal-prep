@@ -13,7 +13,7 @@ not instructions or permanent product requirements.
 | Semantic outcomes and correlation | Command/tool/HTTP outcomes, safe logs, OTel traces and local Grafana collector; `docs/OBSERVABILITY.md` | Local evidence available; production collection not deployed |
 | Answer correctness evaluated | Versioned grader, explicit false-success controls, 12 calibration examples, one user-adjudicated answer | Implemented; fallible model score, most labels remain agent-authored |
 | Failures and recovery observable | Response-loss and persistent-service-failure cases; actual server result distinguished from model observation | Verified in the evaluation adapter, not ChatGPT |
-| Reproducibility and spend | Model snapshot, source/catalog/instruction hashes, pnpm lock/config hash, usage and shared atomic ledger | Recorded; cumulative estimate $1.295346 of $5 |
+| Reproducibility and spend | Model snapshot, source/catalog/instruction hashes, pnpm lock/config hash, usage and shared atomic ledger | Recorded; cumulative estimate $1.453669 of $5 |
 | Comparable simplification experiment | `docs/audits/2026-09-06/kitchen-evaluation.md`: quantity uncertainty before/after | Recorded; existing schema columns reused |
 | Automated validation | 250 unit tests, 181 integration tests, TypeScript and lint on reconciled pnpm branch; pre-push build | Local checks and exact-head CI pass at `de30fa6` |
 | Real host/account linking | Updated `docs/mcp-golden-prompts.md`, including unknown/text/cleared quantities | Pending actual authenticated ChatGPT development check |
@@ -61,3 +61,6 @@ Production telemetry retention and paid services remain separate decisions. No
 evidence currently justifies switching database vendors or giving the model an
 unrestricted pantry shell. Evaluate such alternatives against the same workflows
 when a measured limitation motivates them.
+
+The default eval actor is now Luna by user request. The fixed-judge comparison
+and parallel issue review are in [parallel direction review](audits/2026-09-06/parallel-direction-review.md).

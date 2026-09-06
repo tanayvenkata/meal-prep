@@ -36,16 +36,17 @@ export class EvaluationBudget {
     this.chargedMicros = next;
   }
 
-  reserve() {
+  reserve(amountUsd = REQUEST_RESERVATION_USD) {
     if (this.closed) throw new Error("budget_closed");
-    const reserved = micros(REQUEST_RESERVATION_USD);
+    if (!Number.isFinite(amountUsd) || amountUsd <= 0 || amountUsd > EVALUATION_CAP_USD) throw new Error("invalid_reservation");
+    const reserved = micros(amountUsd);
     if (this.chargedMicros + reserved > micros(EVALUATION_CAP_USD)) throw new Error("budget_exhausted");
     this.save(this.chargedMicros + reserved); // Persist before dispatch.
     let settled = false;
     return {
       settle: (estimatedUsd: number) => {
         if (settled || this.closed) throw new Error("invalid_budget_settlement");
-        if (!Number.isFinite(estimatedUsd) || estimatedUsd < 0 || estimatedUsd > REQUEST_RESERVATION_USD) throw new Error("invalid_usage_estimate");
+        if (!Number.isFinite(estimatedUsd) || estimatedUsd < 0 || estimatedUsd > amountUsd) throw new Error("invalid_usage_estimate");
         this.save(this.chargedMicros + micros(estimatedUsd) - reserved);
         settled = true;
       },

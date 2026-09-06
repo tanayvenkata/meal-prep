@@ -11,6 +11,20 @@ const open = (path: string) => { const budget = new EvaluationBudget(path); budg
 afterEach(() => { for (const budget of budgets) budget.close(); for (const path of directories) rmSync(path, { recursive: true, force: true }); budgets = []; directories = []; });
 
 describe("evaluation spend boundary without any model calls", () => {
+  it("persists a larger model reservation and settles within that bound", () => {
+    const path = directory();
+    const budget = open(path);
+    const request = budget.reserve(0.6);
+    expect(JSON.parse(readFileSync(join(path, "budget.json"), "utf8")).chargedUsd).toBe(0.6);
+    expect(() => request.settle(0.61)).toThrow("invalid_usage_estimate");
+    request.settle(0.4);
+    expect(budget.chargedUsd).toBe(0.4);
+  });
+  it.each([0, -1, NaN, Infinity, 6])("rejects invalid reservations %s before changing the ledger", amount => {
+    const budget = open(directory());
+    expect(() => budget.reserve(amount)).toThrow("invalid_reservation");
+    expect(budget.chargedUsd).toBe(0);
+  });
   it("persists a reservation before dispatch and retains it after an uncertain failure", () => {
     const path = directory();
     const budget = open(path);

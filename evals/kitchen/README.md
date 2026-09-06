@@ -41,7 +41,7 @@ against the initial/final database snapshots and tool results. Reports expose
 incomplete, or uncertain judge verdict cannot pass. This is a fallible model
 assessment, not proof of truthfulness, and it does not assess recipe quality.
 
-The persistent budget ledger reserves $0.32 before each request, covering the
+The persistent budget ledger reserves $0.32 before each mini request, covering the
 model's entire context window plus the configured maximum output. Known usage
 replaces the reservation with an estimate at uncached rates; uncertain requests
 retain their reservation. SDK retries are disabled. The cumulative limit is $5.
@@ -120,3 +120,21 @@ alongside the original 16; earlier 16-case reports remain historical evidence.
 Multi-turn clarification/correction remains pending;
 passing this subset does not establish that broader coverage. See the
 [coverage review](../../docs/audits/2026-09-06/everyday-workflow-coverage.md).
+
+## Controlled model comparison
+
+The actor defaults to `gpt-5.6-luna` by user request. Set
+`KITCHEN_EVAL_MODEL=gpt-5.4-mini-2026-03-17 pnpm run eval:kitchen --everyday`
+to rerun the historical mini baseline.
+Only these priced actors are accepted. The answer judge remains fixed at mini
+with the recorded rubric, so changing actors does not also change grading.
+Luna reserves $0.60 per request to cover its larger context window, long-context
+rates, and cache-write premium; known usage settles the reservation. Unknown
+usage retains it. Both actors and the judge use the same cumulative $5 ledger.
+
+Reports include actor model, actor-only duration, actor cost, requests, tool calls,
+actual provider responses/usage, source hash, and separate judge verdict/cost.
+Mini retains its historical conservative uncached estimate; Luna prices reported
+cache reads/writes and charges missing cache-write detail conservatively. State
+this distinction when comparing estimated costs. Do not infer production ChatGPT
+latency or recipe quality from these API kitchen-write cases.
