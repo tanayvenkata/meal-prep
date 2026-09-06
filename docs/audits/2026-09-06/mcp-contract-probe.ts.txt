@@ -1,0 +1,57 @@
+import { writeFileSync } from 'node:fs';
+async function main() {
+  process.env.DATABASE_URL = 'postgresql://audit:audit@127.0.0.1:1/audit';
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://audit.invalid';
+  process.env.MCP_PUBLIC_URL = 'https://audit.invalid/mcp';
+  const { handleMiseMcpRequest } = await import(`${process.cwd()}/src/mcp/server.ts`);
+  const captured: unknown[] = [];
+  console.info = (...args) => { captured.push(args); };
+  let calls = 0;
+  const forbidden = async () => { throw new Error('Unexpected delegate: audit refuses database access'); };
+  const options = {
+    verifyAccessToken: async () => ({ token: 'fixture', clientId: 'fixture', scopes: ['openid'], expiresAt: Math.floor(Date.now()/1000)+600, extra: { userId: 'fixture-user' } }),
+    loadKitchenContext: async () => ({ pantry: [], tools: [] }),
+    createPantryItem: async (_user: string, input: any): Promise<any> => {
+      calls++;
+      if (input.name === 'Throw fixture') throw new Error('Synthetic database unavailable');
+      return { ok: true, value: { status: 'created', item: { id: 1, name: input.name, quantity: '', turnover: 'high', created_at: new Date('2026-09-06T00:00:00Z') } } };
+    },
+    updatePantryItem: forbidden, deletePantryItem: forbidden,
+    createKitchenTool: forbidden, updateKitchenTool: forbidden, deleteKitchenTool: forbidden,
+    setPantryItemQuantity: async (): Promise<any> => { calls++; return { ok: true, value: { status: 'not_found', name: 'Mayonnaise' } }; },
+    adjustPantryItemQuantity: async (): Promise<any> => { calls++; return { ok: true, value: { status: 'unit_mismatch', name: 'Rice', expectedUnit: 'bag', deltaUnit: 'cup' } }; },
+    adjustPantryItemQuantities: forbidden, applyReviewedReceiptImport: forbidden,
+  };
+  let id=0;
+  async function request(method:string, params?:unknown) {
+    const response = await handleMiseMcpRequest(new Request('https://audit.invalid/mcp', {
+      method:'POST', headers: { accept:'application/json, text/event-stream', authorization:'Bearer fixture', 'content-type':'application/json', 'mcp-protocol-version':'2025-11-25' },
+      body:JSON.stringify({jsonrpc:'2.0',id:++id,method,...(params ? {params}: {})}),
+    }), options);
+    return { httpStatus:response.status, body:await response.json() };
+  }
+  const list = await request('tools/list');
+  const descriptors=list.body.result.tools;
+  const probes = [
+    ['mayo_without_quantity', 'add_pantry_item', {name:'Mayo'}],
+    ['explicit_unknown_quantity', 'add_pantry_item', {name:'Mayo',quantity:{mode:'unknown'}}],
+    ['approximate_quantity', 'add_pantry_item', {name:'Mayo',quantity:{mode:'text',text:'half a jar'}}],
+    ['numeric_instead_of_string_amount', 'add_pantry_item', {name:'Mayo',quantity:{amount:1,unit:'jar'}}],
+    ['canonical_exact_quantity', 'add_pantry_item', {name:'Mayo',quantity:{amount:'1',unit:'jar'}}],
+    ['plural_unit', 'add_pantry_item', {name:'Mayo',quantity:{amount:'1',unit:'jars'}}],
+    ['unsupported_equipment_kind', 'add_kitchen_tool', {name:'Spatula',kind:'utensil'}],
+    ['unknown_quantity_reset', 'update_pantry_item', {id:1,expectedName:'Mayo',quantity:null}],
+    ['simulated_missing_target', 'set_pantry_item_quantity', {name:'Mayonnaise',quantity:{amount:'1',unit:'jar'}}],
+    ['simulated_unit_mismatch', 'consume_pantry_item', {name:'Rice',expectedQuantity:{amount:'1',unit:'bag'},deltaQuantity:{amount:'1',unit:'cup'}}],
+    ['simulated_dependency_exception', 'add_pantry_item', {name:'Throw fixture'}],
+  ] as const;
+  const results=[];
+  for (const [label,name,args] of probes) {
+    const before=calls;
+    results.push({label,tool:name,input:args,...await request('tools/call',{name,arguments:args}),delegateCalls:calls-before});
+  }
+  const report={ date:'2026-09-06', runtime:process.version, scope:'Real installed hosted MCP transport and schemas; fake auth and injected services; no database or model calls; not a production success-rate estimate.', descriptorCount:descriptors.length, descriptorJsonBytes:Buffer.byteLength(JSON.stringify(descriptors)), descriptors:descriptors.map((t:any)=>({name:t.name,inputSchemaBytes:Buffer.byteLength(JSON.stringify(t.inputSchema??{})),outputSchemaBytes:Buffer.byteLength(JSON.stringify(t.outputSchema??{}))})),results, requestLogs:captured };
+  writeFileSync('/tmp/mise-audit-probe.json',JSON.stringify(report,null,2)+'\n');
+  process.stdout.write(JSON.stringify({descriptorCount:report.descriptorCount,descriptorJsonBytes:report.descriptorJsonBytes,results:results.map(r=>({label:r.label,httpStatus:r.httpStatus,delegateCalls:r.delegateCalls,isError:r.body.result?.isError??false,status:r.body.result?.structuredContent?.status??r.body.result?.structuredContent?.outcome?.status,text:r.body.result?.content?.[0]?.text?.slice(0,180)}))},null,2)+'\n');
+}
+main().catch(e=>{ console.error(e); process.exitCode=1; });

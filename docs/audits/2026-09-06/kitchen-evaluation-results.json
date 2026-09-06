@@ -1,0 +1,798 @@
+{
+  "scope": "Synthetic local kitchen; injected auth; MCP SDK over HTTP; real restricted database writes; model via Responses function adapter. State graders do not score answer truthfulness or cooking quality.",
+  "budgetChargedUsd": 0.3860369999999996,
+  "runs": [
+    {
+      "timestamp": "2026-09-06T21:13:19.042Z",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "c4debb64184d2d2e09c1c99de255a8b6fe43b0d5",
+        "sourceHash": "7905d95ed6d9aaec53e09000f16edd08d3b5731f4a18f964fc52d026d47a58a8"
+      },
+      "successes": 8,
+      "failures": 2,
+      "estimatedCostUsd": 0.06870899999999999,
+      "durationMs": 26356,
+      "cases": [
+        {
+          "id": "add-unknown",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added mayo to your pantry.",
+          "catalogHash": "6ce759fd8763239fc88251fe367d894e70ea888cf37c23ec01f68ff7504a4365"
+        },
+        {
+          "id": "duplicate-add",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Mayo is already in your pantry.",
+          "catalogHash": "6ce759fd8763239fc88251fe367d894e70ea888cf37c23ec01f68ff7504a4365"
+        },
+        {
+          "id": "half-jar",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added Mayo to your pantry.",
+          "catalogHash": "6ce759fd8763239fc88251fe367d894e70ea888cf37c23ec01f68ff7504a4365"
+        },
+        {
+          "id": "clear-quantity",
+          "checks": {
+            "expectedState": false,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [],
+          "answer": "I can\u2019t set a pantry item\u2019s quantity to \u201cunknown\u201d with the available pantry actions.\n\nWhat I can do instead:\n- leave Mayo unchanged\n- set it to a specific quantity if you know it\n- delete and re-add it later if you want to reset it\n\nIf you want, I can help you pick the best workaround.",
+          "catalogHash": "6ce759fd8763239fc88251fe367d894e70ea888cf37c23ec01f68ff7504a4365"
+        },
+        {
+          "id": "consume-eggs",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "consume_pantry_item"
+          ],
+          "answer": "Done \u2014 Eggs are now 4.",
+          "catalogHash": "6ce759fd8763239fc88251fe367d894e70ea888cf37c23ec01f68ff7504a4365"
+        },
+        {
+          "id": "rename",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "update_pantry_item"
+          ],
+          "answer": "Done. I renamed \u201cMayo\u201d to \u201cMayonnaise\u201d in your pantry.",
+          "catalogHash": "6ce759fd8763239fc88251fe367d894e70ea888cf37c23ec01f68ff7504a4365"
+        },
+        {
+          "id": "equipment",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_kitchen_tool"
+          ],
+          "answer": "Added skillet to your kitchen tools.",
+          "catalogHash": "6ce759fd8763239fc88251fe367d894e70ea888cf37c23ec01f68ff7504a4365"
+        },
+        {
+          "id": "multi-add",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item",
+            "add_pantry_item"
+          ],
+          "answer": "Added Rice and Cumin to your pantry.",
+          "catalogHash": "6ce759fd8763239fc88251fe367d894e70ea888cf37c23ec01f68ff7504a4365"
+        },
+        {
+          "id": "planning-no-write",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context"
+          ],
+          "answer": "You could make a simple omelet or scrambled eggs.\n\nWith 6 eggs, a good idea is:\n- scramble them with salt and pepper\n- add any cheese, herbs, or veggies you have\n- serve with toast or rice if available\n\nIf you want, I can also suggest a recipe idea based on just eggs plus whatever else you have.",
+          "catalogHash": "6ce759fd8763239fc88251fe367d894e70ea888cf37c23ec01f68ff7504a4365"
+        },
+        {
+          "id": "text-quantity",
+          "checks": {
+            "expectedState": false,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added Rice to your pantry.\n\nI left the quantity blank since \u201ca little left\u201d isn\u2019t an exact measurable amount.",
+          "catalogHash": "6ce759fd8763239fc88251fe367d894e70ea888cf37c23ec01f68ff7504a4365"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-06T21:15:10.160Z",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "c4debb64184d2d2e09c1c99de255a8b6fe43b0d5",
+        "sourceHash": "44c4f36fcb62b139f636bd4bc374f6c07b8de13de20ffa5edb4aff5988391528"
+      },
+      "successes": 9,
+      "failures": 1,
+      "estimatedCostUsd": 0.07748925000000001,
+      "durationMs": 28783,
+      "cases": [
+        {
+          "id": "add-unknown",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added mayo to your pantry.",
+          "catalogHash": "91e8aeb5d01cb67fdd22f41d282b43bd10e9d6fa6135bfa6b29fdcf21a3033ad"
+        },
+        {
+          "id": "duplicate-add",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Mayo is already in your pantry.",
+          "catalogHash": "91e8aeb5d01cb67fdd22f41d282b43bd10e9d6fa6135bfa6b29fdcf21a3033ad"
+        },
+        {
+          "id": "half-jar",
+          "checks": {
+            "expectedState": false,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added Mayo to your pantry.",
+          "catalogHash": "91e8aeb5d01cb67fdd22f41d282b43bd10e9d6fa6135bfa6b29fdcf21a3033ad"
+        },
+        {
+          "id": "clear-quantity",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "update_pantry_item"
+          ],
+          "answer": "Done \u2014 Mayo is still saved, and its quantity is now unknown.",
+          "catalogHash": "91e8aeb5d01cb67fdd22f41d282b43bd10e9d6fa6135bfa6b29fdcf21a3033ad"
+        },
+        {
+          "id": "consume-eggs",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "consume_pantry_item"
+          ],
+          "answer": "Done \u2014 I updated Eggs from 6 to 4.",
+          "catalogHash": "91e8aeb5d01cb67fdd22f41d282b43bd10e9d6fa6135bfa6b29fdcf21a3033ad"
+        },
+        {
+          "id": "rename",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "update_pantry_item"
+          ],
+          "answer": "Done \u2014 I renamed \u201cMayo\u201d to \u201cMayonnaise.\u201d",
+          "catalogHash": "91e8aeb5d01cb67fdd22f41d282b43bd10e9d6fa6135bfa6b29fdcf21a3033ad"
+        },
+        {
+          "id": "equipment",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_kitchen_tool"
+          ],
+          "answer": "Added skillet to your kitchen tools.",
+          "catalogHash": "91e8aeb5d01cb67fdd22f41d282b43bd10e9d6fa6135bfa6b29fdcf21a3033ad"
+        },
+        {
+          "id": "multi-add",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item",
+            "add_pantry_item"
+          ],
+          "answer": "Added Rice and Cumin to your pantry with unknown quantities.",
+          "catalogHash": "91e8aeb5d01cb67fdd22f41d282b43bd10e9d6fa6135bfa6b29fdcf21a3033ad"
+        },
+        {
+          "id": "planning-no-write",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context"
+          ],
+          "answer": "You could make a simple **cheese omelet** or **soft scrambled eggs**.\n\nIf you want the easiest option:  \n**soft scrambled eggs** \u2014 whisk 2\u20133 eggs with a pinch of salt, cook them low and slow in butter, and stir gently until just set.  \nIf you have cheese or herbs, they\u2019d be a great add-in.\n\nIf you want, I can suggest a version based on what else you have.",
+          "catalogHash": "91e8aeb5d01cb67fdd22f41d282b43bd10e9d6fa6135bfa6b29fdcf21a3033ad"
+        },
+        {
+          "id": "text-quantity",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added Rice to your pantry with quantity: \u201ca little left.\u201d",
+          "catalogHash": "91e8aeb5d01cb67fdd22f41d282b43bd10e9d6fa6135bfa6b29fdcf21a3033ad"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-06T21:16:36.716Z",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "c4debb64184d2d2e09c1c99de255a8b6fe43b0d5",
+        "sourceHash": "517a1fcc5d66d16c234dcc48ac1fcec9c0f20d405d11185410dd93053d8873b3"
+      },
+      "successes": 10,
+      "failures": 0,
+      "estimatedCostUsd": 0.077901,
+      "durationMs": 24983,
+      "cases": [
+        {
+          "id": "add-unknown",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added mayo to your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "duplicate-add",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Mayo is already in your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "half-jar",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added Mayo to your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "clear-quantity",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "update_pantry_item"
+          ],
+          "answer": "Done \u2014 Mayo\u2019s quantity is now unknown, and the item itself was kept.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "consume-eggs",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "consume_pantry_item"
+          ],
+          "answer": "Done \u2014 I updated Eggs from 6 to 4.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "rename",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "update_pantry_item"
+          ],
+          "answer": "Done \u2014 I renamed Mayo to Mayonnaise in your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "equipment",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_kitchen_tool"
+          ],
+          "answer": "Added skillet to your kitchen tools.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "multi-add",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item",
+            "add_pantry_item"
+          ],
+          "answer": "Done \u2014 I added Rice and Cumin to your pantry with unknown quantities.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "planning-no-write",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context"
+          ],
+          "answer": "You could make a simple omelet or scrambled eggs.\n\nSince you have 6 eggs and no saved tools listed, the easiest idea is:\n- **Scrambled eggs with whatever you have on hand**  \n  Quick, flexible, and works well even with just basic seasonings.\n\nIf you want, I can also suggest:\n- a **breakfast**, **lunch**, or **dinner** idea\n- something **very fast**\n- something that uses **only eggs**",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "text-quantity",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added Rice to your pantry with quantity: \u201ca little left\u201d.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-06T21:18:18.184Z",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "c4debb64184d2d2e09c1c99de255a8b6fe43b0d5",
+        "sourceHash": "517a1fcc5d66d16c234dcc48ac1fcec9c0f20d405d11185410dd93053d8873b3"
+      },
+      "successes": 10,
+      "failures": 0,
+      "estimatedCostUsd": 0.07794525,
+      "durationMs": 27100,
+      "cases": [
+        {
+          "id": "add-unknown",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added mayo to your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "duplicate-add",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Mayo is already in your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "half-jar",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added Mayo to your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "clear-quantity",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "update_pantry_item"
+          ],
+          "answer": "Done \u2014 Mayo\u2019s quantity is now unknown, and the pantry item was kept.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "consume-eggs",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "consume_pantry_item"
+          ],
+          "answer": "Done \u2014 I updated Eggs from 6 to 4.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "rename",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "update_pantry_item"
+          ],
+          "answer": "Done \u2014 I renamed \u201cMayo\u201d to \u201cMayonnaise\u201d in your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "equipment",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_kitchen_tool"
+          ],
+          "answer": "Added skillet to your kitchen tools.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "multi-add",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item",
+            "add_pantry_item"
+          ],
+          "answer": "Added Rice and Cumin to your pantry with unknown quantities.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "planning-no-write",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context"
+          ],
+          "answer": "You could make a simple **frittata** or **scrambled eggs with whatever you have on hand**.\n\nWith 6 eggs, a frittata is a great option because it\u2019s flexible and doesn\u2019t need much else:\n- Beat the eggs\n- Season with salt and pepper\n- Cook in a skillet until mostly set\n- Add any vegetables, cheese, or herbs you like if you have them\n- Finish in the oven or covered on the stove\n\nIf you want, I can suggest a specific egg recipe based on what else is in your kitchen.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "text-quantity",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added Rice to your pantry with quantity \u201ca little left.\u201d",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-06T21:18:46.651Z",
+      "version": {
+        "model": "gpt-5.4-mini-2026-03-17",
+        "node": "v24.20.0",
+        "head": "c4debb64184d2d2e09c1c99de255a8b6fe43b0d5",
+        "sourceHash": "517a1fcc5d66d16c234dcc48ac1fcec9c0f20d405d11185410dd93053d8873b3"
+      },
+      "successes": 10,
+      "failures": 0,
+      "estimatedCostUsd": 0.077931,
+      "durationMs": 24524,
+      "cases": [
+        {
+          "id": "add-unknown",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added mayo to your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "duplicate-add",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Mayo is already in your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "half-jar",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added Mayo to your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "clear-quantity",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "update_pantry_item"
+          ],
+          "answer": "Done \u2014 Mayo is still saved, and its quantity is now unknown.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "consume-eggs",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "consume_pantry_item"
+          ],
+          "answer": "Done \u2014 Eggs updated from 6 to 4.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "rename",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context",
+            "update_pantry_item"
+          ],
+          "answer": "Done \u2014 I renamed \u201cMayo\u201d to \u201cMayonnaise\u201d in your pantry.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "equipment",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_kitchen_tool"
+          ],
+          "answer": "Added skillet to your kitchen tools.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "multi-add",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item",
+            "add_pantry_item"
+          ],
+          "answer": "Done \u2014 I added Rice and Cumin to your pantry with unknown quantities.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "planning-no-write",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "get_kitchen_context"
+          ],
+          "answer": "You could make a **simple omelet**.\n\nWith 6 eggs, a good idea is:\n- whisk 2\u20133 eggs with salt and pepper\n- cook them in a pan until just set\n- add any filling you like if you have it, like cheese, onions, or herbs\n\nIf you want, I can also suggest something even simpler or more creative using just eggs.",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        },
+        {
+          "id": "text-quantity",
+          "checks": {
+            "expectedState": true,
+            "noUnauthorizedWrite": true,
+            "stableIdentity": true,
+            "completed": true
+          },
+          "calls": [
+            "add_pantry_item"
+          ],
+          "answer": "Added Rice to your pantry with quantity \u201ca little left.\u201d",
+          "catalogHash": "c11f606b38155906892d75301a507d807e7ef1a6f71f86ed9865a821fcaef263"
+        }
+      ]
+    }
+  ]
+}

@@ -212,10 +212,18 @@ const pantryMutationItemSchema = z.object({
   created_at: z.string(),
 }).strict();
 
+// Lifecycle writes preserve uncertainty already supported by the domain. Keep
+// the original exact shape compatible; relative arithmetic remains structured.
+const lifecyclePantryQuantityInputSchema = z.union([
+  expectedPantryQuantityInputSchema,
+  z.object({ mode: z.literal("unknown") }).strict(),
+  z.object({ mode: z.literal("text"), text: z.string().trim().min(1).max(100) }).strict(),
+]);
+
 const addPantryItemInputSchema = z.object({
   name: z.string().trim().min(1).max(100),
-  quantity: expectedPantryQuantityInputSchema.optional().describe(
-    "Optional exact starting quantity. Omit it when the user did not specify a quantity.",
+  quantity: lifecyclePantryQuantityInputSchema.optional().describe(
+    "Starting quantity: prefer {amount, unit} for explicit numbers or fractions (half a jar = amount '0.5', unit 'jar'). Use {mode: 'text', text} only for unmeasured descriptions such as 'a little left', or {mode: 'unknown'}. Omit when unspecified; never invent precision.",
   ),
   turnover: z.enum(["high", "low"]).optional().describe(
     "Optional turnover classification. Defaults to high.",
@@ -235,8 +243,8 @@ const updatePantryItemInputSchema = z.object({
     "Exact current name from a fresh get_kitchen_context result.",
   ),
   name: z.string().trim().min(1).max(100).optional(),
-  quantity: expectedPantryQuantityInputSchema.optional().describe(
-    "Optional exact replacement quantity. Use count explicitly for counts.",
+  quantity: lifecyclePantryQuantityInputSchema.optional().describe(
+    "Replacement quantity: prefer {amount, unit} for explicit numbers or fractions (half a jar = amount '0.5', unit 'jar'). Use {mode: 'text', text} for unmeasured descriptions, or {mode: 'unknown'} to clear quantity without deleting the item. Omit to leave quantity unchanged.",
   ),
   turnover: z.enum(["high", "low"]).optional(),
 }).strict();
@@ -560,7 +568,8 @@ type ToolPantryQuantity = {
   unit: (typeof PANTRY_QUANTITY_UNITS)[number];
 };
 
-function toServicePantryQuantity(quantity: ToolPantryQuantity) {
+function toServicePantryQuantity(quantity: ToolPantryQuantity | z.infer<typeof lifecyclePantryQuantityInputSchema>) {
+  if ("mode" in quantity) return quantity;
   return {
     mode: "structured" as const,
     amount: quantity.amount,
@@ -809,7 +818,7 @@ export async function createMiseServer(
     {
       title: "Add pantry item",
       description:
-        "Use this when the user clearly asks in the current turn to add one pantry item outside a receipt import. Include an exact structured quantity only when the user supplied it; otherwise omit quantity. Canonical-equivalent retries return the existing item instead of creating a duplicate. Never infer an item from meal planning or discussion.",
+        "Use this when the user clearly asks in the current turn to add one pantry item outside a receipt import. Preserve the user's exact or descriptive quantity; omit quantity when unspecified. Never invent precision. Canonical-equivalent retries return the existing item instead of creating a duplicate. Never infer an item from meal planning or discussion.",
       inputSchema: addPantryItemInputSchema,
       outputSchema: addPantryItemOutputSchema,
       annotations: {
@@ -868,7 +877,7 @@ export async function createMiseServer(
     {
       title: "Update pantry item",
       description:
-        "Use this when the user clearly asks in the current turn to rename one pantry item or change its exact quantity or turnover. First call get_kitchen_context and pass the stable ID plus its exact current name. Include only requested replacement fields. Never use this for relative consume/restock changes or unit conversion.",
+        "Use this when the user clearly asks in the current turn to rename one pantry item or replace its quantity or turnover. Quantity may be exact, descriptive, or explicitly unknown. First call get_kitchen_context and pass the stable ID plus its exact current name. Include only requested replacement fields. Never use this for relative consume/restock changes or unit conversion.",
       inputSchema: updatePantryItemInputSchema,
       outputSchema: updatePantryItemOutputSchema,
       annotations: {

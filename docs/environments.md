@@ -1,5 +1,11 @@
 # Environments & Config — the mental model
 
+> **Historical learning document; operational details require verification.**
+> Provider-key, Redis, and some test-variable references below predate removal of native
+> chat. They do not establish current dependencies or justify retaining subscriptions.
+> Use current source, CI, and `README.md` for configuration; keep local/preview data
+> isolated from production. See `FOUNDATION-AUDIT-2026-09-06.md` for the current review.
+
 > Written during the "reset and learn" session. This is the **game plan** for how
 > environments, secrets, and databases relate. Read this before touching Doppler,
 > Supabase, or Vercel config. The *why* is the point.

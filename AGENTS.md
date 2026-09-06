@@ -6,13 +6,20 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Project orientation
 
+- Current objective (2026-09-06): establish an empirical foundation for kitchen
+  inventory, cooking, and meal prep before expanding features. See
+  `docs/FOUNDATION-AUDIT-2026-09-06.md` for evidence and proposed experiments.
+  Its recommendations are not yet implementation commitments. Older product
+  directions, tool counts, schema restrictions, and vendor choices are revisitable;
+  preserve user data and authorization while evaluating replacements.
 - Read `CONTRIBUTING.md` before creating issues or pull requests. It defines the
   issue format, board priorities, and PR-first workflow.
 - Read `docs/PROJECT.md` at the start of substantial work. It explains the
   project's learning goals, architecture, and operational facts that affect
   implementation decisions.
-- When a task changes the product experience or visual system, also read
-  `design_handoff/DESIGN.md` and `design_handoff/STATUS.md`.
+- Read `design_handoff/DESIGN.md` and `design_handoff/STATUS.md` when working on
+  the existing website visual system or historical designs. They are historical
+  references, not requirements for new MCP or cooking workflows.
 - This is a learning project. Teach before implementing: explain the why,
   prefer small vertical slices, and preserve the decision in the appropriate
   durable place (issue, PR, or project document).

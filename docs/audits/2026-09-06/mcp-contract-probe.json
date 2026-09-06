@@ -1,0 +1,413 @@
+{
+  "date": "2026-09-06",
+  "runtime": "v26.8.1",
+  "scope": "Real installed hosted MCP transport and schemas; fake auth and injected services; no database or model calls; not a production success-rate estimate.",
+  "descriptorCount": 12,
+  "descriptorJsonBytes": 53755,
+  "descriptors": [
+    {
+      "name": "get_kitchen_context",
+      "inputSchemaBytes": 33,
+      "outputSchemaBytes": 1115
+    },
+    {
+      "name": "add_pantry_item",
+      "inputSchemaBytes": 899,
+      "outputSchemaBytes": 542
+    },
+    {
+      "name": "update_pantry_item",
+      "inputSchemaBytes": 1105,
+      "outputSchemaBytes": 989
+    },
+    {
+      "name": "delete_pantry_item",
+      "inputSchemaBytes": 421,
+      "outputSchemaBytes": 618
+    },
+    {
+      "name": "add_kitchen_tool",
+      "inputSchemaBytes": 263,
+      "outputSchemaBytes": 661
+    },
+    {
+      "name": "update_kitchen_tool",
+      "inputSchemaBytes": 705,
+      "outputSchemaBytes": 1373
+    },
+    {
+      "name": "delete_kitchen_tool",
+      "inputSchemaBytes": 568,
+      "outputSchemaBytes": 883
+    },
+    {
+      "name": "set_pantry_item_quantity",
+      "inputSchemaBytes": 780,
+      "outputSchemaBytes": 301
+    },
+    {
+      "name": "consume_pantry_item",
+      "inputSchemaBytes": 1412,
+      "outputSchemaBytes": 5648
+    },
+    {
+      "name": "restock_pantry_item",
+      "inputSchemaBytes": 1412,
+      "outputSchemaBytes": 5648
+    },
+    {
+      "name": "apply_pantry_adjustments",
+      "inputSchemaBytes": 1630,
+      "outputSchemaBytes": 6781
+    },
+    {
+      "name": "apply_reviewed_receipt_import",
+      "inputSchemaBytes": 2780,
+      "outputSchemaBytes": 7298
+    }
+  ],
+  "results": [
+    {
+      "label": "mayo_without_quantity",
+      "tool": "add_pantry_item",
+      "input": {
+        "name": "Mayo"
+      },
+      "httpStatus": 200,
+      "body": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Added Mayo to your pantry."
+            }
+          ],
+          "structuredContent": {
+            "status": "created",
+            "item": {
+              "id": 1,
+              "name": "Mayo",
+              "quantity": "",
+              "turnover": "high",
+              "created_at": "2026-09-06T00:00:00.000Z"
+            }
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 2
+      },
+      "delegateCalls": 1
+    },
+    {
+      "label": "explicit_unknown_quantity",
+      "tool": "add_pantry_item",
+      "input": {
+        "name": "Mayo",
+        "quantity": {
+          "mode": "unknown"
+        }
+      },
+      "httpStatus": 200,
+      "body": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "MCP error -32602: Input validation error: Invalid arguments for tool add_pantry_item: Invalid input: expected string, received undefined at quantity.amount\nInvalid option: expected one of \"count\"|\"g\"|\"kg\"|\"oz\"|\"lb\"|\"ml\"|\"l\"|\"tsp\"|\"tbsp\"|\"cup\"|\"gal\"|\"package\"|\"bag\"|\"bottle\"|\"can\"|\"carton\"|\"jar\"|\"bunch\" at quantity.unit\nUnrecognized key: \"mode\" at quantity"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 3
+      },
+      "delegateCalls": 0
+    },
+    {
+      "label": "approximate_quantity",
+      "tool": "add_pantry_item",
+      "input": {
+        "name": "Mayo",
+        "quantity": {
+          "mode": "text",
+          "text": "half a jar"
+        }
+      },
+      "httpStatus": 200,
+      "body": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "MCP error -32602: Input validation error: Invalid arguments for tool add_pantry_item: Invalid input: expected string, received undefined at quantity.amount\nInvalid option: expected one of \"count\"|\"g\"|\"kg\"|\"oz\"|\"lb\"|\"ml\"|\"l\"|\"tsp\"|\"tbsp\"|\"cup\"|\"gal\"|\"package\"|\"bag\"|\"bottle\"|\"can\"|\"carton\"|\"jar\"|\"bunch\" at quantity.unit\nUnrecognized keys: \"mode\", \"text\" at quantity"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 4
+      },
+      "delegateCalls": 0
+    },
+    {
+      "label": "numeric_instead_of_string_amount",
+      "tool": "add_pantry_item",
+      "input": {
+        "name": "Mayo",
+        "quantity": {
+          "amount": 1,
+          "unit": "jar"
+        }
+      },
+      "httpStatus": 200,
+      "body": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "MCP error -32602: Input validation error: Invalid arguments for tool add_pantry_item: Invalid input: expected string, received number at quantity.amount"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 5
+      },
+      "delegateCalls": 0
+    },
+    {
+      "label": "canonical_exact_quantity",
+      "tool": "add_pantry_item",
+      "input": {
+        "name": "Mayo",
+        "quantity": {
+          "amount": "1",
+          "unit": "jar"
+        }
+      },
+      "httpStatus": 200,
+      "body": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Added Mayo to your pantry."
+            }
+          ],
+          "structuredContent": {
+            "status": "created",
+            "item": {
+              "id": 1,
+              "name": "Mayo",
+              "quantity": "",
+              "turnover": "high",
+              "created_at": "2026-09-06T00:00:00.000Z"
+            }
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 6
+      },
+      "delegateCalls": 1
+    },
+    {
+      "label": "plural_unit",
+      "tool": "add_pantry_item",
+      "input": {
+        "name": "Mayo",
+        "quantity": {
+          "amount": "1",
+          "unit": "jars"
+        }
+      },
+      "httpStatus": 200,
+      "body": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "MCP error -32602: Input validation error: Invalid arguments for tool add_pantry_item: Invalid option: expected one of \"count\"|\"g\"|\"kg\"|\"oz\"|\"lb\"|\"ml\"|\"l\"|\"tsp\"|\"tbsp\"|\"cup\"|\"gal\"|\"package\"|\"bag\"|\"bottle\"|\"can\"|\"carton\"|\"jar\"|\"bunch\" at quantity.unit"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 7
+      },
+      "delegateCalls": 0
+    },
+    {
+      "label": "unsupported_equipment_kind",
+      "tool": "add_kitchen_tool",
+      "input": {
+        "name": "Spatula",
+        "kind": "utensil"
+      },
+      "httpStatus": 200,
+      "body": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "MCP error -32602: Input validation error: Invalid arguments for tool add_kitchen_tool: Invalid option: expected one of \"appliance\"|\"cookware\"|\"bakeware\" at kind"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 8
+      },
+      "delegateCalls": 0
+    },
+    {
+      "label": "unknown_quantity_reset",
+      "tool": "update_pantry_item",
+      "input": {
+        "id": 1,
+        "expectedName": "Mayo",
+        "quantity": null
+      },
+      "httpStatus": 200,
+      "body": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "MCP error -32602: Input validation error: Invalid arguments for tool update_pantry_item: Invalid input: expected object, received null at quantity"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 9
+      },
+      "delegateCalls": 0
+    },
+    {
+      "label": "simulated_missing_target",
+      "tool": "set_pantry_item_quantity",
+      "input": {
+        "name": "Mayonnaise",
+        "quantity": {
+          "amount": "1",
+          "unit": "jar"
+        }
+      },
+      "httpStatus": 200,
+      "body": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "No existing pantry item matched Mayonnaise. Nothing changed."
+            }
+          ],
+          "structuredContent": {
+            "status": "not_found",
+            "name": "Mayonnaise"
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 10
+      },
+      "delegateCalls": 1
+    },
+    {
+      "label": "simulated_unit_mismatch",
+      "tool": "consume_pantry_item",
+      "input": {
+        "name": "Rice",
+        "expectedQuantity": {
+          "amount": "1",
+          "unit": "bag"
+        },
+        "deltaQuantity": {
+          "amount": "1",
+          "unit": "cup"
+        }
+      },
+      "httpStatus": 200,
+      "body": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Expected bag, but the change uses cup. Nothing changed."
+            }
+          ],
+          "structuredContent": {
+            "outcome": {
+              "status": "unit_mismatch",
+              "name": "Rice",
+              "expectedUnit": "bag",
+              "deltaUnit": "cup"
+            }
+          }
+        },
+        "jsonrpc": "2.0",
+        "id": 11
+      },
+      "delegateCalls": 1
+    },
+    {
+      "label": "simulated_dependency_exception",
+      "tool": "add_pantry_item",
+      "input": {
+        "name": "Throw fixture"
+      },
+      "httpStatus": 200,
+      "body": {
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Synthetic database unavailable"
+            }
+          ],
+          "isError": true
+        },
+        "jsonrpc": "2.0",
+        "id": 12
+      },
+      "delegateCalls": 1
+    }
+  ],
+  "requestLogs": [
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"83d57db2-013c-4de9-bfed-b80269a33136\",\"method\":\"POST\",\"status\":200,\"durationMs\":10}"
+    ],
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"070b7306-47a3-40ad-808e-5556bcde48c2\",\"method\":\"POST\",\"status\":200,\"durationMs\":3}"
+    ],
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"8a7ca759-81d3-4f6d-a80c-a037c53825f5\",\"method\":\"POST\",\"status\":200,\"durationMs\":1}"
+    ],
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"5451365a-b225-4644-ac06-96249716ac2c\",\"method\":\"POST\",\"status\":200,\"durationMs\":1}"
+    ],
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"b5bed89a-8fc7-496c-8f0e-db8d348d6eb9\",\"method\":\"POST\",\"status\":200,\"durationMs\":0}"
+    ],
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"745790e5-8a80-425c-8978-3e0cf534795b\",\"method\":\"POST\",\"status\":200,\"durationMs\":1}"
+    ],
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"780c0979-27ca-4e0f-867b-113b42d306d0\",\"method\":\"POST\",\"status\":200,\"durationMs\":0}"
+    ],
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"a7746645-5f94-4547-a774-0f8f441d1181\",\"method\":\"POST\",\"status\":200,\"durationMs\":0}"
+    ],
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"ed16b2b8-f2fc-4277-8205-669f0a6d1a78\",\"method\":\"POST\",\"status\":200,\"durationMs\":0}"
+    ],
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"dad3ff8c-8e0a-4ee6-97bd-5379062f1f0e\",\"method\":\"POST\",\"status\":200,\"durationMs\":1}"
+    ],
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"30e5eb3a-6fe6-4ab8-be15-aa00caff4ea6\",\"method\":\"POST\",\"status\":200,\"durationMs\":1}"
+    ],
+    [
+      "{\"event\":\"mcp_request\",\"requestId\":\"37201017-0560-446d-888b-db72492cfbc3\",\"method\":\"POST\",\"status\":200,\"durationMs\":0}"
+    ]
+  ]
+}
