@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    # Dependent PRs target another codex branch until its PR is merged.
+    branches: [main, 'codex/**']
 
 permissions:
   contents: read

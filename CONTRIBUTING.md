@@ -197,6 +197,10 @@ a big-company concern. Don't bother yet.)
 
 ## The work loop
 
+A dependent change may use another open PR's `codex/` branch as its base to keep
+the review focused. CI runs for these stacked PRs too. Retarget to `main` after
+the dependency merges; this does not bypass review or authorize deployment.
+
 ```
 sort the work → pick the highest value-for-effort thing that isn't blocked
 → branch → open a PR with "Closes #N" in the description → review → merge
