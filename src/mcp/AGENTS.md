@@ -126,7 +126,7 @@ The development connector runs entirely from the local checkout:
 
 `local files -> tsx watcher -> http://localhost:8787/mcp -> ngrok HTTPS URL -> ChatGPT`
 
-- `npm run mcp:dev` watches the local MCP files and restarts the server after a
+- `pnpm run mcp:dev` watches the local MCP files and restarts the server after a
   saved change. If the watcher is not running, restart the MCP server manually.
 - ngrok forwards its public HTTPS URL to port `8787`; it does not deploy,
   upload, or copy the code. Keep both the local MCP process and ngrok process

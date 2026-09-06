@@ -1,6 +1,6 @@
 -- Local-dev seed. Runs automatically on `supabase db reset` (see [db.seed] in config.toml).
 -- Purpose: a fresh LOCAL Supabase comes up usable — a test user you can log in as, plus a
--- few pantry items — so `npm run dev` against local isn't an empty, confusing shell.
+-- few pantry items — so `pnpm dev` against local isn't an empty, confusing shell.
 --
 -- This NEVER runs against prod (it's a local-only file loaded by the local stack).
 -- Login creds:  test@local.dev  /  password123
