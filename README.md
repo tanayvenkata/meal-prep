@@ -84,6 +84,7 @@ in, use the Pantry and Tools pages to inspect or correct the kitchen data ChatGP
 | `pnpm test` | All tests in watch mode |
 | `pnpm run test:unit` | Unit tests only (no Supabase needed) |
 | `pnpm run test:integration` | DB integration tests (requires `supabase start`) |
+| `pnpm run test:related` | Run only tests affected by changed files (fast agent feedback) |
 | `pnpm run db:provision-app-role` | Set/rotate `mise_app` password (needs `ADMIN_DATABASE_URL` + `MISE_APP_DB_PASSWORD`) |
 | `pnpm run mcp:dev` | Start the local Mise MCP server with Doppler `dev` config |
 | `pnpm run mcp:serve` | Start the MCP process with environment variables supplied by the caller |
