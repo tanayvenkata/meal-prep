@@ -21,12 +21,12 @@ conversation proves real tool selection, account linking, and rendering.
 
 | Case | Prompt or action | Expected result |
 | --- | --- | --- |
-| Direct | “Show me my Mise kitchen.” | Calls `get_kitchen_context` once; the widget shows only the signed-in user's pantry and tools, while structured results include stable IDs and distinguish unknown, text, and amount/unit quantities. |
+| Direct | “Show me my Mise kitchen.” | Calls `get_kitchen_context` once; ChatGPT describes only the signed-in user's pantry and tools. Structured results include stable IDs and distinguish unknown, text, and amount/unit quantities. |
 | Indirect | “What can I cook with what I already have?” | Uses the kitchen tool when saved inventory is needed, then bases advice on its result. |
 | Negative | “What is the weather in New York?” | Does not call Mise; its tools are irrelevant to the request. |
-| Empty | With an account that has no pantry items or tools: “Show me my Mise kitchen.” | The widget renders explicit “No pantry items saved yet” and “No kitchen tools saved yet” states, not blank containers or an error. |
+| Empty | With an account that has no pantry items or tools: “Show me my Mise kitchen.” | Returns empty pantry/tool arrays and ChatGPT clearly explains that nothing is saved, without inventing inventory or reporting an error. |
 | Auth failure | Disconnect Mise or use an expired/invalid token, then request the kitchen. | The MCP endpoint returns the OAuth challenge; ChatGPT offers account linking or reconnection and no kitchen data leaks. |
-| Mobile/widget | Run the direct prompt in a narrow host viewport and inspect light and dark themes. | Content stays readable without horizontal clipping; host typography/colors apply; loading, result, and empty text remain legible. |
+| Mobile host | Run the direct prompt in a narrow host viewport. | The ordinary ChatGPT result remains readable; no widget or UI resource is expected. |
 | Two-user isolation | Connect account A, record a distinctive safe item, then repeat with account B. | Each account sees only its own pantry/tools. Account A's distinctive item never appears for B. |
 | Add pantry item | “Add chicken broth to Mise as 1 carton.” | Calls `add_pantry_item` once with an exact structured quantity and no identity field; returns `created`. A fresh kitchen read and the Mise pantry page show the same item and stable ID. |
 | Pantry create retry | Repeat the same add with canonical-equivalent case/whitespace. | Returns `already_exists` with the original display name; no duplicate item is created. |
@@ -39,7 +39,7 @@ conversation proves real tool selection, account linking, and rendering.
 | Update kitchen tool | “Rename my Dutch oven to Enameled Dutch oven.” | Reads fresh context, then calls `update_kitchen_tool` with the stable ID, exact current name, complete replacement name, and current kind; returns `updated`. |
 | Delete kitchen tool | “Delete my Enameled Dutch oven from Mise.” | Reads fresh context, then calls `delete_kitchen_tool` with the stable ID and exact current name. ChatGPT presents destructive approval and returns `deleted`. |
 | No inferred kitchen tool | “Could I use a cast iron skillet for this recipe?” | Does not call `add_kitchen_tool` because discussing equipment is not a request to save it. |
-| Exact quantity | With one Eggs item: “Set my Eggs quantity to 6 count.” | Calls `set_pantry_item_quantity` once with `quantity: { amount: "6", unit: "count" }` and no identity field; returns the safe before/after result. A fresh read exposes `quantityMode: "structured"`, `quantityAmount: "6"`, and `quantityUnit: "count"` while the widget and Mise pantry page show `6`. |
+| Exact quantity | With one Eggs item: “Set my Eggs quantity to 6 count.” | Calls `set_pantry_item_quantity` once with `quantity: { amount: "6", unit: "count" }` and no identity field; returns the safe before/after result. A fresh read exposes `quantityMode: "structured"`, `quantityAmount: "6"`, and `quantityUnit: "count"` while ChatGPT and the Mise pantry page describe six eggs. |
 | Retry | Repeat the exact same quantity request. | Returns `unchanged`; the final quantity remains `6 count` and no duplicate item or cumulative change appears. |
 | Missing write target | “Set my Saffron quantity to 1 jar” when Saffron does not exist. | Returns `not_found`; nothing is created or mutated. |
 | No inferred write | Ask for a recipe that uses six eggs. | A kitchen read may occur, but the quantity tool does not run because the user did not ask to change saved inventory. |

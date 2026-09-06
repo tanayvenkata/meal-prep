@@ -3,6 +3,21 @@
 This directory contains Mise's MCP server. Keep changes small and teach the
 protocol boundary before adding product complexity.
 
+## Foundation review — 2026-09-06
+
+The tool surface and architectural choices below describe the current implementation.
+They are a baseline to test, not permanent constraints on the user-requested redesign.
+See `docs/FOUNDATION-AUDIT-2026-09-06.md` for findings and proposed comparisons.
+Preserve authentication, ownership, and user data through changes; revise tool count,
+quantity semantics, interaction design, and SDK adapters when evidence supports it.
+Keep focused unit tests, and also test representative MCP-to-real-database round trips.
+The local evaluation loop is documented in `evals/kitchen/README.md`. Preserve
+exact, descriptive, and unknown quantity writes in pantry add/update; omit an
+update field to leave it unchanged. Relative operations still require explicit
+structured quantities. Evaluate schema alternatives on the same versioned cases
+and record regressions as well as improvements; model evaluations do not replace
+actual ChatGPT host acceptance or OAuth tests.
+
 ## Docs-first and SDK-first rule
 
 Before changing MCP transport, ChatGPT Apps behavior, widget bridge code, tool
