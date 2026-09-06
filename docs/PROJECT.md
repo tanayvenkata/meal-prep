@@ -201,7 +201,7 @@ didn't know them — the architectural truths a tracker title can't carry.
   proves the build, while runtime routes fail closed without required config. Add a real
   staging Supabase project only when external authenticated QA earns it. **Mental model and trigger:
   `docs/environments.md`.**
-- 🔧 **Dev session ritual:** OrbStack → `supabase start` → `npm run dev`. Skipping
+- 🔧 **Dev session ritual:** OrbStack → `supabase start` → `pnpm dev`. Skipping
   `supabase start` → `ECONNREFUSED 127.0.0.1:54322` (the dev app and the db tests both need
   the local stack up).
 - 🔐 **The MCP surface is authenticated at the HTTP transport boundary.** Supabase OAuth 2.1 access
@@ -222,12 +222,12 @@ didn't know them — the architectural truths a tracker title can't carry.
 Full setup, prerequisites, and the everyday command table live in **`README.md`** — not
 repeated here. The non-obvious bits worth knowing in-session:
 
-- **Tests:** `npm run test:unit` (mock-based, no infra) / `npm run test:integration` (db
-  tests, needs `supabase start`) / `npm test -- --run` (all once).
+- **Tests:** `pnpm run test:unit` (mock-based, no infra) / `pnpm run test:integration` (db
+  tests, needs `supabase start`) / `pnpm test -- --run` (all once).
 - **Secrets (Doppler):** all live in Doppler (`dev` → local CLI, `prd` → Vercel sync); add a
   secret once → flows everywhere. `.env.local` can hold local-only DB URLs
   (`DATABASE_URL` as `mise_app`, `ADMIN_DATABASE_URL` as owner for rare ops).
 - **DB login role:** app pool = `mise_app` (NOBYPASSRLS, non-owner). Provision hosted
-  passwords with `npm run db:provision-app-role`; never point the app at owner `postgres`.
+  passwords with `pnpm run db:provision-app-role`; never point the app at owner `postgres`.
 - **Schema change:** `supabase db pull` (remote → migrations) / `supabase db push`
   (migrations → remote).

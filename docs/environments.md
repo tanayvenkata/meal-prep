@@ -81,9 +81,9 @@ that kicked off this whole session (localhost writes appeared in prod).
 
 ## Local DB: two activities, one local Supabase instance
 
-- **Automated tests** (`npm run test:integration`): spin up → seed known rows → assert → wipe.
+- **Automated tests** (`pnpm run test:integration`): spin up → seed known rows → assert → wipe.
   Ephemeral on purpose — tests must be deterministic. (`TEST_DATABASE_URL`, untouched by this work.)
-- **Manual dev** (`npm run dev`): wants data to PERSIST between sessions. Uses a `seed.sql` so a
+- **Manual dev** (`pnpm dev`): wants data to PERSIST between sessions. Uses a `seed.sql` so a
   fresh local DB comes up usable, and leaves its rows alone.
 - Both hit the same local Postgres (`127.0.0.1:54322`); tests clean up after themselves so they
   don't pollute manual-dev data.
@@ -112,7 +112,7 @@ that kicked off this whole session (localhost writes appeared in prod).
 
 Without `withUserContext`, `mise_app` has **no** table DML — queries fail closed instead of
 silently running as owner. Password for hosted envs is set with
-`npm run db:provision-app-role` and stored in Doppler; local seed sets `mise_app_local` only.
+`pnpm run db:provision-app-role` and stored in Doppler; local seed sets `mise_app_local` only.
 
 ## Naming note
 
@@ -168,7 +168,7 @@ TRACK 1 — the database (run occasionally, the `supabase` CLI)
    (start/stop/status = LOCAL-ONLY by nature; db push/pull = the only cloud-touching commands)
 
 TRACK 2 — the app (run every time you work)
-   doppler run -- npm run dev ............... inject secrets → start app → connect to whatever
+   doppler run -- pnpm dev ............... inject secrets → start app → connect to whatever
                                               DB the DATABASE_URL box points at
 ```
 Track 1 makes a DB *exist* at an address. Track 2's app *connects to* that address. `supabase start`

@@ -6,7 +6,7 @@ conversation proves real tool selection, account linking, and rendering.
 
 ## Setup
 
-1. Run `npm run mcp:dev` and connect MCP Inspector to the local server, or deploy the exact
+1. Run `pnpm run mcp:dev` and connect MCP Inspector to the local server, or deploy the exact
    commit and use the stable production `/mcp` URL.
 2. If tool metadata or the content-hashed widget URI changed, refresh or reconnect the
    ChatGPT app before testing.
