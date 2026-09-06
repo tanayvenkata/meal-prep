@@ -30,9 +30,14 @@ historical documents for routine changes.
 Verified baseline: `c4debb6`. Unit and local integration lanes pass. The simple
 Mayo addition works through the real MCP handler and local database with injected
 auth. However, HTTP 200 can carry input errors, rejected changes, or backend tool
-errors, and current logs do not distinguish these. A past post-commit timestamp
+errors. The draft observability slice now distinguishes tool and command outcomes
+and correlates them with OTel traces; see [observability](OBSERVABILITY.md).
+A past post-commit timestamp
 serialization failure was fixed in #188. The cause of the user's particular past
-failure is unproven. There is no automated model task-success baseline yet.
+failure is unproven. The first automated inventory-effect baseline and its
+before/after schema experiment are recorded in
+[the evaluation report](audits/2026-09-06/kitchen-evaluation.md); broader host and
+answer-quality acceptance remain pending.
 
 Before scheduling more features, prioritize observable writes and reproducible
 agent behavior. Keep a small real MCP-to-database test set alongside isolated unit

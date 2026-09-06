@@ -38,6 +38,7 @@ import {
   type AdjustPantryItemQuantityOutcome,
 } from "@/lib/kitchen-service";
 import { PANTRY_QUANTITY_UNITS } from "@/lib/pantry-quantity";
+import { ObservedMcpTransport, observeKitchenCommand, recordMcpRequest } from "./observability";
 
 const MCP_PATH = "/mcp";
 const KITCHEN_CONTEXT_TOOL = "get_kitchen_context";
@@ -768,6 +769,17 @@ export async function createMiseServer(
     deleteKitchenTool = removeKitchenTool,
   }: MiseServerOptions = {},
 ) {
+  getKitchenContext = observeKitchenCommand(KITCHEN_CONTEXT_TOOL, getKitchenContext);
+  setPantryItemQuantity = observeKitchenCommand(SET_PANTRY_ITEM_QUANTITY_TOOL, setPantryItemQuantity);
+  adjustPantryItemQuantity = observeKitchenCommand("adjust_pantry_item", adjustPantryItemQuantity);
+  adjustPantryItemQuantities = observeKitchenCommand(APPLY_PANTRY_ADJUSTMENTS_TOOL, adjustPantryItemQuantities);
+  applyReviewedReceiptImport = observeKitchenCommand(APPLY_REVIEWED_RECEIPT_IMPORT_TOOL, applyReviewedReceiptImport);
+  createPantryItem = observeKitchenCommand(ADD_PANTRY_ITEM_TOOL, createPantryItem);
+  updatePantryItem = observeKitchenCommand(UPDATE_PANTRY_ITEM_TOOL, updatePantryItem);
+  deletePantryItem = observeKitchenCommand(DELETE_PANTRY_ITEM_TOOL, deletePantryItem);
+  createKitchenTool = observeKitchenCommand(ADD_KITCHEN_TOOL, createKitchenTool);
+  updateKitchenTool = observeKitchenCommand(UPDATE_KITCHEN_TOOL, updateKitchenTool);
+  deleteKitchenTool = observeKitchenCommand(DELETE_KITCHEN_TOOL, deleteKitchenTool);
   const server = new McpServer(
     { name: "mise", version: "0.1.0" },
     {
@@ -1540,6 +1552,10 @@ export async function handleMiseMcpRequest(
 ) {
   const startedAt = performance.now();
   const requestId = randomUUID();
+  const observeResponse = (response: Response) => {
+    recordMcpRequest(requestId, response.status, performance.now() - startedAt);
+    return response;
+  };
   const authConfig = getMcpAuthConfig();
   const bearerToken = getBearerToken(request);
 
@@ -1553,18 +1569,11 @@ export async function handleMiseMcpRequest(
         },
       },
     );
-    console.info(JSON.stringify({
-      event: "mcp_request",
-      requestId,
-      method: request.method,
-      status: response.status,
-      durationMs: Math.round(performance.now() - startedAt),
-    }));
-    return response;
+    return observeResponse(response);
   }
 
   if (bearerToken === undefined) {
-    return invalidTokenResponse(authConfig);
+    return observeResponse(invalidTokenResponse(authConfig));
   }
 
   let authInfo: AuthInfo;
@@ -1580,13 +1589,12 @@ export async function handleMiseMcpRequest(
     ) {
       throw new Error("Token policy check failed.");
     }
-  } catch (error) {
+  } catch {
     console.warn(JSON.stringify({
       event: "mcp_auth_failed",
       requestId,
-      errorType: error instanceof Error ? error.name : "UnknownError",
     }));
-    return invalidTokenResponse(authConfig);
+    return observeResponse(invalidTokenResponse(authConfig));
   }
 
   const server = await createMiseServer({
@@ -1609,30 +1617,24 @@ export async function handleMiseMcpRequest(
     });
 
   try {
-    await server.connect(transport);
+    await server.connect(new ObservedMcpTransport(transport, AUTHENTICATED_MISE_TOOLS, requestId));
     const response = await transport.handleRequest(request, { authInfo });
-    console.info(JSON.stringify({
-      event: "mcp_request",
-      requestId,
-      method: request.method,
-      status: response.status,
-      durationMs: Math.round(performance.now() - startedAt),
-    }));
-    return response;
-  } catch (error) {
+    return observeResponse(response);
+  } catch {
     console.error(JSON.stringify({
       event: "mcp_request_failed",
       requestId,
-      errorType: error instanceof Error ? error.name : "UnknownError",
     }));
-    return Response.json(
+    return observeResponse(Response.json(
       {
         jsonrpc: "2.0",
         error: { code: -32603, message: "Internal server error." },
         id: null,
       },
       { status: 500 },
-    );
+    ));
+  } finally {
+    await server.close();
   }
 }
 
@@ -1668,14 +1670,21 @@ export function createMiseHttpServer({
     async verifyAccessToken(token) {
       try {
         return await verifyAccessToken(token);
-      } catch (error) {
-        console.warn("MCP authentication failed:", error);
+      } catch {
+        console.warn(JSON.stringify({ event: "mcp_auth_failed" }));
         throw new InvalidTokenError(
           "The Mise access token is invalid or expired.",
         );
       }
     },
   };
+
+  app.use(MCP_PATH, (_req, res, next) => {
+    const started = performance.now();
+    res.locals.miseRequestId = randomUUID();
+    res.on("finish", () => recordMcpRequest(res.locals.miseRequestId, res.statusCode, performance.now() - started));
+    next();
+  });
 
   // A plain browser/curl health check, separate from MCP itself.
   app.get("/", (_req, res) => {
@@ -1739,14 +1748,14 @@ export function createMiseHttpServer({
     });
 
     try {
-      await server.connect(transport);
+      await server.connect(new ObservedMcpTransport(transport, AUTHENTICATED_MISE_TOOLS, res.locals.miseRequestId));
       res.on("close", () => {
         void transport.close();
         void server.close();
       });
       await transport.handleRequest(req, res, req.body);
-    } catch (error) {
-      console.error("MCP request failed:", error);
+    } catch {
+      console.error(JSON.stringify({ event: "mcp_request_failed", requestId: res.locals.miseRequestId }));
       if (!res.headersSent) res.status(500).send("Internal server error");
     }
   });

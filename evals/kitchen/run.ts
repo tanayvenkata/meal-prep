@@ -1,19 +1,16 @@
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync, openSync, closeSync, unlinkSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import OpenAI from "openai";
 import type { ResponseInput } from "openai/resources/responses/responses";
 import { kitchenFixture, LOCAL_APP_DATABASE } from "./fixture";
 import { scenarios, type Scenario } from "./scenarios";
+import { EvaluationBudget, REQUEST_RESERVATION_USD } from "./budget";
+import { startKitchenTelemetry } from "../../src/lib/telemetry";
+import { evaluationProvenance } from "./provenance";
 
 const MODEL = "gpt-5.4-mini-2026-03-17";
 const MAX_OUTPUT = 2048;
-const CAP = 5;
-// Upper bound: whole 400k context at $0.75/M + max output at $4.50/M.
-// Reserve before dispatch, including failures/timeouts. No SDK retries.
-const RESERVATION = 0.32;
 const directory = ".eval-results/kitchen";
-const ledgerPath = `${directory}/budget.json`;
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
 async function main() {
@@ -22,17 +19,14 @@ async function main() {
   process.env.PROMPTFOO_DISABLE_TELEMETRY = "1";
   mkdirSync(directory, { recursive: true });
   // A process-wide lock protects the cumulative budget across concurrent runs.
-  const lock = openSync(`${directory}/run.lock`, "wx");
+  const budget = new EvaluationBudget(directory);
+  let telemetry: ReturnType<typeof startKitchenTelemetry> | undefined;
   try {
-    let charged = existsSync(ledgerPath) ? JSON.parse(readFileSync(ledgerPath, "utf8")).chargedUsd : 0;
-    if (!Number.isFinite(charged) || charged < 0) throw new Error("Invalid budget ledger");
-    const saveBudget = () => writeFileSync(ledgerPath, JSON.stringify({ capUsd: CAP, chargedUsd: charged, model: MODEL, updatedAt: new Date().toISOString() }, null, 2));
+    const version = evaluationProvenance(MODEL);
+    telemetry = startKitchenTelemetry({ release: version.sourceHash });
     const api = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: "https://api.openai.com/v1", maxRetries: 0, timeout: 60_000 });
     const { evaluate } = await import("promptfoo");
     const reportId = new Date().toISOString().replaceAll(":", "-");
-    const git = (args: string[]) => execFileSync("git", args, { encoding: "utf8" }).trim();
-    const version = { model: MODEL, node: process.version, head: git(["rev-parse", "HEAD"]),
-      sourceHash: hash(git(["diff", "HEAD", "--", "src"]) + readFileSync("src/mcp/server.ts", "utf8") + readFileSync("evals/kitchen/fixture.ts", "utf8") + readFileSync("evals/kitchen/run.ts", "utf8") + readFileSync("evals/kitchen/scenarios.ts", "utf8") + readFileSync("package-lock.json", "utf8")) };
     async function run(scenario: Scenario) {
       const kitchen = await kitchenFixture();
       let cost = 0;
@@ -56,19 +50,17 @@ async function main() {
         let error: string | undefined;
         try {
           for (let step = 0; step < 6; step++) {
-            if (charged + RESERVATION > CAP) throw new Error("budget_exhausted");
-            charged += RESERVATION;
-            saveBudget();
+            const reservation = budget.reserve();
+            cost += REQUEST_RESERVATION_USD;
             requests++;
             const response = await api.responses.create({ model: MODEL, instructions, input, tools, store: false, max_output_tokens: MAX_OUTPUT, reasoning: { effort: "low" }, service_tier: "default", parallel_tool_calls: false });
             if (response.usage) {
               const estimate = (response.usage.input_tokens * 0.75 + response.usage.output_tokens * 4.5) / 1_000_000;
-              charged += estimate - RESERVATION;
-              cost += estimate;
+              reservation.settle(estimate);
+              cost += estimate - REQUEST_RESERVATION_USD;
               inputTokens += response.usage.input_tokens;
               outputTokens += response.usage.output_tokens;
-              saveBudget();
-            } else { cost += RESERVATION; }
+            }
             responses.push({ model: response.model, status: response.status, usage: response.usage, output: response.output });
             for (const item of response.output) {
               if (item.type === "message" || item.type === "function_call" || item.type === "reasoning") input.push(item);
@@ -112,10 +104,10 @@ async function main() {
       tests: selected.map(scenario => ({ vars: { scenarioId: scenario.id }, assert: [{ type: "javascript", value: "output.pass === true" }] })),
     }, { maxConcurrency: 1, cache: false });
     const summary = await result.toEvaluateSummary();
-    writeFileSync(`${directory}/${reportId}-summary.json`, JSON.stringify({ version, budgetChargedUsd: charged, summary }, null, 2));
-    console.log(JSON.stringify({ results: summary.stats, budgetChargedUsd: charged, directory }));
+    writeFileSync(`${directory}/${reportId}-summary.json`, JSON.stringify({ version, budgetChargedUsd: budget.chargedUsd, summary }, null, 2));
+    console.log(JSON.stringify({ results: summary.stats, budgetChargedUsd: budget.chargedUsd, directory }));
     if (summary.stats.failures || summary.stats.errors) process.exitCode = 1;
-  } finally { closeSync(lock); unlinkSync(`${directory}/run.lock`); }
+  } finally { try { await telemetry?.shutdown(); } finally { budget.close(); } }
 }
 
 main().then(() => process.exit(process.exitCode ?? 0)).catch(() => { console.error("Kitchen evaluation stopped. Check local setup and retained budget ledger; no credentials were logged."); process.exit(1); });

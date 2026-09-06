@@ -1,0 +1,14 @@
+name: mise-observability
+services:
+  lgtm:
+    image: grafana/otel-lgtm:0.32.1
+    ports:
+      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:4318:4318"
+    environment:
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - lgtm-data:/data
+volumes:
+  lgtm-data:
