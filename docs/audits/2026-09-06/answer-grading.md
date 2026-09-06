@@ -43,7 +43,7 @@ and sample apparently supported answers. Add independent reference labels and
 held-out cases before trusting an aggregate quality percentage.
 
 The subsequent [recovery comparison](recovery-comparison.md) restores the full
-response-loss scenario, exercises persistent dependency failure, and measures a
-focused instruction change through the combined runner. Actual authenticated ChatGPT behavior remains
+response-loss scenario, exercises persistent dependency failure, and records a
+rejected instruction experiment through the combined runner. Actual authenticated ChatGPT behavior remains
 a separate host-acceptance requirement. Nothing in this report establishes that
 the production deployment or ongoing MCP migration has passed those checks.

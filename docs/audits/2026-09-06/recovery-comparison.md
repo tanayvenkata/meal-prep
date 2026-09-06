@@ -1,65 +1,65 @@
-# Recovery: measured instruction change
+# Recovery experiments and a rejected instruction change
 
-2026-09-06. The runner now exercises two failure boundaries with real local
-MCP-to-database calls and separately scores effects and answer grounding.
+2026-09-06. The runner exercises response loss and persistent dependency failure
+with real local MCP/database effects and separately grades answer grounding.
+The final PR adds measurement and bounded recovery behavior to the evaluation
+adapter. **It leaves production MCP initialization instructions unchanged.**
 
-## Before
+## Observations
 
-In `lost-add-response`, the initial pantry was empty. The adapter executed a real
-add, withheld its successful response, and returned an effect-unknown error. The
-actor reread state, leaving exactly one Mayo, but answered “Mayo is already in your
-pantry.” The judge flagged its implication that Mayo predated this request. The
-scenario failed answer acceptance despite correct state.
+| Candidate | Result | Interpretation |
+| --- | --- | --- |
+| Original instructions, two fault cases | Correct single Mayo after response loss, but narration flagged; unavailable write failed safely | State checks alone miss answer-quality concerns |
+| Expanded recovery guidance, 16 cases | 15 tasks completed, one accepted safe failure | All scenario checks passed, but the 803-character instructions failed the existing 512-character protocol test |
+| Compact guidance, 16 cases | 14 tasks completed, one safe failure, one answer flagged | The 504-character candidate passed protocol tests but did not reliably resolve the flagged wording |
 
-In `unavailable-add`, the injected create service threw before any write. The
-pantry stayed empty and the actor truthfully reported failure. This satisfied
-failure-handling acceptance; it did not complete the requested task.
+The original lost-response answer was “Mayo is already in your pantry.” The compact
+candidate answered “Done — mayo is in your pantry already.” Both left exactly one
+Mayo and reread state. The judge interpreted “already” as claiming the item predated
+the request, despite the initially empty pantry. The latter wording is ambiguous:
+“Done” can imply completion of this request. Independent human adjudication is
+needed before treating every such flag as a confirmed false claim. Do not tune
+instructions or grader labels simply to make this case green.
 
-## Change
+The persistent-failure case reliably left the pantry unchanged and truthfully
+reported inability to save. It passes failure-handling acceptance, but never counts
+as a completed task. Four fresh prompts were registered before their first run
+against expanded guidance and all passed; they are now observed validation cases.
 
-Add recovery guidance to the MCP server's initialization instructions: after an
-uncertain write, reread before retrying, report confirmed current state, and do not
-infer that an item predated the request or that a response failure means nothing
-was saved. Tool schemas, authorization, and database behavior are unchanged.
+The instruction experiment was rejected for shipping: one version violated an
+existing contract, and the compact version did not establish a reliable benefit.
+The final product contract is the original one. This is a measurement improvement,
+not a claimed fix to all response-loss narration.
 
-This uses the SDK's existing initialization instructions rather than a new tool or
-protocol adapter. Tool descriptions and instructions are part of the model-facing
-contract; see the [official tool-design guidance](https://developers.openai.com/plugins/plan/tools).
+## Evidence and commands
 
-## After
+- [Original-instruction fault run](recovery-before.json)
+- [Expanded-guidance run](recovery-after.json)
+- [Compact-guidance run](recovery-compact.json)
+- `npm run eval:kitchen -- --recovery` exercises both fault boundaries.
+- `npm run eval:kitchen -- --validation` runs the four observed validation prompts.
+- `npm run eval:kitchen -- --all` runs all 16 cases and may correctly exit nonzero
+  when narration is flagged. Do not hide that failure or call it full acceptance.
+- 250 unit tests pass for the compact candidate; final-code checks are repeated
+  by the pre-push hook after restoring the original product instructions.
+- 14 real MCP/database integration cases and the official Inspector smoke passed
+  during the experiment. The changed evaluation adapter is covered by nine new
+  no-API tests for argument correction, incomplete output, transport/provider
+  errors, and independent request/tool limits.
+- Cumulative charged estimate after these experiments: $0.803782 of the $5 cap.
 
-One run of 16 cases accepted all scenarios: 15 completed tasks and one expected
-safe failure. The ten original cases remained successful. Four fresh validation
-prompts, registered before their first observed results, also passed. These are
-now observed cases and must not be described as held out after further tuning.
+`taskMetrics` separates task successes from safe failures. Promptfoo success counts
+represent scenario acceptance, not task completion. Reports retain actual server
+results and separately mark what the model observed when a response was withheld.
 
-The Mayo response became “Added mayo to your pantry. Quantity is unspecified for
-now.” The fresh Dijon mustard case confirmed its present saved state and unknown
-quantity. Both left one item and reread after the withheld result. Persistent
-failure still left the pantry unchanged and was reported honestly.
+## Limits and next decision
 
-- [Before evidence](recovery-before.json)
-- [After evidence](recovery-after.json)
-- 250 unit tests, TypeScript, and lint pass.
-- 14 real MCP/database integration cases pass.
-- Official Inspector initialization, catalog, descriptive add, and quantity-clear
-  smoke pass on the modified server.
-- Cumulative charged estimate: $0.658611 of the authorized $5 cap.
+Response loss is injected at the evaluation adapter, not by interrupting a network
+or reproducing ChatGPT orchestration. Authentication in synthetic fixtures is
+injected. Actual authenticated ChatGPT acceptance remains unverified. A small
+model-judged run does not establish a statistical reliability rate.
 
-## Limits and rollback
-
-This is a small before/after experiment, not a statistical reliability claim.
-The answer judge remains fallible. Response loss is injected by the evaluation
-adapter, not by disconnecting a network or reproducing ChatGPT's orchestration.
-Authentication in these synthetic fixtures is injected. Actual authenticated
-ChatGPT acceptance remains unverified.
-
-`taskMetrics` separates task successes from safe failures. Promptfoo's acceptance
-success count must not be presented as a task completion count. The bounded loop
-also rejects incomplete responses before dispatch, permits argument correction,
-and exposes sanitized transport errors for recovery; its behavior is specific to
-this evaluation host adapter.
-
-Rollback the added initialization guidance to compare old behavior; the two
-versioned failure cases remain runnable and should expose the regression. No
-database migration, vendor change, merge, or production deployment is required.
+Review the ambiguous narration and reference labels independently. Preserve clearly
+false success and fabricated-quantity controls regardless of how ambiguity is
+resolved. The next product change should follow that evidence. No database
+migration, vendor change, merge, or production deployment is needed for this slice.
