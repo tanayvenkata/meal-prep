@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { kitchenFixture } from "../../../evals/kitchen/fixture";
+import { createPantryItem } from "@/lib/kitchen-service";
 
 describe("kitchen writes through a real MCP client and local Postgres", () => {
   let kitchen: Awaited<ReturnType<typeof kitchenFixture>>;
@@ -89,5 +90,32 @@ describe("kitchen writes through a real MCP client and local Postgres", () => {
     const result = await kitchen.call("update_pantry_item", { id: Number(item.id), expectedName: "Mayo", quantity: { mode: "unknown" } });
     expect(result.structuredContent).toMatchObject({ status: "updated" });
     expect((await kitchen.state()).pantry).toMatchObject([{ id: item.id, name: "Mayo", quantity: "", quantity_value: null }]);
+  });
+
+  it("recovers from an actual committed write whose response fails without duplicating it", async () => {
+    const faulty = await kitchenFixture({ createPantryItem: async (...args) => {
+      const result = await createPantryItem(...args);
+      if (result.ok && result.value.status === "created") return { ...result, value: { ...result.value, item: { ...result.value.item, created_at: new Date("invalid") as unknown as string } } };
+      return result;
+    } });
+    try {
+      expect((await faulty.call("add_pantry_item", { name: "Mayo" })).isError).toBe(true);
+      expect((await faulty.state()).pantry).toHaveLength(1);
+      expect((await faulty.call("get_kitchen_context")).isError).not.toBe(true);
+      expect((await faulty.call("add_pantry_item", { name: "Mayo" })).structuredContent).toMatchObject({ status: "already_exists" });
+      expect((await faulty.state()).pantry).toHaveLength(1);
+    } finally { await faulty.close(); }
+  });
+
+  it("prevents one MCP identity from editing another fixture kitchen", async () => {
+    const other = await kitchenFixture();
+    try {
+      await other.call("add_pantry_item", { name: "Mayo" });
+      const before = await other.state();
+      const result = await kitchen.call("update_pantry_item", { id: Number(before.pantry[0].id), expectedName: "Mayo", name: "Changed" });
+      expect(result.structuredContent).toMatchObject({ status: "not_found" });
+      expect(await other.state()).toEqual(before);
+      expect((await kitchen.state()).pantry).toHaveLength(0);
+    } finally { await other.close(); }
   });
 });

@@ -1,4 +1,6 @@
 import { handleMiseMcpRequest } from "@/mcp/server";
+import { after } from "next/server";
+import { flushKitchenTelemetry } from "@/lib/telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,6 +41,7 @@ function methodNotAllowed() {
 }
 
 export async function POST(request: Request) {
+  after(flushKitchenTelemetry);
   return withCors(await handleMiseMcpRequest(request));
 }
 
