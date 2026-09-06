@@ -1,6 +1,6 @@
 # Four-tool experiment — issue #203
 
-Status: input contracts only. These tools are not registered, do not execute writes,
+Status: input contracts and a tested internal transaction scope. These tools are not registered, do not execute writes,
 and have not been evaluated by a model. The baseline remains the 12-tool server.
 
 The candidate is a tool-only app: `read_kitchen`, `add_items`, `edit_items`, and
@@ -26,7 +26,10 @@ when selecting this candidate for evaluation.
 ## Implementation sequence
 
 1. Input contracts and boundary tests (started).
-2. Add a service-level atomic command boundary. Existing database functions each
+2. Internal `withKitchenTransaction` now lets owned queries share one transaction,
+   rejecting cross-user access and closed-context reuse. Four real-DB tests cover
+   commit, rollback, identity mismatch, and closed scope. Command execution is still
+   unwired. Existing database functions each
    open a transaction, so looping over them does not provide list atomicity.
    Reuse their validation and owned SQL while ensuring one transaction per list.
 3. Implement durable command receipts. The existing private receipt table accepts

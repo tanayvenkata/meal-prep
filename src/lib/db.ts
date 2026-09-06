@@ -2,6 +2,7 @@
 // Only file that imports the postgres driver. Swap DB/driver/host = change this file only.
 
 import { createHash } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import postgres from "postgres";
 import {
   adjustStructuredPantryQuantity,
@@ -379,10 +380,42 @@ export async function getDatabaseConnectionSafety(): Promise<DatabaseConnectionS
 // ownership policies on items, kitchen_tools, conversations, and messages apply.
 // App-level user_id / parent-ownership predicates remain the first layer; RLS is
 // the second. Omitting withUserContext cannot silently run as table owner.
+type KitchenTransactionScope = {
+  userId: string;
+  tx: postgres.TransactionSql;
+  active: boolean;
+};
+const kitchenTransaction = new AsyncLocalStorage<KitchenTransactionScope>();
+
+/** Internal service boundary: await every operation; throw to roll back the list. */
+export async function withKitchenTransaction<T>(
+  userId: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  if (kitchenTransaction.getStore()) throw new Error("nested_kitchen_transaction");
+  return withUserContext(userId, async (tx) => {
+    const scope: KitchenTransactionScope = { userId, tx, active: true };
+    return kitchenTransaction.run(scope, async () => {
+      try {
+        return await fn();
+      } finally {
+        // Async descendants must not reuse a connection after COMMIT/ROLLBACK.
+        scope.active = false;
+      }
+    });
+  });
+}
+
 async function withUserContext<T>(
   userId: string,
   fn: (tx: postgres.TransactionSql) => Promise<T>,
 ): Promise<T> {
+  const scope = kitchenTransaction.getStore();
+  if (scope) {
+    if (!scope.active) throw new Error("closed_kitchen_transaction");
+    if (scope.userId !== userId) throw new Error("kitchen_transaction_identity_mismatch");
+    return fn(scope.tx);
+  }
   return sql.begin(async (tx) => {
     await tx`select set_config('request.jwt.claim.sub', ${userId}, true)`;
     await tx`set local role authenticated`;
