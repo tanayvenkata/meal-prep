@@ -7,7 +7,7 @@ tool validation, kitchen service, restricted database connection, and local Post
 Run with Node 24 and the local Supabase stack:
 
 ```sh
-npx vitest run src/__tests__/lib/kitchen-mcp.integration.test.ts
+pnpm exec vitest run src/__tests__/lib/kitchen-mcp.integration.test.ts
 ```
 
 Each case creates a random synthetic user, binds a server to loopback, performs
@@ -25,7 +25,7 @@ does not establish that vague estimates can be represented faithfully, and immed
 retry coverage does not establish durable idempotency after intervening writes.
 
 The model layer uses ten versioned natural-language scenarios in `scenarios.ts`.
-Run `npm run eval:kitchen` (or append `-- add-unknown` for one scenario). This
+Run `pnpm run eval:kitchen` (or append `add-unknown` for one scenario). This
 spends API credits using `OPENAI_API_KEY` from the environment or Doppler, and writes
 reports into ignored `.eval-results/kitchen/`. It is deliberately outside CI.
 Promptfoo 0.122.2 provides evaluation orchestration and assertion reports. Its
@@ -67,7 +67,7 @@ from passing scripted protocol and state checks.
 
 ## Answer-grader calibration
 
-Run `npm run eval:kitchen -- --calibrate-answers` before relying on answer scores.
+Run `pnpm run eval:kitchen --calibrate-answers` before relying on answer scores.
 This makes twelve paid judge requests against reference cases in
 `answer-cases.ts`; expected labels and case IDs are withheld from the judge.
 Cases distinguish truthful failure from false success, unknown from invented
@@ -88,15 +88,15 @@ Only run one paid evaluation at a time. Never reset the ledger to repeat a run.
 
 ## Failure handling and fresh validation
 
-`npm run eval:kitchen -- --recovery` runs two explicit fault cases. The first
+`pnpm run eval:kitchen --recovery` runs two explicit fault cases. The first
 executes a real local add and withholds its successful result from the model once;
 the next tool call must read state. The second injects a persistent service failure
 before create can write. The reports preserve actual server results separately
 from what the model observed. Adapter response loss is not a real network outage
 or ChatGPT host simulation.
 
-`npm run eval:kitchen -- --validation` runs four fresh validation prompts registered
-before their first observed results. `npm run eval:kitchen -- --all` runs all 16
+`pnpm run eval:kitchen --validation` runs four fresh validation prompts registered
+before their first observed results. `pnpm run eval:kitchen --all` runs all 16
 cases. Keep first-run results and do not call cases held out once used for tuning.
 
 Recovery reports distinguish `taskSuccess`, `safeFailure`, and `acceptancePass`.

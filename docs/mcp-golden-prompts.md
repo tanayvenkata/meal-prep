@@ -6,7 +6,7 @@ conversation proves real tool selection, account linking, and rendering.
 
 ## Setup
 
-1. Run `npm run mcp:dev` and connect MCP Inspector to the local server, or deploy the exact
+1. Run `pnpm run mcp:dev` and connect MCP Inspector to the local server, or deploy the exact
    commit and use the stable production `/mcp` URL.
 2. If tool metadata or the content-hashed widget URI changed, refresh or reconnect the
    ChatGPT app before testing.
@@ -29,6 +29,9 @@ conversation proves real tool selection, account linking, and rendering.
 | Mobile host | Run the direct prompt in a narrow host viewport. | The ordinary ChatGPT result remains readable; no widget or UI resource is expected. |
 | Two-user isolation | Connect account A, record a distinctive safe item, then repeat with account B. | Each account sees only its own pantry/tools. Account A's distinctive item never appears for B. |
 | Add pantry item | “Add chicken broth to Mise as 1 carton.” | Calls `add_pantry_item` once with an exact structured quantity and no identity field; returns `created`. A fresh kitchen read and the Mise pantry page show the same item and stable ID. |
+| Unknown quantity add | “I have mayo, please add it. I don't know how much.” | Creates one Mayo with unknown quantity; does not invent an amount or require one. |
+| Clear quantity | For an existing measured item: “Keep this item, but clear its quantity; I don't know how much is left.” | Uses the existing stable ID and unknown quantity mode; preserves the row and clears measured quantity. |
+| Descriptive quantity | “Save the rice quantity as 'a little left'; don't invent a number.” | Uses text quantity mode on the existing item; a fresh read returns the description. |
 | Pantry create retry | Repeat the same add with canonical-equivalent case/whitespace. | Returns `already_exists` with the original display name; no duplicate item is created. |
 | Correct pantry item | After a fresh read, “That chicken breast entry should be chicken broth.” | Calls `update_pantry_item` with the stable ID, exact current name as `expectedName`, and only the replacement `name`; preserves quantity/turnover and returns `updated`. |
 | Stale pantry correction | Rename the item on the website after ChatGPT reads it, then submit the old ID/name update. | Returns `conflict` with the current safe item fields; nothing changes and ChatGPT rereads before proposing a retry. |
@@ -43,7 +46,7 @@ conversation proves real tool selection, account linking, and rendering.
 | Retry | Repeat the exact same quantity request. | Returns `unchanged`; the final quantity remains `6 count` and no duplicate item or cumulative change appears. |
 | Missing write target | “Set my Saffron quantity to 1 jar” when Saffron does not exist. | Returns `not_found`; nothing is created or mutated. |
 | No inferred write | Ask for a recipe that uses six eggs. | A kitchen read may occur, but the quantity tool does not run because the user did not ask to change saved inventory. |
-| No free-text exact set | “Set my rice to about half a bag.” | Does not call `set_pantry_item_quantity` because the request lacks an exact amount. ChatGPT asks for an exact quantity; the exact-set tool schema has no text fallback. |
+| Vague absolute quantity | “Save my rice quantity as about half a bag.” | May use `update_pantry_item` with text quantity mode to preserve the estimate. It must not invent exact precision; `set_pantry_item_quantity` remains exact-only. |
 | Consume | With structured `6 count` Eggs: “I used two eggs; update Mise.” | Reads current context, confirms the mutation, then calls `consume_pantry_item` with `expectedQuantity: { amount: "6", unit: "count" }` and `deltaQuantity: { amount: "2", unit: "count" }`; returns before `6 count` and after `4 count`. |
 | Consume retry | Immediately repeat the same consume call with the old `6 count` expectation. | Returns `conflict` with current `4 count`; final inventory remains `4 count` and ChatGPT refreshes before proposing another mutation. |
 | Restock | With structured `1 bag` Rice: “Add two bags of rice to my pantry.” | Reads current context, then calls `restock_pantry_item` with `expectedQuantity: { amount: "1", unit: "bag" }` and `deltaQuantity: { amount: "2", unit: "bag" }`; returns before `1 bag` and after `3 bag`. |

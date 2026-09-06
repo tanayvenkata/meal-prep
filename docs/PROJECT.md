@@ -26,6 +26,8 @@ The local evaluation slice is now being implemented in issue #191; its runnable
 instructions and limitations live in [the evaluation README](../evals/kitchen/README.md).
 Read the relevant sections when making a foundation decision; do not load all
 historical documents for routine changes.
+Current verified requirements and remaining gates are indexed in
+[foundation acceptance](FOUNDATION-ACCEPTANCE.md).
 
 Verified baseline: `c4debb6`. Unit and local integration lanes pass. The simple
 Mayo addition works through the real MCP handler and local database with injected
@@ -104,3 +106,4 @@ do not inherit their screen inventory or backend sequence as requirements.
 Keep accepted decisions short, dated, evidence-backed, and revisitable. New audit
 proposals become project decisions when selected for implementation, not simply
 because an agent wrote them down.
+

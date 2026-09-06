@@ -12,7 +12,7 @@ Use Node 24 and the existing local Supabase stack. Start the optional viewer:
 
 ```sh
 docker compose -f compose.observability.yml up -d
-OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 npm run eval:kitchen:smoke
+OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 pnpm run eval:kitchen:smoke
 ```
 
 Open [Grafana](http://127.0.0.1:3001). In Explore, select **Tempo**, choose a trace-ID
@@ -34,12 +34,12 @@ duration histogram. `mise_mcp_requests_total` counts HTTP statuses, including
 authentication failures, separately from semantic tool outcomes. Instance IDs
 keep counters from different workers from being merged into one resetting stream.
 
-`npm run eval:kitchen:inspector` runs the official Inspector 2.5.0 CLI against
+`pnpm run eval:kitchen:inspector` runs the official Inspector 2.5.0 CLI against
 a private loopback fixture: initialization, discovery, descriptive add, and
 quantity clearing. It uses no model/API credits. The first run downloads the
 pinned Inspector package. Reports stay in ignored `.eval-results/kitchen/`.
 
-For model scenarios, set the same OTLP endpoint when running `npm run eval:kitchen`.
+For model scenarios, set the same OTLP endpoint when running `pnpm run eval:kitchen`.
 Each recorded tool call includes a trace ID. Model calls still use the shared $5
 budget ledger. Local traces and metrics cost no cloud fees; the optional Grafana
 container uses local disk and memory. Stop it with:

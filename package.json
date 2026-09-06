@@ -6,6 +6,7 @@
   "engines": {
     "node": "24.x"
   },
+  "packageManager": "pnpm@11.18.0",
   "scripts": {
     "dev": "doppler run -- next dev",
     "build": "next build",
@@ -20,7 +21,7 @@
     "eval:kitchen:inspector": "tsx evals/kitchen/inspector-smoke.ts",
     "db:provision-app-role": "node scripts/provision-mise-app-role.mjs",
     "mcp:serve": "tsx watch src/mcp/standalone.ts",
-    "mcp:dev": "doppler run -- npm run mcp:serve",
+    "mcp:dev": "doppler run -- pnpm run mcp:serve",
     "prepare": "husky"
   },
   "dependencies": {

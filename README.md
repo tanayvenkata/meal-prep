@@ -21,7 +21,7 @@ Live: https://meal-prep-tawny-kappa.vercel.app
 
 ```bash
 # 1. Install dependencies
-npm install
+pnpm install
 
 # 2. Authenticate with Doppler and link to this project
 doppler login
@@ -38,10 +38,10 @@ supabase start    # first run seeds the test user — see "Logging in locally" b
 # with mise_app auth errors, run:
 #   ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres \
 #   MISE_APP_DB_PASSWORD=mise_app_local ALLOW_SHORT_MISE_APP_PASSWORD=1 \
-#   npm run db:provision-app-role
+#   pnpm run db:provision-app-role
 
 # 5. Start the dev server
-npm run dev
+pnpm dev
 ```
 
 The dev app authenticates against your **local** Supabase stack (the Doppler `dev`
@@ -74,20 +74,20 @@ Then log in again — the test user is recreated with a matching password hash. 
 in, use the Pantry and Tools pages to inspect or correct the kitchen data ChatGPT sees.
 
 ## Commands
-
+ 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Start dev server (Doppler injects secrets) |
-| `npm run build` | Production build (bare — no secrets; Vercel/CI inject their own) |
-| `npm run build:local` | Production build on your laptop (Doppler injects secrets) |
-| `npm run lint` | Lint |
-| `npm test` | All tests in watch mode |
-| `npm run test:unit` | Unit tests only (no Supabase needed) |
-| `npm run test:integration` | DB integration tests (requires `supabase start`) |
-| `npm run db:provision-app-role` | Set/rotate `mise_app` password (needs `ADMIN_DATABASE_URL` + `MISE_APP_DB_PASSWORD`) |
-| `npm run mcp:dev` | Start the local Mise MCP server with Doppler `dev` config |
-| `npm run mcp:serve` | Start the MCP process with environment variables supplied by the caller |
-
+| `pnpm dev` | Start dev server (Doppler injects secrets) |
+| `pnpm run build` | Production build (bare — no secrets; Vercel/CI inject their own) |
+| `pnpm run build:local` | Production build on your laptop (Doppler injects secrets) |
+| `pnpm run lint` | Lint |
+| `pnpm test` | All tests in watch mode |
+| `pnpm run test:unit` | Unit tests only (no Supabase needed) |
+| `pnpm run test:integration` | DB integration tests (requires `supabase start`) |
+| `pnpm run db:provision-app-role` | Set/rotate `mise_app` password (needs `ADMIN_DATABASE_URL` + `MISE_APP_DB_PASSWORD`) |
+| `pnpm run mcp:dev` | Start the local Mise MCP server with Doppler `dev` config |
+| `pnpm run mcp:serve` | Start the MCP process with environment variables supplied by the caller |
+ 
 > **Why two build commands?** `build` is intentionally bare so it works where the Doppler
 > CLI doesn't exist — Vercel and CI inject the same secrets their own way. On your laptop,
 > use `build:local`, which wraps `next build` in `doppler run` to supply those secrets.
@@ -133,10 +133,10 @@ For local development, run the same MCP app as a standalone process:
 
 ```bash
 # Terminal 1: Next app (login + OAuth consent screen)
-npm run dev
+pnpm dev
 
 # Terminal 2: MCP server with local Supabase credentials
-npm run mcp:dev
+pnpm run mcp:dev
 
 # Terminal 3: temporary public HTTPS tunnel for ChatGPT Developer Mode
 ngrok http 8787
@@ -161,7 +161,7 @@ the hosted Doppler config explicitly only when a test deliberately needs the hos
 
 ```bash
 MCP_PUBLIC_URL=https://example.ngrok.app/mcp \
-  doppler run -c prd -- npm run mcp:serve
+  doppler run -c prd -- pnpm run mcp:serve
 ```
 
 Do not use the hosted configuration for automated tests. Exercise write tools against local
@@ -202,7 +202,7 @@ Worktrees are separate directories for feature branches (created via `git worktr
 doppler setup --project meal-prep --config dev
 
 # 2. Install node_modules — not shared between worktrees
-npm install
+pnpm install
 ```
 
 Supabase does NOT need to be restarted — it's one Docker container shared across all worktrees. Just make sure it's running (`supabase start` from any directory if not already up).
@@ -215,7 +215,7 @@ supabase db push --local
 supabase db reset
 ```
 
-After setup, `npm run dev` works normally.
+After setup, `pnpm dev` works normally.
 
 ## Architecture
 

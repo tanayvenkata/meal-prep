@@ -22,4 +22,4 @@ if [ "$has_update" -eq 0 ]; then
   exit 0
 fi
 
-doppler run -- npm run build && npm run test:unit
+doppler run -- pnpm run build && pnpm run test:unit
