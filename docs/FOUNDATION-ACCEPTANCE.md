@@ -15,7 +15,7 @@ not instructions or permanent product requirements.
 | Failures and recovery observable | Response-loss and persistent-service-failure cases; actual server result distinguished from model observation | Verified in the evaluation adapter, not ChatGPT |
 | Reproducibility and spend | Model snapshot, source/catalog/instruction hashes, pnpm lock/config hash, usage and shared atomic ledger | Recorded; cumulative estimate $1.007678 of $5 |
 | Comparable simplification experiment | `docs/audits/2026-09-06/kitchen-evaluation.md`: quantity uncertainty before/after | Recorded; existing schema columns reused |
-| Automated validation | 250 unit tests, 181 integration tests, TypeScript and lint on reconciled pnpm branch; pre-push build | Local checks pass; current remote CI must pass after base reconciliation |
+| Automated validation | 250 unit tests, 181 integration tests, TypeScript and lint on reconciled pnpm branch; pre-push build | Local checks and exact-head CI pass at `de30fa6` |
 | Real host/account linking | Updated `docs/mcp-golden-prompts.md`, including unknown/text/cleared quantities | Pending actual authenticated ChatGPT development check |
 | Review and rollback | Draft PRs #192, #194, #198; reversible code changes, no migration/vendor change | Delivered for review; not merged or deployed |
 
@@ -27,12 +27,25 @@ without adding product prompt complexity.
 
 ## Remaining acceptance
 
-Finish current CI after reconciling the rebased pnpm base, then run the relevant
-golden prompts in a fresh ChatGPT development conversation with the matching
-candidate metadata. The local standalone server and ngrok were not running at
-this review; do not report host acceptance based on the API adapter, Inspector,
-or an older production connector. Record the exact endpoint/commit, safe before/
-after evidence, and any host/account-linking failures.
+Exact-head CI passed for `de30fa6` ([run 34064778220](https://github.com/tanayvenkata/meal-prep/actions/runs/34064778220)).
+The candidate now runs against a separate local Supabase project,
+`mise-host-acceptance`, on ports 553xx with one synthetic account and empty kitchen.
+Public OAuth discovery, ES256 JWKS, password login, and unauthenticated MCP rejection
+passed. See [host preflight evidence](audits/2026-09-06/host-preflight.json).
+
+A separate **Mise Foundation Test** connector form is prepared in ChatGPT; it has
+not been created or linked. The existing Mise connector still targets production.
+Finish account linking and run the relevant golden prompts in a fresh development
+conversation with candidate metadata. Record exact endpoint/commit and independent
+before/after state. Preflight, Inspector, and API evaluations do not prove ChatGPT
+host acceptance.
+
+The temporary host environment is under `/tmp/mise-host-acceptance`; its private
+runtime file contains synthetic credentials and must never be committed. It uses a
+loopback routing proxy (8790), Next (3300), and the assigned ngrok origin. The proxy
+exposes only the needed auth paths and rejects auth admin/Data API routes. Stop
+ngrok and the proxy after host testing; stop only Supabase project
+`mise-host-acceptance`, never the shared development stack.
 
 ## Deliberate limits
 

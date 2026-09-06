@@ -1,0 +1,64 @@
+{
+  "checkedAt": "2026-09-06T22:58:39.031519+00:00",
+  "candidateCommit": "de30fa6bd3462e46a111454a59fdd02a543a7391",
+  "endpoint": "https://scabby-erratic-roaming.ngrok-free.dev/mcp",
+  "databaseProject": "mise-host-acceptance",
+  "databasePort": 55322,
+  "authentication": "Real Supabase OAuth, ES256; private synthetic user; global signup disabled",
+  "checks": [
+    {
+      "path": "/mcp",
+      "method": "POST",
+      "status": 401,
+      "challenge": "Bearer resource_metadata=\"https://scabby-erratic-roaming.ngrok-free.dev/.well-known/oauth-protected-resource/mcp\", scope=\"openid\""
+    },
+    {
+      "path": "/.well-known/oauth-protected-resource/mcp",
+      "method": "GET",
+      "status": 200,
+      "resource": "https://scabby-erratic-roaming.ngrok-free.dev/mcp",
+      "authorization_servers": [
+        "https://scabby-erratic-roaming.ngrok-free.dev/auth/v1"
+      ]
+    },
+    {
+      "path": "/auth/v1/.well-known/openid-configuration",
+      "method": "GET",
+      "status": 200,
+      "issuer": "https://scabby-erratic-roaming.ngrok-free.dev/auth/v1",
+      "authorization_endpoint": "https://scabby-erratic-roaming.ngrok-free.dev/auth/v1/oauth/authorize",
+      "token_endpoint": "https://scabby-erratic-roaming.ngrok-free.dev/auth/v1/oauth/token",
+      "registration_endpoint": "https://scabby-erratic-roaming.ngrok-free.dev/auth/v1/oauth/clients/register"
+    },
+    {
+      "path": "/auth/v1/.well-known/jwks.json",
+      "method": "GET",
+      "status": 200,
+      "signingAlgorithms": [
+        "ES256"
+      ]
+    },
+    {
+      "path": "/auth/v1/admin/users",
+      "method": "GET",
+      "status": 404
+    },
+    {
+      "path": "/login",
+      "method": "GET",
+      "status": 200
+    }
+  ],
+  "syntheticPasswordLoginVerified": true,
+  "chatGptAcceptance": "pending; separate connector form prepared, not created",
+  "productionWrites": false,
+  "additionalModelSpendUsd": 0,
+  "isolatedState": {
+    "users": 1,
+    "pantryItems": 0,
+    "kitchenTools": 0,
+    "appRoleSuperuser": false,
+    "appRoleBypassRls": false,
+    "appRoleInherit": false
+  }
+}
