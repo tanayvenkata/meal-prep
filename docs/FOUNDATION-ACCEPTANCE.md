@@ -8,7 +8,7 @@ not instructions or permanent product requirements.
 | Requirement | Evidence | Status |
 | --- | --- | --- |
 | Repeatable local command | `pnpm run eval:kitchen --all`; isolated synthetic users, actual MCP HTTP client and local restricted Postgres writes | Verified on the pnpm dependency baseline |
-| Versioned natural-language cases | Ten baseline, two fault, four observed validation, seven everyday cases in `evals/kitchen/scenarios.ts` | Latest full Luna run: 26/26 accepted; 25 task passes and one expected safe failure |
+| Versioned natural-language cases | Ten baseline, two fault, four observed validation, seven everyday, three dialogue cases in `evals/kitchen/scenarios.ts` | Latest full Luna run: 26/26 accepted; 25 task passes and one expected safe failure |
 | Effects independently checked | Initial/final SQL snapshots, expected state, duplicate prevention, stable identities, forbidden writes; 14 real MCP/database cases | Verified; not a guarantee for every possible retry history |
 | Semantic outcomes and correlation | Command/tool/HTTP outcomes, safe logs, OTel traces and local Grafana collector; `docs/OBSERVABILITY.md` | Local evidence available; production collection not deployed |
 | Answer correctness evaluated | Versioned grader, explicit false-success controls, 12 calibration examples, one user-adjudicated answer | Implemented; fallible model score, most labels remain agent-authored |
@@ -38,8 +38,12 @@ The candidate now runs against a separate local Supabase project,
 Public OAuth discovery, ES256 JWKS, password login, and unauthenticated MCP rejection
 passed. See [host preflight evidence](audits/2026-09-06/host-preflight.json).
 
-The user created **Mise Foundation Test** in ChatGPT. Its synthetic-account login
-is still pending; the observed login page reports invalid credentials. The existing Mise connector still targets production.
+**Mise Foundation Test** successfully linked to the isolated synthetic account on
+2026-09-06. Existing credentials worked; the old OAuth request had expired. A fresh
+authorization completed and ChatGPT displayed “Mise Foundation Test is installed.”
+Host empty read passed, but the original mayo add failed: ChatGPT claimed a quantity
+was required and made no add attempt. Independent SQL remained empty. See
+[host evidence](audits/2026-09-06/chatgpt-host-verification.json). The existing Mise connector still targets production.
 Finish account linking and run the relevant golden prompts in a fresh development
 conversation with candidate metadata. Record exact endpoint/commit and independent
 before/after state. Preflight, Inspector, and API evaluations do not prove ChatGPT
