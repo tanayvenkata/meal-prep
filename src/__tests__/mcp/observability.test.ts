@@ -4,7 +4,7 @@ import { AggregationTemporality, DataPointType, InMemoryMetricExporter } from "@
 import { startKitchenTelemetry } from "@/lib/telemetry";
 import { handleMiseMcpRequest } from "@/mcp/server";
 import { ObservedMcpTransport, classifyToolResult, observeKitchenCommand } from "@/mcp/observability";
-import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { Transport } from "@modelcontextprotocol/server";
 
 const spans = new InMemorySpanExporter();
 const metricExporter = new InMemoryMetricExporter(AggregationTemporality.DELTA);

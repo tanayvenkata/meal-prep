@@ -32,6 +32,9 @@ Mayo addition works through the real MCP handler and local database with injecte
 auth. However, HTTP 200 can carry input errors, rejected changes, or backend tool
 errors. The draft observability slice now distinguishes tool and command outcomes
 and correlates them with OTel traces; see [observability](OBSERVABILITY.md).
+The MCP server was migrated to the modular TypeScript SDK v2 in #179, establishing
+dual-era compatibility for both the modern 2026-07-28 protocol revision (SEP-2243
+headers, capability discovery) and legacy 2025-11-25 ChatGPT Developer Mode.
 A past post-commit timestamp
 serialization failure was fixed in #188. The cause of the user's particular past
 failure is unproven. The first automated inventory-effect baseline and its
@@ -50,7 +53,9 @@ ChatGPT → authenticated /mcp → kitchen service → Postgres
 Website → authenticated APIs → same service → same data
 ```
 
-- TypeScript, Next.js 16.3.4, Node **24**, React, Zod, and the MCP TypeScript SDK.
+- TypeScript, Next.js 16.3.4, Node **24**, React, Zod, and the modular MCP TypeScript SDK v2
+  (`@modelcontextprotocol/server`, `@modelcontextprotocol/core`, etc.) supporting both the
+  2026-07-28 protocol revision and legacy 2025-11-25 ChatGPT Developer Mode.
 - Supabase provides Postgres and authentication, including the MCP OAuth server.
   `src/lib/db.ts` owns SQL; `src/lib/kitchen-service.ts` owns kitchen behavior.
 - MCP exposes 12 tools: kitchen read; pantry and equipment lifecycle changes;

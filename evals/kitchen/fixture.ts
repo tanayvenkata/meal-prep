@@ -2,8 +2,7 @@ import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import postgres from "postgres";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { createPantryItem } from "../../src/lib/kitchen-service";
 
