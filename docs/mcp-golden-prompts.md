@@ -17,6 +17,43 @@ conversation proves real tool selection, account linking, and rendering.
    Do not record tokens, user IDs, or kitchen contents beyond the minimum needed to prove the
    expected result.
 
+## Foundation candidate acceptance (2026-09-06)
+
+Use the separate **Mise Foundation Test** connector and synthetic local account for
+this pass. The existing Mise connector points at production and is not evidence
+for the candidate. The isolated environment and preflight are recorded in
+[foundation acceptance](FOUNDATION-ACCEPTANCE.md).
+
+Run this sequence in a fresh conversation after account linking. Confirm the
+selected connector before each write. Capture the tool name, its semantic outcome,
+ChatGPT's answer, and an independent local database snapshot after each step.
+Use synthetic names only; never copy bearer tokens, session cookies, or passwords
+into reports.
+
+| Step | Prompt | Independent check |
+| --- | --- | --- |
+| 1 | Show me my Mise kitchen. | Empty pantry and equipment; no invented entries. |
+| 2 | I have mayo, please add it. | Exactly one Mayo, unknown quantity. |
+| 3 | Add mayo. | Same item identity; no duplicate. |
+| 4 | My mayo is about half a jar; save that description. | Text quantity retains uncertainty rather than inventing an exact number. |
+| 5 | Clear the saved quantity for mayo; I don't know how much remains. | Same item, unknown quantity. |
+| 6 | Rename mayo to Mayonnaise. | Same item identity, updated name. |
+| 7 | Add Eggs, 6 count. | Exact quantity 6 count. |
+| 8 | I used 2 eggs; update Mise. | Exact quantity 4 count. |
+| 9 | Suggest a meal that could use 2 eggs. | Advice may read inventory; stored quantity stays 4 count. |
+| 10 | I own a cast-iron skillet; save it as cookware. | One owned cookware entry. |
+
+Then check a clearly unrelated prompt makes no Mise call. Use a second synthetic
+account to verify the first account's entries are absent. Verify disconnected or
+invalid authentication returns account linking without data. Inspect the response
+at a narrow viewport. Record any blocked host case as unverified, not passed by
+analogy with an API test.
+
+Do not force race conditions through repeated natural-language prompts: a new
+user request can authorize a new write. Response-loss, immediate stale retry, and
+atomic rollback checks have deterministic local fixtures. Their passing results
+must remain labeled separately from ChatGPT host observations.
+
 ## Prompt matrix
 
 | Case | Prompt or action | Expected result |

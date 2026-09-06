@@ -16,10 +16,10 @@ The admin connection is only for fixture setup, independent state inspection, an
 cleanup. Application writes still use `mise_app` and its authorization boundary.
 Authentication is injected; these checks do not verify OAuth or ChatGPT behavior.
 
-Twelve scripted cases cover unknown quantity, duplicate add, rename, stale rename,
+Fourteen scripted cases cover unknown quantity, duplicate add, rename, stale rename,
 exact fractional quantity, immediate consume retry, invalid input, equipment,
 atomic batch rejection, read-only context, descriptive quantities, and clearing
-quantities. Passing them is a protocol/database
+quantities, committed-response recovery, and cross-user write rejection. Passing them is a protocol/database
 baseline, **not a model task-success score**. In particular, an explicit `0.5 jar`
 does not establish that vague estimates can be represented faithfully, and immediate
 retry coverage does not establish durable idempotency after intervening writes.
