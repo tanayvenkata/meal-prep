@@ -1,0 +1,66 @@
+{
+  "inspectorVersion": "2.5.0",
+  "initialized": {
+    "serverInfo": {
+      "name": "mise",
+      "version": "0.1.0"
+    },
+    "protocolVersion": "2025-11-25",
+    "capabilities": {
+      "tools": {
+        "listChanged": true
+      }
+    },
+    "instructions": "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; deletes require explicit delete intent. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying."
+  },
+  "toolCount": 12,
+  "added": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Added Rice to your pantry."
+      }
+    ],
+    "structuredContent": {
+      "status": "created",
+      "item": {
+        "id": 3464,
+        "name": "Rice",
+        "quantity": "a little left",
+        "turnover": "high",
+        "created_at": "2026-09-06T21:42:08.905Z"
+      }
+    }
+  },
+  "cleared": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Updated Rice."
+      }
+    ],
+    "structuredContent": {
+      "status": "updated",
+      "item": {
+        "id": 3464,
+        "name": "Rice",
+        "quantity": "",
+        "turnover": "high",
+        "created_at": "2026-09-06T21:42:08.905Z"
+      }
+    }
+  },
+  "final": {
+    "pantry": [
+      {
+        "id": "3464",
+        "name": "Rice",
+        "quantity": "",
+        "quantity_text": "",
+        "quantity_value": null,
+        "quantity_unit": null
+      }
+    ],
+    "equipment": []
+  }
+}

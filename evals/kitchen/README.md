@@ -51,4 +51,12 @@ Only synthetic kitchen data is sent to the model or written into these reports.
 The app's existing Supabase and Vercel plans are unchanged. API evaluation through
 an MCP-to-function adapter is not identical to ChatGPT's host orchestration.
 
-Production telemetry and actual ChatGPT acceptance are separate remaining layers.
+The [observability guide](../../docs/OBSERVABILITY.md) covers correlated command/tool
+traces, the free local Grafana viewer, the no-model smoke command, and Inspector.
+The budget guard now has deterministic tests for concurrent runs, unknown charges,
+invalid usage, changed/corrupt ledgers, and duplicate settlement. Reservations are
+written atomically and rounded conservatively to microdollars. `run.lock` records
+the owner PID; verify that process is gone before removing a stale lock.
+
+Actual ChatGPT acceptance and stronger held-out/model-answer tests remain separate
+from passing scripted protocol and state checks.

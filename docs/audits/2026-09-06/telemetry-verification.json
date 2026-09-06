@@ -1,0 +1,252 @@
+{
+  "verifiedAt": "2026-09-06",
+  "collector": "grafana/otel-lgtm:0.32.1",
+  "traceChecks": [
+    {
+      "traceId": "18cecacbb4a040f2e7591896cfd12738",
+      "spanNames": [
+        "kitchen.command",
+        "mcp.tool",
+        "eval.tool.call"
+      ]
+    },
+    {
+      "traceId": "c72a07547b40ff473e9de30506ed5486",
+      "spanNames": [
+        "kitchen.command",
+        "mcp.tool",
+        "eval.tool.call"
+      ]
+    },
+    {
+      "traceId": "e67550ac2eff9bc9a56a3adb26a6275a",
+      "spanNames": [
+        "mcp.tool",
+        "eval.tool.call"
+      ]
+    }
+  ],
+  "metrics": {
+    "mise_kitchen_operations_total": [
+      {
+        "metric": {
+          "__name__": "mise_kitchen_operations_total",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "mise_layer": "command",
+          "mise_operation": "add_pantry_item",
+          "mise_outcome": "applied",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.977,
+          "1"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "mise_kitchen_operations_total",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "mise_layer": "tool",
+          "mise_operation": "add_pantry_item",
+          "mise_outcome": "applied",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.977,
+          "1"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "mise_kitchen_operations_total",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "mise_layer": "command",
+          "mise_operation": "set_pantry_item_quantity",
+          "mise_outcome": "rejected",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.977,
+          "1"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "mise_kitchen_operations_total",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "mise_layer": "tool",
+          "mise_operation": "set_pantry_item_quantity",
+          "mise_outcome": "rejected",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.977,
+          "1"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "mise_kitchen_operations_total",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "mise_layer": "tool",
+          "mise_operation": "add_pantry_item",
+          "mise_outcome": "tool_error",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.977,
+          "1"
+        ]
+      }
+    ],
+    "mise_mcp_requests_total": [
+      {
+        "metric": {
+          "__name__": "mise_mcp_requests_total",
+          "http_response_status_code": "200",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.982,
+          "4"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "mise_mcp_requests_total",
+          "http_response_status_code": "202",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.982,
+          "1"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "mise_mcp_requests_total",
+          "http_response_status_code": "405",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.982,
+          "1"
+        ]
+      }
+    ],
+    "mise_kitchen_duration_seconds_count": [
+      {
+        "metric": {
+          "__name__": "mise_kitchen_duration_seconds_count",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "mise_layer": "command",
+          "mise_operation": "add_pantry_item",
+          "mise_outcome": "applied",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.984,
+          "1"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "mise_kitchen_duration_seconds_count",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "mise_layer": "tool",
+          "mise_operation": "add_pantry_item",
+          "mise_outcome": "applied",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.984,
+          "1"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "mise_kitchen_duration_seconds_count",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "mise_layer": "command",
+          "mise_operation": "set_pantry_item_quantity",
+          "mise_outcome": "rejected",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.984,
+          "1"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "mise_kitchen_duration_seconds_count",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "mise_layer": "tool",
+          "mise_operation": "set_pantry_item_quantity",
+          "mise_outcome": "rejected",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.984,
+          "1"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "mise_kitchen_duration_seconds_count",
+          "instance": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "job": "mise-kitchen",
+          "mise_layer": "tool",
+          "mise_operation": "add_pantry_item",
+          "mise_outcome": "tool_error",
+          "service_instance_id": "32537526-caaa-4110-8f72-0ae43b1b02ba",
+          "service_name": "mise-kitchen",
+          "service_version": "development"
+        },
+        "value": [
+          1788731461.984,
+          "1"
+        ]
+      }
+    ]
+  }
+}

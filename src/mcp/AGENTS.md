@@ -17,6 +17,11 @@ update field to leave it unchanged. Relative operations still require explicit
 structured quantities. Evaluate schema alternatives on the same versioned cases
 and record regressions as well as improvements; model evaluations do not replace
 actual ChatGPT host acceptance or OAuth tests.
+The public transport decorator records final MCP outcomes, including failures
+outside service callbacks; service spans record command outcomes separately.
+Keep telemetry limited to server-owned operation names, bounded outcomes, timing,
+and correlation IDs. Never export arguments, results, identities, or raw exception
+text. See `docs/OBSERVABILITY.md` for the collector and verification commands.
 
 ## Docs-first and SDK-first rule
 
