@@ -38,9 +38,10 @@ metadata, or OAuth/account-linking behavior:
    actually export. The installed package API is the implementation contract;
    examples written for a different version are only guidance.
 4. Inventory official SDK helpers and examples before writing protocol,
-   authentication, or bridge plumbing. Default to the official MCP SDK,
-   `@modelcontextprotocol/ext-apps`, and Apps SDK UI primitives when they cover
-   the required behavior.
+   authentication, or bridge plumbing. Default to the official MCP SDK v2
+   modular packages (`@modelcontextprotocol/server`, `@modelcontextprotocol/core`,
+   `@modelcontextprotocol/node`, `@modelcontextprotocol/express`, etc.) and Apps
+   SDK UI primitives when they cover the required behavior.
 
 Custom protocol or authentication code is allowed only when the official
 helper cannot preserve required behavior. Keep the adapter narrow, explain the
@@ -88,6 +89,22 @@ transitive dependencies.
   Keep create retries canonical/idempotent, distinguish missing/foreign IDs
   from stale-name conflicts without exposing ownership, and require explicit
   current-turn delete intent.
+
+## Modular MCP SDK v2 and Dual-Era Protocol Architecture
+
+Mise uses the modular MCP TypeScript SDK v2 (`@modelcontextprotocol/server`, `@modelcontextprotocol/core`, `@modelcontextprotocol/node`, `@modelcontextprotocol/express`) while maintaining full dual-era protocol compatibility:
+
+- **Dual-era detection (`isLegacyRequest`)**:
+  - **Modern (2026-07-28)**: Requests carrying `mcp-session-id`, `mcp-protocol-version: 2026-07-28`, or routing through `createMcpHandler` (`PerRequestHTTPServerTransport`). Modern requests support capability discovery (`server/discover`), use modern result envelopes with `_meta`, and enforce SEP-2243 headers (`Mcp-Method`, `Mcp-Name`). Missing or mismatched method/name headers are rejected with status 400 (`-32020`).
+  - **Legacy (2025-11-25)**: Standard Streamable HTTP JSON-RPC 2.0 requests without modern headers (such as ChatGPT Developer Mode). Handled by `OpenAiCompatibleNodeStreamableHTTPServerTransport` and `OpenAiCompatibleWebStandardStreamableHTTPServerTransport`.
+- **OpenAI Compatibility Adapter & Response Patching (`patchOpenAiSecuritySchemes`)**:
+  ChatGPT Developer Mode requires `securitySchemes` directly on each tool descriptor in `tools/list`. The SDK v2 schema generator omits custom root keys. `patchOpenAiSecuritySchemes` intercepts outgoing `tools/list` responses on both legacy transports and modern HTTP response paths to inject `securitySchemes` at the tool root (for 2025 ChatGPT compatibility) as well as inside `tool._meta` (for 2026 hosts).
+- **Transport Observability (`ObservedMcpTransport`)**:
+  Both legacy and modern transports are wrapped via `createMiseServer` to record OpenTelemetry spans and metrics for incoming requests and tool calls. To prevent microtask race conditions where `PerRequestHTTPServerTransport.prototype.send` schedules a microtask to close the transport, `ObservedMcpTransport` synchronously removes the pending request from tracking before awaiting delivery, ensuring clean `success` / `delivery_error` resolution instead of spurious `interrupted` outcomes.
+- **Fail-Closed RFC 6750 Authentication**:
+  Unauthenticated MCP requests receive an RFC 6750 `401 Unauthorized` challenge with `WWW-Authenticate: Bearer error="invalid_token", ...` when an invalid token is provided, or a clean challenge without `error=` parameter when no token is present. Both the Express standalone server (`requireBearerAuth` forwarding `req.auth` through `toNodeHandler`) and the Next.js hosted route handler enforce this before tool execution.
+- **Dual-Era CORS Headers**:
+  `Access-Control-Allow-Headers` and `Access-Control-Expose-Headers` include `Mcp-Method, Mcp-Name, Mcp-Param-*` alongside standard headers, enabling browser and proxy clients to inspect and route MCP calls cleanly.
 
 ## Required protocol validation
 

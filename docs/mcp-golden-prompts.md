@@ -17,6 +17,19 @@ conversation proves real tool selection, account linking, and rendering.
    Do not record tokens, user IDs, or kitchen contents beyond the minimum needed to prove the
    expected result.
 
+## Protocol and Host Capability Matrix
+
+Mise supports both modern 2026-07-28 hosts and legacy 2025-11-25 clients:
+
+| Capability / Seam | Modern 2026-07-28 Hosts | Legacy 2025-11-25 / ChatGPT Developer Mode |
+| --- | --- | --- |
+| Transport & Routing | `PerRequestHTTPServerTransport` via `createMcpHandler` (`/mcp`) | `StreamableHTTPServerTransport` with legacy fallback |
+| Session Identification | `mcp-session-id` / `mcp-protocol-version: 2026-07-28` | Traditional JSON-RPC 2.0 requests |
+| Discovery | Capability discovery via `server/discover` | `tools/list` initialization query |
+| Tool List Security | `tool._meta.securitySchemes` + top-level `securitySchemes` | Top-level `securitySchemes` on each tool descriptor |
+| HTTP Headers (SEP-2243) | `Mcp-Method` and `Mcp-Name` strictly validated | Relaxed header presence |
+| Auth Failure | Fail-closed RFC 6750 401 with `resource_metadata` | Fail-closed RFC 6750 401 with `resource_metadata` |
+
 ## Prompt matrix
 
 | Case | Prompt or action | Expected result |

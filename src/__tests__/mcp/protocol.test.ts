@@ -1,6 +1,6 @@
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { AuthInfo } from "@modelcontextprotocol/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   AdjustPantryItemQuantityBatchOutcome,
@@ -1652,7 +1652,7 @@ describe("Mise MCP OAuth wire contract", () => {
 
     expect(body.result?.isError).toBe(true);
     expect(body.result?.content?.[0].text).toContain(
-      "MCP error -32602: Input validation error",
+      "Input validation error",
     );
     expect(mockApplyReviewedReceiptImport).not.toHaveBeenCalled();
   });
@@ -2401,3 +2401,223 @@ describe("Mise MCP OAuth wire contract", () => {
       },
     );
   });
+
+describe("Modern 2026-07-28 protocol wire contract", () => {
+  async function postModernMcp(
+    body: Record<string, unknown>,
+    headers: Record<string, string> = {},
+    token = "test-token",
+  ) {
+    const response = await fetch(mcpUrl, {
+      method: "POST",
+      headers: {
+        accept: "application/json, text/event-stream",
+        "content-type": "application/json",
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
+      body: JSON.stringify(body),
+    });
+    return response;
+  }
+
+  it("discovers instructions and capabilities via server/discover", async () => {
+    const response = await postModernMcp(
+      {
+        jsonrpc: "2.0",
+        id: 101,
+        method: "server/discover",
+        params: {
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      },
+      { "mcp-method": "server/discover" },
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      jsonrpc: "2.0",
+      id: 101,
+      result: {
+        supportedVersions: ["2026-07-28"],
+        capabilities: { tools: expect.any(Object) },
+        instructions: expect.stringContaining("Read get_kitchen_context"),
+        _meta: {
+          "io.modelcontextprotocol/serverInfo": { name: "mise", version: "0.1.0" },
+        },
+      },
+    });
+  });
+
+  it("publishes tools with securitySchemes in modern era tools/list", async () => {
+    const response = await postModernMcp(
+      {
+        jsonrpc: "2.0",
+        id: 102,
+        method: "tools/list",
+        params: {
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      },
+      { "mcp-method": "tools/list" },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      result: { tools: Array<Record<string, unknown>> };
+    };
+    expect(body.result.tools).toBeDefined();
+    const tool = body.result.tools.find((t) => t.name === "get_kitchen_context");
+    expect(tool).toBeDefined();
+    expect(tool?.securitySchemes).toEqual([{ type: "oauth2", scopes: ["openid"] }]);
+    expect((tool?._meta as Record<string, unknown>).securitySchemes).toEqual([
+      { type: "oauth2", scopes: ["openid"] },
+    ]);
+  });
+
+  it("executes tools/call with Mcp-Method and Mcp-Name headers and _meta envelope", async () => {
+    const response = await postModernMcp(
+      {
+        jsonrpc: "2.0",
+        id: 103,
+        method: "tools/call",
+        params: {
+          name: "get_kitchen_context",
+          arguments: {},
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      },
+      {
+        "mcp-method": "tools/call",
+        "mcp-name": "get_kitchen_context",
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      result: { structuredContent: { pantry: unknown[] } };
+    };
+    expect(body.result.structuredContent).toBeDefined();
+    expect(body.result.structuredContent.pantry).toHaveLength(1);
+    expect(mockLoadKitchenContext).toHaveBeenCalledWith("user-123");
+  });
+
+  it("rejects request when Mcp-Method header disagrees with payload method", async () => {
+    const response = await postModernMcp(
+      {
+        jsonrpc: "2.0",
+        id: 104,
+        method: "tools/call",
+        params: {
+          name: "get_kitchen_context",
+          arguments: {},
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      },
+      {
+        "mcp-method": "tools/list",
+        "mcp-name": "get_kitchen_context",
+      },
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as {
+      error: { code: number; message: string };
+    };
+    expect(body.error.code).toBe(-32020);
+    expect(body.error.message).toContain("disagree");
+  });
+
+  it("rejects tools/call when Mcp-Name header disagrees with params.name", async () => {
+    const response = await postModernMcp(
+      {
+        jsonrpc: "2.0",
+        id: 105,
+        method: "tools/call",
+        params: {
+          name: "get_kitchen_context",
+          arguments: {},
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      },
+      {
+        "mcp-method": "tools/call",
+        "mcp-name": "add_pantry_item",
+      },
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as {
+      error: { code: number; message: string };
+    };
+    expect(body.error.code).toBe(-32020);
+    expect(body.error.message).toContain("disagree");
+  });
+
+  it("rejects modern requests with missing Mcp-Method header", async () => {
+    const response = await postModernMcp(
+      {
+        jsonrpc: "2.0",
+        id: 106,
+        method: "tools/call",
+        params: {
+          name: "get_kitchen_context",
+          arguments: {},
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      },
+      {}, // missing Mcp-Method
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as {
+      error: { code: number; message: string };
+    };
+    expect(body.error.code).toBe(-32020);
+    expect(body.error.message).toContain("absent");
+  });
+
+  it("challenges unauthenticated modern requests with RFC 6750 discovery", async () => {
+    const response = await postModernMcp(
+      {
+        jsonrpc: "2.0",
+        id: 107,
+        method: "server/discover",
+        params: {
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      },
+      { "mcp-method": "server/discover" },
+      "", // no token
+    );
+
+    expect(response.status).toBe(401);
+    const challenge = response.headers.get("www-authenticate") ?? "";
+    expect(challenge).toContain(
+      'resource_metadata="https://mcp.mise.example/.well-known/oauth-protected-resource/mcp"',
+    );
+    expect(challenge).not.toContain("error=");
+  });
+});

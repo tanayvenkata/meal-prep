@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { getOAuthProtectedResourceMetadataUrl } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import type {
+  AuthInfo,
   OAuthMetadata,
   OAuthProtectedResourceMetadata,
-} from "@modelcontextprotocol/sdk/shared/auth.js";
+} from "@modelcontextprotocol/server";
+import { getOAuthProtectedResourceMetadataUrl } from "@modelcontextprotocol/server";
 
 export const MCP_SCOPES = ["openid"];
 

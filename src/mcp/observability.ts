@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { context, metrics, propagation, SpanKind, SpanStatusCode, trace, type Span } from "@opentelemetry/api";
-import type { Transport, TransportSendOptions } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { JSONRPCMessage, RequestId } from "@modelcontextprotocol/sdk/types.js";
+import type {
+  JSONRPCMessage,
+  RequestId,
+  Transport,
+  TransportSendOptions,
+} from "@modelcontextprotocol/server";
 
 const applied = new Set(["created", "updated", "deleted", "applied"]);
 const unchanged = new Set(["unchanged", "already_exists"]);
@@ -84,7 +88,7 @@ export class ObservedMcpTransport implements Transport {
   onerror?: Transport["onerror"];
   private pending = new Map<RequestId, { span: Span; name: string; started: number }>();
 
-  constructor(private inner: Transport, private tools: ReadonlySet<string>, private requestId = randomUUID()) {}
+  constructor(private inner: Transport, private tools: ReadonlySet<string>, private requestId: string = randomUUID()) {}
   get sessionId() { return this.inner.sessionId; }
   setProtocolVersion(version: string) { this.inner.setProtocolVersion?.(version); }
 
@@ -93,7 +97,10 @@ export class ObservedMcpTransport implements Transport {
       if ("method" in message && message.method === "tools/call" && "id" in message) {
         const proposed = message.params?.name;
         const name = typeof proposed === "string" && this.tools.has(proposed) ? proposed : "unknown_tool";
-        const parent = propagation.extract(context.active(), extra?.requestInfo?.headers ?? {});
+        const headers = extra?.request
+          ? Object.fromEntries(extra.request.headers.entries())
+          : (extra as { requestInfo?: { headers?: Record<string, string> } } | undefined)?.requestInfo?.headers ?? {};
+        const parent = propagation.extract(context.active(), headers);
         const span = trace.getTracer("mise.kitchen", "1").startSpan("mcp.tool", { kind: SpanKind.SERVER, attributes: { "mise.operation": name } }, parent);
         this.pending.set(message.id, { span, name, started: performance.now() });
         context.with(trace.setSpan(parent, span), () => this.onmessage?.(message, extra));
@@ -117,13 +124,18 @@ export class ObservedMcpTransport implements Transport {
   async send(message: JSONRPCMessage, options?: TransportSendOptions) {
     const id = "id" in message ? message.id : undefined;
     const pending = id !== undefined ? this.pending.get(id) : undefined;
-    try {
-      await this.inner.send(message, options);
-      if (pending && id !== undefined && ("result" in message || "error" in message)) this.end(id, classifyToolResult(message, pending.name));
-    } catch (error) {
-      if (pending && id !== undefined) this.end(id, "delivery_error");
-      throw error;
+    if (pending && id !== undefined && ("result" in message || "error" in message)) {
+      this.pending.delete(id);
+      try {
+        await this.inner.send(message, options);
+        finish(pending.span, "tool", pending.name, classifyToolResult(message, pending.name), pending.started, this.requestId);
+      } catch (error) {
+        finish(pending.span, "tool", pending.name, "delivery_error", pending.started, this.requestId);
+        throw error;
+      }
+      return;
     }
+    await this.inner.send(message, options);
   }
 
   async close() {

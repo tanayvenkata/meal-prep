@@ -1,18 +1,28 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
-import { InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
-import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
-import type { OAuthTokenVerifier } from "@modelcontextprotocol/sdk/server/auth/provider.js";
 import {
+  McpServer,
+  WebStandardStreamableHTTPServerTransport,
+  createMcpHandler,
+  isLegacyRequest,
+  OAuthError,
+  OAuthErrorCode,
+  type AuthInfo,
+  type JSONRPCMessage,
+  type Transport,
+} from "@modelcontextprotocol/server";
+import {
+  createMcpExpressApp,
   getOAuthProtectedResourceMetadataUrl,
   mcpAuthMetadataRouter,
-} from "@modelcontextprotocol/sdk/server/auth/router.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+  requireBearerAuth,
+  type OAuthTokenVerifier,
+} from "@modelcontextprotocol/express";
+import {
+  NodeStreamableHTTPServerTransport,
+  toNodeHandler,
+  toWebRequest,
+} from "@modelcontextprotocol/node";
 import { z } from "zod";
 import {
   getMcpAuthChallenge,
@@ -736,10 +746,42 @@ export function addOpenAiToolSecuritySchemes(message: JSONRPCMessage): JSONRPCMe
   } as JSONRPCMessage;
 }
 
-class OpenAiCompatibleStreamableHTTPServerTransport extends StreamableHTTPServerTransport {
+function getUserIdFromContext(ctx: unknown): string | undefined {
+  if (!ctx || typeof ctx !== "object") return undefined;
+  const c = ctx as {
+    http?: { authInfo?: AuthInfo };
+    authInfo?: AuthInfo;
+  };
+  const userId = c.http?.authInfo?.extra?.userId ?? c.authInfo?.extra?.userId;
+  return typeof userId === "string" ? userId : undefined;
+}
+
+export async function patchOpenAiSecuritySchemes(response: Response): Promise<Response> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return response;
+  }
+  try {
+    const text = await response.text();
+    const data = JSON.parse(text);
+    const patched = addOpenAiToolSecuritySchemes(data);
+    const patchedText = JSON.stringify(patched);
+    const headers = new Headers(response.headers);
+    headers.set("content-length", String(Buffer.byteLength(patchedText)));
+    return new Response(patchedText, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  } catch {
+    return response;
+  }
+}
+
+class OpenAiCompatibleNodeStreamableHTTPServerTransport extends NodeStreamableHTTPServerTransport {
   override send(
     message: JSONRPCMessage,
-    options?: Parameters<StreamableHTTPServerTransport["send"]>[1],
+    options?: Parameters<NodeStreamableHTTPServerTransport["send"]>[1],
   ) {
     return super.send(addOpenAiToolSecuritySchemes(message), options);
   }
@@ -768,6 +810,7 @@ export async function createMiseServer(
     updateKitchenTool = editKitchenTool,
     deleteKitchenTool = removeKitchenTool,
   }: MiseServerOptions = {},
+  requestId?: string,
 ) {
   getKitchenContext = observeKitchenCommand(KITCHEN_CONTEXT_TOOL, getKitchenContext);
   setPantryItemQuantity = observeKitchenCommand(SET_PANTRY_ITEM_QUANTITY_TOOL, setPantryItemQuantity);
@@ -808,7 +851,7 @@ export async function createMiseServer(
       },
     },
     async (extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -846,7 +889,7 @@ export async function createMiseServer(
       },
     },
     async ({ name, quantity, turnover }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -905,7 +948,7 @@ export async function createMiseServer(
       },
     },
     async ({ id, expectedName, name, quantity, turnover }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -988,7 +1031,7 @@ export async function createMiseServer(
       },
     },
     async ({ id, expectedName }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1041,7 +1084,7 @@ export async function createMiseServer(
       },
     },
     async ({ name, kind }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1095,7 +1138,7 @@ export async function createMiseServer(
       },
     },
     async ({ id, expectedName, name, kind }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1174,7 +1217,7 @@ export async function createMiseServer(
       },
     },
     async ({ id, expectedName }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1227,7 +1270,7 @@ export async function createMiseServer(
       },
     },
     async ({ name, quantity }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1310,7 +1353,7 @@ export async function createMiseServer(
         },
       },
       async ({ name, expectedQuantity, deltaQuantity }, extra) => {
-        const userId = extra.authInfo?.extra?.userId;
+        const userId = getUserIdFromContext(extra);
         if (typeof userId !== "string") {
           return {
             isError: true,
@@ -1368,7 +1411,7 @@ export async function createMiseServer(
       },
     },
     async ({ changes }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1428,7 +1471,7 @@ export async function createMiseServer(
       },
     },
     async ({ requestId, lines }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1475,6 +1518,21 @@ export async function createMiseServer(
       };
     },
   );
+
+  const originalMcpConnect = server.connect.bind(server);
+  server.connect = async (transport: Transport) => {
+    const observed = transport instanceof ObservedMcpTransport
+      ? transport
+      : new ObservedMcpTransport(transport, AUTHENTICATED_MISE_TOOLS, requestId);
+    return originalMcpConnect(observed);
+  };
+  const originalServerConnect = server.server.connect.bind(server.server);
+  server.server.connect = async (transport: Transport) => {
+    const observed = transport instanceof ObservedMcpTransport
+      ? transport
+      : new ObservedMcpTransport(transport, AUTHENTICATED_MISE_TOOLS, requestId);
+    return originalServerConnect(observed);
+  };
 
   return server;
 }
@@ -1597,7 +1655,49 @@ export async function handleMiseMcpRequest(
     return observeResponse(invalidTokenResponse(authConfig));
   }
 
-  const server = await createMiseServer({
+  if (await isLegacyRequest(request.clone())) {
+    const server = await createMiseServer({
+      loadKitchenContext: getKitchenContext,
+      setPantryItemQuantity,
+      adjustPantryItemQuantity,
+      adjustPantryItemQuantities,
+      applyReviewedReceiptImport,
+      createPantryItem,
+      updatePantryItem,
+      deletePantryItem,
+      createKitchenTool,
+      updateKitchenTool,
+      deleteKitchenTool,
+    }, requestId);
+    const transport =
+      new OpenAiCompatibleWebStandardStreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true,
+      });
+
+    try {
+      await server.connect(transport);
+      const response = await transport.handleRequest(request, { authInfo });
+      return observeResponse(response);
+    } catch {
+      console.error(JSON.stringify({
+        event: "mcp_request_failed",
+        requestId,
+      }));
+      return observeResponse(Response.json(
+        {
+          jsonrpc: "2.0",
+          error: { code: -32603, message: "Internal server error." },
+          id: null,
+        },
+        { status: 500 },
+      ));
+    } finally {
+      await server.close();
+    }
+  }
+
+  const serverOptions = {
     loadKitchenContext: getKitchenContext,
     setPantryItemQuantity,
     adjustPantryItemQuantity,
@@ -1609,17 +1709,16 @@ export async function handleMiseMcpRequest(
     createKitchenTool,
     updateKitchenTool,
     deleteKitchenTool,
-  });
-  const transport =
-    new OpenAiCompatibleWebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    });
+  };
+  const modernHandler = createMcpHandler(
+    () => createMiseServer(serverOptions, requestId),
+    { legacy: "reject", responseMode: "auto" },
+  );
 
   try {
-    await server.connect(new ObservedMcpTransport(transport, AUTHENTICATED_MISE_TOOLS, requestId));
-    const response = await transport.handleRequest(request, { authInfo });
-    return observeResponse(response);
+    const response = await modernHandler.fetch(request, { authInfo });
+    const patchedResponse = await patchOpenAiSecuritySchemes(response);
+    return observeResponse(patchedResponse);
   } catch {
     console.error(JSON.stringify({
       event: "mcp_request_failed",
@@ -1633,8 +1732,6 @@ export async function handleMiseMcpRequest(
       },
       { status: 500 },
     ));
-  } finally {
-    await server.close();
   }
 }
 
@@ -1672,7 +1769,8 @@ export function createMiseHttpServer({
         return await verifyAccessToken(token);
       } catch {
         console.warn(JSON.stringify({ event: "mcp_auth_failed" }));
-        throw new InvalidTokenError(
+        throw new OAuthError(
+          OAuthErrorCode.InvalidToken,
           "The Mise access token is invalid or expired.",
         );
       }
@@ -1727,36 +1825,62 @@ export function createMiseHttpServer({
   );
 
   app.post(MCP_PATH, async (req, res) => {
-    // This server is deliberately stateless: every MCP request gets a
-    // short-lived server and transport.
-    const server = await createMiseServer({
-      loadKitchenContext: getKitchenContext,
-      setPantryItemQuantity,
-      adjustPantryItemQuantity,
-      adjustPantryItemQuantities,
-      applyReviewedReceiptImport,
-      createPantryItem,
-      updatePantryItem,
-      deletePantryItem,
-      createKitchenTool,
-      updateKitchenTool,
-      deleteKitchenTool,
-    });
-    const transport = new OpenAiCompatibleStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    });
-
-    try {
-      await server.connect(new ObservedMcpTransport(transport, AUTHENTICATED_MISE_TOOLS, res.locals.miseRequestId));
-      res.on("close", () => {
-        void transport.close();
-        void server.close();
+    const webRequest = await toWebRequest(req, req.body);
+    if (await isLegacyRequest(webRequest, req.body)) {
+      const server = await createMiseServer({
+        loadKitchenContext: getKitchenContext,
+        setPantryItemQuantity,
+        adjustPantryItemQuantity,
+        adjustPantryItemQuantities,
+        applyReviewedReceiptImport,
+        createPantryItem,
+        updatePantryItem,
+        deletePantryItem,
+        createKitchenTool,
+        updateKitchenTool,
+        deleteKitchenTool,
+      }, res.locals.miseRequestId);
+      const transport = new OpenAiCompatibleNodeStreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true,
       });
-      await transport.handleRequest(req, res, req.body);
-    } catch {
-      console.error(JSON.stringify({ event: "mcp_request_failed", requestId: res.locals.miseRequestId }));
-      if (!res.headersSent) res.status(500).send("Internal server error");
+
+      try {
+        await server.connect(transport);
+        res.on("close", () => {
+          void transport.close();
+          void server.close();
+        });
+        await transport.handleRequest(req, res, req.body);
+      } catch {
+        console.error(JSON.stringify({ event: "mcp_request_failed", requestId: res.locals.miseRequestId }));
+        if (!res.headersSent) res.status(500).send("Internal server error");
+      }
+    } else {
+      const serverOptions = {
+        loadKitchenContext: getKitchenContext,
+        setPantryItemQuantity,
+        adjustPantryItemQuantity,
+        adjustPantryItemQuantities,
+        applyReviewedReceiptImport,
+        createPantryItem,
+        updatePantryItem,
+        deletePantryItem,
+        createKitchenTool,
+        updateKitchenTool,
+        deleteKitchenTool,
+      };
+      const modernHandler = createMcpHandler(
+        () => createMiseServer(serverOptions, res.locals.miseRequestId),
+        { legacy: "reject", responseMode: "auto" },
+      );
+      const nodeHandler = toNodeHandler({
+        fetch: async (request: Request, options?: { authInfo?: AuthInfo }) => {
+          const response = await modernHandler.fetch(request, options);
+          return patchOpenAiSecuritySchemes(response);
+        },
+      });
+      await nodeHandler(req, res, req.body);
     }
   });
 
