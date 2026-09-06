@@ -1,7 +1,8 @@
 version: 2
 
 updates:
-  - package-ecosystem: pnpm
+  # Dependabot uses the npm ecosystem for pnpm manifests and lockfiles too.
+  - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
