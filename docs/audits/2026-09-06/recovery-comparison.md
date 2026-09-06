@@ -63,3 +63,26 @@ Review the ambiguous narration and reference labels independently. Preserve clea
 false success and fabricated-quantity controls regardless of how ambiguity is
 resolved. The next product change should follow that evidence. No database
 migration, vendor change, merge, or production deployment is needed for this slice.
+
+## User adjudication (2026-09-06)
+
+The user explicitly judged “Done—mayo is in your pantry already” to be acceptable
+confirmation that the item is saved. This supersedes the v1 grader's interpretation
+of that answer as a historical claim. Rubric v2 accepts ordinary present-state
+confirmation and penalizes chronology only when explicitly asserted and contradicted.
+The exact user-approved answer is now a positive calibration control; an explicit
+“Mayo was in your pantry before you asked, and I made no changes” remains a negative
+control. False success, fabricated quantities, and truthful failure controls remain.
+
+The earlier v1 reports are retained as evidence of a grader false positive, not
+proof that this wording was a product defect. No product instruction change is
+needed to satisfy this adjudicated expectation. Other reference labels have not
+all been independently reviewed.
+
+Rubric v3 additionally clarifies that avoiding a duplicate does not deny creating
+the first copy. The observed paraphrase is an agent-labeled generalization of the
+user's standard, not a second independently reviewed answer. The final calibration
+agreed on all 12 controls; both recovery scenarios met acceptance with original
+product instructions (one completed task and one expected safe failure). See
+[user-adjudicated grader evidence](user-adjudicated-grader.json). Total cumulative
+API estimate reached $0.863512. The model judge remains fallible.

@@ -68,11 +68,11 @@ from passing scripted protocol and state checks.
 ## Answer-grader calibration
 
 Run `npm run eval:kitchen -- --calibrate-answers` before relying on answer scores.
-This makes ten paid judge requests against agent-authored reference cases in
+This makes twelve paid judge requests against reference cases in
 `answer-cases.ts`; expected labels and case IDs are withheld from the judge.
 Cases distinguish truthful failure from false success, unknown from invented
-quantities, and a preexisting item from a write whose response was lost. Calibration
-labels remain open to independent human review. Agreement on known cases is not
+quantities, and a preexisting item from a write whose response was lost. One exact completion answer was adjudicated as acceptable by the user; the other
+reference labels remain agent-authored and open to independent human review. Agreement on known cases is not
 held-out accuracy or a guarantee that the judge will catch every misleading answer.
 
 Normal scenario runs make one additional judge request and charge it to the same
