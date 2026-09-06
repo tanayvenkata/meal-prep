@@ -1,6 +1,6 @@
 # Four-tool experiment — issue #203
 
-Status: input contracts and a tested internal transaction scope. These tools are not registered, do not execute writes,
+Status: input contracts and tested transaction/retry primitives. These tools are not registered, do not execute writes,
 and have not been evaluated by a model. The baseline remains the 12-tool server.
 
 The candidate is a tool-only app: `read_kitchen`, `add_items`, `edit_items`, and
@@ -32,9 +32,12 @@ when selecting this candidate for evaluation.
    unwired. Existing database functions each
    open a transaction, so looping over them does not provide list atomicity.
    Reuse their validation and owned SQL while ensuring one transaction per list.
-3. Implement durable command receipts. The existing private receipt table accepts
-   only reviewed receipt imports; do not silently reuse it with an invalid kind or
-   weaken its ownership policies. Any schema change is local-only until reviewed.
+3. `runKitchenWrite` now persists terminal results with inventory effects. Nine
+   isolated-Postgres tests cover transaction scope, replay, changed payloads,
+   concurrent duplicates, owner-scoped IDs, rejection rollback, and infrastructure
+   rollback. Migration 20260906235058 extends the existing receipt kind constraint
+   without changing grants or RLS. Applied only to the isolated local test stack.
+   The service handlers still need to convert domain failures into list rejection.
 4. Preserve mixed create/restock receipt imports within the four-tool surface:
    explicitly reviewed line decisions, one transaction, and one request identity.
    The current candidate schema does not yet cover this requirement.

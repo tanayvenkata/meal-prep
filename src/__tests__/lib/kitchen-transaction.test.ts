@@ -2,7 +2,7 @@ import { AsyncResource } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { addItem, addKitchenTool, getItems, getKitchenTools, withKitchenTransaction } from "@/lib/db";
+import { addItem, addKitchenTool, getItems, getKitchenTools, withKitchenTransaction, runKitchenWrite, KitchenWriteRejection } from "@/lib/db";
 import { UNKNOWN_PANTRY_QUANTITY } from "@/lib/pantry-quantity";
 
 const admin = postgres(process.env.ADMIN_DATABASE_URL!);
@@ -53,5 +53,49 @@ describe("owned kitchen transaction scope", () => {
     });
     await expect(descendant!.runInAsyncScope(() => getItems(userA))).rejects.toThrow("closed_kitchen_transaction");
     descendant!.emitDestroy();
+  });
+});
+
+
+describe("durable kitchen request receipt", () => {
+  it("replays a completed request without executing the write again", async () => {
+    const id = randomUUID();
+    let calls = 0;
+    const apply = async () => { calls++; await addItem(userA, "Retry mayo", UNKNOWN_PANTRY_QUANTITY); return ["saved"]; };
+    const first = await runKitchenWrite(userA, id, "add_items", { name: "Retry mayo" }, apply);
+    const replay = await runKitchenWrite(userA, id, "add_items", { name: "Retry mayo" }, apply);
+    expect(first.status).toBe("applied");
+    expect(replay).toEqual({ ...first, replayed: true });
+    expect(calls).toBe(1);
+    expect(await runKitchenWrite(userA, id, "add_items", { name: "Changed" }, apply)).toEqual({ status: "request_id_reused", requestId: id });
+    expect(calls).toBe(1);
+  });
+  it("scopes request identities to owners and normalizes object-key order", async () => {
+    const id = randomUUID();
+    const a = await runKitchenWrite(userA, id, "add_items", { name: "mayo", quantity: "unknown" }, async () => ["A"]);
+    const b = await runKitchenWrite(userB, id, "add_items", { name: "mayo", quantity: "unknown" }, async () => ["B"]);
+    expect(b).toEqual({ status: "applied", requestId: id, results: ["B"], replayed: false });
+    expect(await runKitchenWrite(userA, id, "add_items", { quantity: "unknown", name: "mayo" }, async () => { throw new Error("must_not_run"); })).toEqual({ ...a, replayed: true });
+  });
+  it("rolls back and remembers a rejected list", async () => {
+    const id = randomUUID();
+    const apply = async () => { await addItem(userA, "Rejected receipt mayo", UNKNOWN_PANTRY_QUANTITY); throw new KitchenWriteRejection(1, "not_found"); };
+    const rejected = await runKitchenWrite(userA, id, "edit_items", {}, apply);
+    expect(rejected).toEqual({ status: "rejected", requestId: id, index: 1, reason: "not_found", replayed: false });
+    expect((await getItems(userA)).some(x => x.name === "Rejected receipt mayo")).toBe(false);
+    expect(await runKitchenWrite(userA, id, "edit_items", {}, async () => { throw new Error("must_not_run"); })).toEqual({ ...rejected, replayed: true });
+  });
+  it("serializes concurrent identical requests", async () => {
+    const id = randomUUID(); let calls = 0;
+    const apply = async () => { calls++; await addItem(userA, "Concurrent mayo", UNKNOWN_PANTRY_QUANTITY); return []; };
+    const results = await Promise.all([runKitchenWrite(userA, id, "add_items", {}, apply), runKitchenWrite(userA, id, "add_items", {}, apply)]);
+    expect(calls).toBe(1);
+    expect(results.filter(x => "replayed" in x && x.replayed)).toHaveLength(1);
+  });
+  it("does not commit a receipt or partial effects on infrastructure failure", async () => {
+    const id = randomUUID();
+    await expect(runKitchenWrite(userA, id, "add_items", {}, async () => { await addItem(userA, "Failed infrastructure mayo", UNKNOWN_PANTRY_QUANTITY); throw new Error("dependency_failed"); })).rejects.toThrow("dependency_failed");
+    expect((await getItems(userA)).some(x => x.name === "Failed infrastructure mayo")).toBe(false);
+    expect(await runKitchenWrite(userA, id, "add_items", {}, async () => [])).toEqual({ status: "applied", requestId: id, results: [], replayed: false });
   });
 });

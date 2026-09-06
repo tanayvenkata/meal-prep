@@ -423,6 +423,77 @@ async function withUserContext<T>(
   }) as Promise<T>;
 }
 
+export type KitchenWriteOutcome =
+  | { status: "applied"; requestId: string; results: postgres.JSONValue[]; replayed: boolean }
+  | { status: "rejected"; requestId: string; index: number; reason: string; replayed: boolean }
+  | { status: "request_id_reused"; requestId: string };
+
+/** A server-owned domain rejection; never pass raw provider errors as its reason. */
+export class KitchenWriteRejection extends Error {
+  constructor(readonly index: number, readonly reason: string) {
+    super("kitchen_write_rejected");
+  }
+}
+
+/** One owned transaction for the request receipt, list effects, and terminal result. */
+export async function runKitchenWrite(
+  userId: string,
+  requestId: string,
+  operation: "add_items" | "edit_items" | "remove_items",
+  payload: postgres.JSONValue,
+  apply: () => Promise<postgres.JSONValue[]>,
+): Promise<KitchenWriteOutcome> {
+  if (kitchenTransaction.getStore()) throw new Error("nested_kitchen_transaction");
+  return withUserContext(userId, async (tx) => {
+    // PostgreSQL JSONB normalizes object key order while preserving list order.
+    // Parsed/defaulted input is fingerprinted; different payloads fail closed.
+    const [canonical] = await tx<{ value: string }[]>`
+      select ${tx.json({ operation, payload })}::jsonb::text as value
+    `;
+    const hash = createHash("sha256").update(canonical.value).digest("hex");
+    const claimed = await tx`
+      insert into private.pantry_operation_receipts
+        (user_id, request_id, operation_kind, request_hash, status)
+      values (${userId}, ${requestId}::uuid, ${operation}, ${hash}, 'processing')
+      on conflict (user_id, request_id) do nothing returning request_id
+    `;
+    if (claimed.length === 0) {
+      const [existing] = await tx<{
+        request_hash: string; status: string; outcome: KitchenWriteOutcome | null;
+      }[]>`
+        select request_hash, status, outcome from private.pantry_operation_receipts
+        where user_id = ${userId} and request_id = ${requestId}::uuid
+      `;
+      if (!existing) throw new Error("kitchen_receipt_missing");
+      if (existing.request_hash !== hash) return { status: "request_id_reused", requestId };
+      if (!existing.outcome || existing.status === "processing") throw new Error("kitchen_receipt_incomplete");
+      return { ...existing.outcome, replayed: true };
+    }
+    let outcome: KitchenWriteOutcome;
+    try {
+      const results = await tx.savepoint(async (savepoint) => {
+        const scope: KitchenTransactionScope = { userId, tx: savepoint, active: true };
+        return kitchenTransaction.run(scope, async () => {
+          try { return await apply(); }
+          finally { scope.active = false; }
+        });
+      });
+      outcome = { status: "applied", requestId, results, replayed: false };
+    } catch (error) {
+      if (!(error instanceof KitchenWriteRejection)) throw error;
+      // Savepoint rollback discarded all effects. Preserve only rejection evidence.
+      outcome = { status: "rejected", requestId, index: error.index, reason: error.reason, replayed: false };
+    }
+    const updated = await tx`
+      update private.pantry_operation_receipts
+      set status = ${outcome.status}, outcome = ${tx.json(outcome)}, completed_at = now()
+      where user_id = ${userId} and request_id = ${requestId}::uuid and status = 'processing'
+    `;
+    if (updated.count !== 1) throw new Error("kitchen_receipt_missing");
+    return outcome;
+  });
+}
+
 export async function getItems(userId: string): Promise<Item[]> {
   return withUserContext(userId, (tx) =>
     tx<Item[]>`
