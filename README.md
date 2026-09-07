@@ -34,7 +34,7 @@ cp .env.example .env.local
 
 # 4. Start the local Supabase stack (the dev app logs in against it)
 orbstack          # or open Docker Desktop
-supabase start    # first run seeds the test user — see "Logging in locally" below
+doppler run -- supabase start    # first run seeds the test user — see "Logging in locally" below
 # Seed passwords only apply on fresh init / db reset. If integration tests fail
 # with mise_app auth errors, run:
 #   ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres \
@@ -201,7 +201,7 @@ There is no separate website chat or conversation history. ChatGPT owns that exp
 ```bash
 # Once per dev session
 orbstack          # or open Docker Desktop
-supabase start
+doppler run -- supabase start
 ```
 
 ## Working in git worktrees
@@ -254,3 +254,37 @@ priority, and pull-request workflow. Report suspected vulnerabilities privately 
 ## License
 
 Mise is open source under the [MIT License](LICENSE).
+
+## Google and GitHub sign-in
+
+Both providers use the existing PKCE `/auth/callback` route. Provider registration
+contains two exact callback URLs:
+
+- Production: `https://omwvoxemybeukmhnyrhb.supabase.co/auth/v1/callback`
+- Local: `http://127.0.0.1:54321/auth/v1/callback`
+
+The provider callback belongs to Supabase; the subsequent application redirect
+belongs to Next.js (`http://127.0.0.1:3000/auth/callback` or
+`http://localhost:3000/auth/callback`). Do not point local Next.js at production
+Supabase to test login.
+
+Doppler `meal-prep/dev` holds `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID`,
+`SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`, `SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID`,
+and `SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET`. Inject these when starting Supabase:
+
+```sh
+doppler run --project meal-prep --config dev -- supabase start
+pnpm dev
+```
+
+After changing provider credentials or `supabase/config.toml`, stop and restart
+the local stack with those variables injected. `supabase stop` preserves data;
+do not use `--no-backup` or reset the database for provider configuration. Hosted
+provider settings are saved separately in the Supabase dashboard.
+
+Verification on 2026-09-07: Google and GitHub each completed consent, PKCE exchange,
+and navigation to the authenticated local pantry. Google session survived reload.
+Both identities linked to one local user for the same verified email. Google is
+currently in Testing with the owner's Google account added as a test user; broader
+availability requires finishing Google's publishing requirements. GitHub's login
+button reaches production only after the associated PR is merged and deployed.

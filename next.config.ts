@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
   // tunnel as MCP. Next blocks cross-origin dev assets unless that public host
   // is explicit; derive it from the same canonical MCP URL to avoid a second
   // tunnel setting that can drift.
-  ...(mcpDevHostname ? { allowedDevOrigins: [mcpDevHostname] } : {}),
+  allowedDevOrigins: ["127.0.0.1", ...(mcpDevHostname ? [mcpDevHostname] : [])],
   async rewrites() {
     return [
       {
