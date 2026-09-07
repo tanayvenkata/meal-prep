@@ -1,4 +1,4 @@
-// Experimental service adapter. The live MCP catalog does not expose it yet.
+// Shared handlers for the selectable four-tool MCP interface.
 import { candidateInputs } from "./kitchen-command-contract";
 import { getItemById, KitchenWriteRejection, lockKitchenWriteTargets, runKitchenWrite, type KitchenWriteValue } from "./db";
 import { createKitchenTool, createPantryItem, updateKitchenTool, updatePantryItem, deleteKitchenTool, deletePantryItem, adjustPantryItemQuantity, type KitchenServiceResult } from "./kitchen-service";
@@ -41,8 +41,19 @@ export async function addKitchenItems(userId: string, input: unknown) {
   if (!parsed.success) return { status: "invalid_input" as const };
   const command = parsed.data;
   return runKitchenWrite(userId, command.requestId, "add_items", publicValue(command), async () => {
+    await lockTargets(userId, command.items.flatMap(item => "id" in item ? [item] : []));
     const results: KitchenWriteValue[] = [];
     for (const [index, item] of command.items.entries()) {
+      if (item.collection === "pantry" && "operation" in item) {
+        const current = await getItemById(userId, item.id);
+        if (!current) throw new KitchenWriteRejection(index, "not_found");
+        if (current.name !== item.expectedName) throw new KitchenWriteRejection(index, "conflict");
+        results.push(effect(await adjustPantryItemQuantity(userId, {
+          name: current.name, operation: "restock",
+          expectedQuantity: domainQuantity(item.expectedQuantity), deltaQuantity: domainQuantity(item.delta),
+        }), index));
+        continue;
+      }
       results.push(item.collection === "pantry"
         ? effect(await createPantryItem(userId, { ...item, quantity: domainQuantity(item.quantity) }), index)
         : effect(await createKitchenTool(userId, item), index));

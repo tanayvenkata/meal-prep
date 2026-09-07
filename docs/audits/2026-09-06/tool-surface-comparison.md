@@ -2,7 +2,8 @@
 
 The user’s stopping point is a recommendation: decide which tool variation best
 serves Mise’s actual kitchen workflows, explain what and why, then stop.
-This is not authorization to adopt or deploy the experimental implementation.
+The user subsequently selected four tools and authorized implementation. Deployment
+and completed host acceptance are not implied by that decision.
 
 ## Decision method
 
@@ -98,3 +99,28 @@ Both initial capped attempts and corrected runs are retained in
 [tool-composition-pairs.json](tool-composition-pairs.json), including source hashes,
 per-case checks, grading reasons, and request limits. Actual four-tool ChatGPT host
 selection and recovery parity remain unresolved before the final recommendation.
+
+## Selected direction and implementation follow-through
+
+The user selected four composable actions after the comparisons: read, add, edit,
+and remove. Implement category/quantity/batch depth inside these actions. This is
+an explicit product/maintainability choice supported by successful composition
+cases, not a claim of measured statistical superiority.
+
+The candidate now defaults omitted collection to pantry for food/spices. Quantity
+and turnover are optional; equipment is explicitly identified by collection and
+kind. Add batches can include fresh-ID, expected-quantity increases alongside new
+items, so a resolved, authorized receipt is saved atomically without a fifth tool.
+Plain named additions remain duplicate-safe and do not silently increase stock.
+
+Guidance consulted: [Anthropic tool design](https://www.anthropic.com/engineering/writing-tools-for-agents)
+recommends a small set of distinct, useful tools, meaningful results, and evaluations
+that permit multiple valid strategies. [OpenAI tool planning](https://developers.openai.com/plugins/plan/tools)
+recommends coherent actions, explicit required/optional inputs, structured outputs,
+and boundaries matching permissions. These principles support the chosen design;
+neither source specifies a magic tool count or recommends arbitrary untyped JSON.
+
+Local tests cover optional pantry input, mixed receipt creation/restocking, stale
+restock rollback, identical replay (including explicit versus omitted default), and
+existing ownership/transaction invariants. No database migration or vendor change
+was needed for this extension. Candidate host testing remains outstanding.

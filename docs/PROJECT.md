@@ -52,6 +52,18 @@ Luna evaluations with automatic per-run usage/cost reporting and bounded request
 loops. Earlier issue text, audit evidence, and ledger totals describe historical
 experiments, not an ongoing spending gate. Do not manage or update that ledger.
 
+## Tool direction — 2026-09-06
+
+The user selected four composable inventory tools: read, add, edit, and remove.
+Food, spices, equipment, quantity changes, and batches belong within that surface.
+Use optional fields for information that is not necessary to execute a request;
+keep identifiers and concurrency checks explicit where correctness requires them.
+The selectable candidate is in PR #208; this decision does not claim deployment
+or completed ChatGPT host validation. The 12-tool interface remains an evaluation
+reference until the replacement is validated. See the tool-surface comparison for
+raw evidence and limitations. No fifth receipt-specific tool is planned: a confirmed
+purchase can combine creation and restocking inside an atomic add batch.
+
 ## Pantry availability decision — 2026-09-06
 
 The user prefers that explicit “finished” or “ran out” pantry updates remove the

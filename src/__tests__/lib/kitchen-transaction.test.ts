@@ -112,6 +112,37 @@ async function seedCommandEggs() {
 }
 
 describe("candidate command effects", () => {
+  it("saves a mixed receipt with optional pantry fields and replays it once", async () => {
+    const eggs = await seedCommandEggs();
+    const spiceName = `Cumin ${randomUUID()}`;
+    const command = { requestId: randomUUID(), items: [
+      { name: spiceName, turnover: "low" },
+      { id: Number(eggs.id), expectedName: eggs.name, operation: "increase", expectedQuantity: { amount: "4", unit: "count" }, delta: { amount: "6", unit: "count" } },
+    ] };
+    const first = await addKitchenItems(userA, command);
+    expect(first.status).toBe("applied");
+    expect(await addKitchenItems(userA, command)).toEqual({ ...first, replayed: true });
+    // Explicit default and omitted default describe the same retry.
+    expect(await addKitchenItems(userA, { ...command, items: command.items.map(item => ({ ...item, collection: "pantry" })) })).toEqual({ ...first, replayed: true });
+    const pantry = await getItems(userA);
+    expect(pantry.find(x => x.id === eggs.id)!.quantity_value).toBe("10");
+    expect(pantry.filter(x => x.name === spiceName)).toHaveLength(1);
+    expect(pantry.find(x => x.name === spiceName)).toMatchObject({ turnover: "low", quantity_value: null });
+  });
+  it("rolls back a new receipt item when the restock quantity is stale", async () => {
+    const eggs = await seedCommandEggs();
+    const name = `Rolled back spice ${randomUUID()}`;
+    const command = { requestId: randomUUID(), items: [
+      { name },
+      { id: Number(eggs.id), expectedName: eggs.name, operation: "increase", expectedQuantity: { amount: "3", unit: "count" }, delta: { amount: "6", unit: "count" } },
+    ] };
+    const result = await addKitchenItems(userA, command);
+    expect(result.status).toBe("rejected");
+    expect((await getItems(userA)).some(x => x.name === name)).toBe(false);
+    expect((await getItems(userA)).find(x => x.id === eggs.id)!.quantity_value).toBe("4");
+    expect(await addKitchenItems(userA, command)).toEqual({ ...result, replayed: true });
+  });
+
   it("adds unknown food and equipment in one list with safe replay", async () => {
     const command = { requestId: randomUUID(), items: [{ collection: "pantry", name: "Command mayo" }, { collection: "equipment", name: "Command skillet", kind: "cookware" }] };
     const first = await addKitchenItems(userA, command);
@@ -182,7 +213,7 @@ it("exposes exactly four authenticated tools over MCP HTTP and saves unknown qua
     const wire = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 99, method: "tools/list", params: {} }) });
     const wireBody = await wire.json();
     for (const tool of wireBody.result.tools) expect(tool).toMatchObject({ securitySchemes: [{ type: "oauth2" }] });
-    const result = await client.callTool({ name: "add_items", arguments: { requestId: randomUUID(), items: [{ collection: "pantry", name: "HTTP mayo" }] } });
+    const result = await client.callTool({ name: "add_items", arguments: { requestId: randomUUID(), items: [{ name: "HTTP mayo" }] } });
     expect(result.isError).toBe(false);
     expect(result.structuredContent).toMatchObject({ status: "applied" });
     const read = await client.callTool({ name: "read_kitchen", arguments: {} });

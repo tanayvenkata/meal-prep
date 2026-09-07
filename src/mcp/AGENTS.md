@@ -78,8 +78,9 @@ transitive dependencies.
   authenticated service boundary rather than widening direct token access.
 - Keep receipt interpretation and pantry mutation separate. A host model may
   inspect an image, clarify uncertain lines, and present a proposal, but only
-  an exact user-confirmed `create`/`restock` list may reach the reviewed receipt
-  command. Send the whole list once with a caller-generated UUID; reuse that
+  a user-authorized list of resolved new items and restocks may reach a mutation
+  command. In the four-tool interface, this is one `add_items` batch; a separate
+  receipt tool is not required. Send the whole list once with a caller-generated UUID; reuse that
   UUID only for an identical retry. Do not add OCR or file inputs to the
   mutation tool.
 - Expose kitchen lifecycle parity as focused user-intent tools, not raw

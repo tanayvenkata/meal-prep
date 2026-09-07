@@ -5,7 +5,7 @@ const wrap = (item: unknown) => ({ requestId, items: [item] });
 
 describe("four-tool candidate intent boundaries", () => {
   it("accepts a named food without inventing quantity", () => {
-    expect(candidateInputs.add_items.parse(wrap({ collection: "pantry", name: "mayo" })).items[0])
+    expect(candidateInputs.add_items.parse(wrap({ name: "mayo" })).items[0])
       .toEqual({ collection: "pantry", name: "mayo" });
   });
   it("keeps a total replacement distinct from a purchase delta", () => {
