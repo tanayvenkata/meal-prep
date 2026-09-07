@@ -1,3 +1,11 @@
+overrides:
+  # GHSA-4mjr-xmp4-gh2g and GHSA-x5fp-wj9c-mxmx: patch Express's query parser.
+  'qs@<6.16.0': ^6.16.0
+  # Kitchen evals use a custom provider and JavaScript assertions, not these
+  # optional integrations. Remove their vulnerable archive/URI/image stacks.
+  'promptfoo>@openai/codex-security': '-'
+  'promptfoo>@huggingface/transformers': '-'
+
 allowBuilds:
   '@playwright/browser-chromium': false
   '@swc/core': false
