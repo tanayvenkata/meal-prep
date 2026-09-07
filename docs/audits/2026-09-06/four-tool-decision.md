@@ -1,3 +1,7 @@
+> Historical decision record. Subsequent implementation and rollout status are in
+> [PROJECT.md](../../PROJECT.md), PR #208, and issue #203; the remaining-work list
+> below describes the decision boundary at the time.
+
 # Decision: four composable kitchen tools
 
 Selected by the user on 2026-09-06 after the local comparison. The goal is a useful,

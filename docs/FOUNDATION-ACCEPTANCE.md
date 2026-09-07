@@ -24,16 +24,17 @@ The fresh four-tool conversation used ChatGPT Chat/Instant; its underlying model
 is not exposed. Do not attribute its improvement to tool count alone: descriptions,
 contracts, server instructions, and conversation context changed as well.
 
-## Release work, distinct from the completed decision
+## Rollout follow-through
 
-PR #208 remains draft. Preserve the 12-tool baseline until integration/review.
-Complete four-tool persistent-dependency-failure injection, structured mutation
-output schemas, and reconciliation with the current main SDK/toolchain before
-rollout. The full historical 26-case corpus has not been rerun on the latest four-
-tool implementation. Receipt-image interpretation and production telemetry are
-also not established by these checks. Keep these limitations in the issue/PR;
-do not quietly promote local evidence into production guarantees.
+The user subsequently requested switching to four tools. PR #208 integrates
+current main's SDK v2, makes four the default, adds structured write outputs, and
+wires persistent-dependency-failure injection. The final combined Luna run accepts
+26/26 cases; the three-spice example saves 12 oz each in one add call. Local checks
+pass: 271 unit tests and 197 integration tests, with a final focused modern-transport
+failure check. See `four-tool-rollout-final.json` and the PR for source provenance.
 
-No database vendor, hosting plan, or model-provider switch was justified by the
-comparison. The actor remains Luna per user direction; per-run usage/cost are
-recorded. The former cumulative cap and ledger are retired.
+The #209 storage prerequisite merged and its production migration succeeded before
+the application switch. PR #208 / issue #203 track deployment and connector refresh;
+this document does not substitute for their verified rollout status. Receipt-image
+interpretation and production telemetry retention remain separate capabilities.
+No vendor or paid-plan change is required. The former spending cap/ledger is retired.
