@@ -104,8 +104,8 @@ Website → authenticated Next.js APIs → same service → same data
   receipts plus fresh expectations. The legacy baseline relative tools retain
   older expected-quantity-only limitations; do not confuse their guarantees.
 - **Legacy chat data remains.** `conversations` and `messages` contained user data at
-  the last production audit. Their retained helpers/tests are compatibility code.
-  Do not build new features on them or drop them without an export/retention decision.
+  the last production audit. Application chat helpers are removed; database isolation tests still protect
+  the retained tables. Do not drop those tables without an export/retention decision.
 - **Test locally.** OrbStack → `supabase start` → `npm run dev`. `test:unit` needs no
   database; `test:integration` uses the local stack. Use `.nvmrc`'s Node 24, including
   when reproducing the audit's diagnostics, which originally ran on Node 26.8.1.

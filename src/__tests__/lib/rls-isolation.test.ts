@@ -3,10 +3,6 @@ import {
   applyReviewedReceiptImport,
   addItem,
   addKitchenTool,
-  createConversation,
-  addMessage,
-  getMessages,
-  listConversations,
   getItems,
   getKitchenTools,
   getDatabaseConnectionSafety,
@@ -48,6 +44,35 @@ async function asUser<T>(
     await tx`set local role authenticated`;
     return fn(tx);
   }) as Promise<T>;
+}
+
+// Legacy chat has no application API. Keep fixtures and reads here to verify
+// protection of retained history through the non-owner role, without preserving
+// obsolete application CRUD helpers. These selects intentionally rely on RLS.
+async function createConversation(userId: string, title: string, conversationId: string) {
+  return asUser(userId, async (tx) => {
+    const [row] = await tx<{ id: string; title: string }[]>`
+      insert into conversations (id, user_id, title)
+      values (${conversationId}, ${userId}, ${title}) returning id, title`;
+    return row;
+  });
+}
+
+async function addMessage(userId: string, conversationId: string, role: string, content: string) {
+  return asUser(userId, async (tx) => {
+    const [row] = await tx<{ id: string }[]>`
+      insert into messages (conversation_id, role, content)
+      values (${conversationId}, ${role}, ${content}) returning id`;
+    return row;
+  });
+}
+
+function listConversations(userId: string) {
+  return asUser(userId, async (tx) => tx<{ title: string }[]>`select title from conversations`);
+}
+
+function getMessages(userId: string, conversationId: string) {
+  return asUser(userId, async (tx) => tx`select * from messages where conversation_id = ${conversationId}`);
 }
 
 function asOAuthUser<T>(
@@ -96,7 +121,7 @@ afterEach(async () => {
 });
 
 describe("RLS ownership across all four user-data tables", () => {
-  it("app layer helpers never leak user B rows to user A", async () => {
+  it("kitchen helpers and retained-history RLS never leak user B rows to user A", async () => {
     await addItem(USER_B, "milk", quantity("1L"));
     await addKitchenTool(USER_B, "Oven", "appliance");
     const convo = await createConversation(USER_B, "milk chat", id());
