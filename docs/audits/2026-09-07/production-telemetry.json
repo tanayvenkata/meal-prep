@@ -1,0 +1,128 @@
+{
+  "verifiedAt": "2026-09-07T17:33:20.254295+00:00",
+  "servingCommit": "02b0a52820c6a838eca131f08d638d09bc841bb1",
+  "grafanaStack": "bronzecider1112",
+  "dashboard": "https://bronzecider1112.grafana.net/d/mise-mcp-operations/mise-mcp-operations",
+  "vercelDeployment": "dpl_C79Hwtd1twnsABUfeLWpyzv7PeYZ",
+  "workerVersion": "9dfdd0cf-a1a4-45ad-ae91-2cbef97b05fa",
+  "vercelEvents": [
+    {
+      "event": "mcp_request",
+      "requestId": "6d634749-d8f4-4ebd-8872-d8745a0eedd4",
+      "status": 401,
+      "durationMs": 0,
+      "traceId": "ed660ab1b22d65822c0762e60bb5932b",
+      "spanId": "95f2e7cd32048716"
+    },
+    {
+      "event": "kitchen_operation",
+      "layer": "command",
+      "operation": "get_kitchen_context",
+      "outcome": "success",
+      "durationMs": 85,
+      "traceId": "6a9ef4f500000000e33cd4973377c8e3",
+      "spanId": "d674cba11b82217c"
+    },
+    {
+      "event": "kitchen_operation",
+      "layer": "tool",
+      "operation": "read_kitchen",
+      "outcome": "success",
+      "durationMs": 93,
+      "requestId": "7fc233b3-da07-4d3c-befa-3a94e0ca0ad1",
+      "traceId": "6a9ef4f500000000e33cd4973377c8e3",
+      "spanId": "7522f9cf73ff85fd"
+    },
+    {
+      "event": "mcp_request",
+      "requestId": "7fc233b3-da07-4d3c-befa-3a94e0ca0ad1",
+      "status": 200,
+      "durationMs": 571
+    }
+  ],
+  "readSpans": [
+    {
+      "name": "kitchen.command",
+      "traceId": "6a9ef4f500000000e33cd4973377c8e3",
+      "spanId": "d674cba11b82217c",
+      "parentSpanId": "7522f9cf73ff85fd",
+      "runtime": "vercel",
+      "attributes": {
+        "mise.layer": "command",
+        "mise.operation": "get_kitchen_context",
+        "mise.outcome": "success"
+      },
+      "status": {}
+    },
+    {
+      "name": "mcp.tool",
+      "traceId": "6a9ef4f500000000e33cd4973377c8e3",
+      "spanId": "7522f9cf73ff85fd",
+      "parentSpanId": "4916efe77b0fd299",
+      "runtime": "vercel",
+      "attributes": {
+        "mise.operation": "read_kitchen",
+        "mise.layer": "tool",
+        "mise.outcome": "success",
+        "mise.request_id": "7fc233b3-da07-4d3c-befa-3a94e0ca0ad1"
+      },
+      "status": {}
+    }
+  ],
+  "syntheticFailureSpans": [
+    {
+      "name": "mcp.request",
+      "traceId": "ed660ab1b22d65822c0762e60bb5932b",
+      "spanId": "95f2e7cd32048716",
+      "parentSpanId": "5fa4acf02cd824f1",
+      "runtime": "vercel",
+      "attributes": {
+        "mise.request_id": "6d634749-d8f4-4ebd-8872-d8745a0eedd4",
+        "http.response.status_code": "401"
+      },
+      "status": {
+        "code": "STATUS_CODE_ERROR"
+      }
+    },
+    {
+      "name": "mcp.request",
+      "traceId": "6e01c305e0eb888dcd75bb661fd58d99",
+      "spanId": "3cb3d5d5984da5d3",
+      "parentSpanId": "",
+      "runtime": "cloudflare-workers",
+      "attributes": {
+        "mise.request_id": "92c8f69e-ef10-48db-81fd-14de15885215",
+        "http.response.status_code": "401"
+      },
+      "status": {
+        "code": "STATUS_CODE_ERROR"
+      }
+    }
+  ],
+  "failureProbeResponseSeconds": {
+    "vercel": 0.133676,
+    "worker": 0.686624
+  },
+  "dashboardToolMetrics": [
+    {
+      "metric": {
+        "mise_operation": "read_kitchen",
+        "mise_outcome": "success"
+      },
+      "value": [
+        1788802321.577,
+        "2"
+      ]
+    }
+  ],
+  "checks": {
+    "unitTests": 355,
+    "typecheck": "passed",
+    "lint": "passed",
+    "workerdAuthenticatedExport": "passed",
+    "frameworkSpanExclusion": "passed",
+    "incomingUnsampledParent": "passed",
+    "sensitiveAttributeAllowlist": "passed"
+  },
+  "scope": "Real installed-app read and unauthenticated synthetic HTTP failures. No pantry writes. Domain rejection and exception coverage uses local fixtures."
+}

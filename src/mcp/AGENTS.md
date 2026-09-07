@@ -258,7 +258,10 @@ not establish the state of the Vercel connector:
 - **Deployment**: `pnpm run deploy:worker` deploys the worker bundle to Cloudflare
   Workers (`mise-mcp.workers.dev` or custom domain). Secret bindings (`DATABASE_URL`,
   `NEXT_PUBLIC_SUPABASE_URL`, etc.) are configured via Wrangler secrets or Doppler.
-- **Background telemetry**: Uses Cloudflare's `c.executionCtx.waitUntil(flushKitchenTelemetry())`
+- **Background telemetry**: Starts the shared provider after Worker binding setup.
+  OTLP endpoints and secret headers are passed explicitly because the bundled OTel
+  browser environment readers ignore process variables. The workerd smoke test
+  (`pnpm run test:telemetry-worker`) guards remote routing and authentication. Uses Cloudflare's `c.executionCtx.waitUntil(flushKitchenTelemetry())`
   to flush spans asynchronously without penalizing ChatGPT response latency.
 
 ## Host refresh and future-widget test rules
