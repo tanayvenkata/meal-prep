@@ -1,5 +1,5 @@
 import { parseKeyPairsIntoRecord } from "@opentelemetry/core";
-import { metrics } from "@opentelemetry/api";
+import { metrics, trace, type Tracer, type Meter } from "@opentelemetry/api";
 import { randomUUID } from "node:crypto";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { BatchSpanProcessor, type SpanExporter } from "@opentelemetry/sdk-trace-base";
@@ -8,8 +8,11 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 
-type Telemetry = { flush: () => Promise<void>; shutdown: () => Promise<void> };
-let telemetry: Telemetry | undefined;
+type Telemetry = { flush: () => Promise<void>; shutdown: () => Promise<void>; tracer: Tracer; meter: Meter };
+// Next instrumentation and route bundles share a process, but not module state.
+const state = globalThis as typeof globalThis & { __miseTelemetry?: Telemetry };
+export const kitchenTracer = () => state.__miseTelemetry?.tracer ?? trace.getTracer("mise.kitchen", "1");
+export const kitchenMeter = () => state.__miseTelemetry?.meter ?? metrics.getMeter("mise.kitchen", "1");
 
 /** Wrangler selects browser OTel builds, whose environment readers are no-ops.
  * Resolve config explicitly in both runtimes; use the SDK's standard header parser.
@@ -37,7 +40,7 @@ export function otlpOptions(signal: "TRACES" | "METRICS") {
 
 /** Manual spans only: no SQL, HTTP headers, prompts, or kitchen data capture. */
 export function startKitchenTelemetry(exporters: { traceExporter?: SpanExporter; metricExporter?: PushMetricExporter; release?: string; runtime?: "node" | "vercel" | "cloudflare-workers" } = {}): Telemetry {
-  if (telemetry) return telemetry;
+  if (state.__miseTelemetry) return state.__miseTelemetry;
   const traces = otlpOptions("TRACES");
   const metricOptions = otlpOptions("METRICS");
   const traceExporter = exporters.traceExporter ?? (traces ? new OTLPTraceExporter(traces) : undefined);
@@ -54,11 +57,13 @@ export function startKitchenTelemetry(exporters: { traceExporter?: SpanExporter;
   tracerProvider.register();
   const meterProvider = new MeterProvider({ resource, readers: metricExporter ? [new PeriodicExportingMetricReader({ exporter: metricExporter, exportIntervalMillis: 10_000, exportTimeoutMillis: 1500 })] : [] });
   metrics.setGlobalMeterProvider(meterProvider);
-  telemetry = {
+  state.__miseTelemetry = {
+    tracer: tracerProvider.getTracer("mise.kitchen", "1"),
+    meter: meterProvider.getMeter("mise.kitchen", "1"),
     async flush() { await Promise.allSettled([tracerProvider.forceFlush(), meterProvider.forceFlush({ timeoutMillis: 1500 })]); },
     async shutdown() { await Promise.allSettled([tracerProvider.shutdown(), meterProvider.shutdown()]); },
   };
-  return telemetry;
+  return state.__miseTelemetry;
 }
 
-export async function flushKitchenTelemetry() { await telemetry?.flush(); }
+export async function flushKitchenTelemetry() { await state.__miseTelemetry?.flush(); }

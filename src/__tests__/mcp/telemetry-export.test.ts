@@ -1,3 +1,6 @@
+import { trace, metrics } from "@opentelemetry/api";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
+import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { createServer } from "node:http";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { startKitchenTelemetry } from "@/lib/telemetry";
@@ -28,6 +31,9 @@ beforeAll(async () => {
   vi.stubEnv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", `${base}/custom-traces`);
   vi.stubEnv("OTEL_EXPORTER_OTLP_TRACES_HEADERS", "Authorization=Bearer%20trace-fixture");
   vi.stubEnv("MISE_ENVIRONMENT", "production");
+  // Hosting platforms may already own the global providers. Mise must still export.
+  trace.setGlobalTracerProvider(new NodeTracerProvider());
+  metrics.setGlobalMeterProvider(new MeterProvider());
   telemetry = startKitchenTelemetry({ runtime: "vercel", release: "a".repeat(40) });
 });
 afterAll(async () => {

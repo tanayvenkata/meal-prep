@@ -1,5 +1,6 @@
+import { kitchenTracer, kitchenMeter } from "@/lib/telemetry";
 import { randomUUID } from "node:crypto";
-import { context, metrics, propagation, SpanKind, SpanStatusCode, trace, type Span } from "@opentelemetry/api";
+import { context, propagation, SpanKind, SpanStatusCode, trace, type Span } from "@opentelemetry/api";
 import type {
   JSONRPCMessage,
   RequestId,
@@ -14,7 +15,7 @@ const record = (value: unknown): value is Record<string, unknown> => typeof valu
 
 export function recordMcpRequest(requestId: string, status: number, durationMs: number) {
   try {
-    const meter = metrics.getMeter("mise.kitchen", "1");
+    const meter = kitchenMeter();
     const attributes = { "http.response.status_code": status };
     meter.createCounter("mise.mcp.requests").add(1, attributes);
     meter.createHistogram("mise.mcp.request.duration", { unit: "s" }).record(durationMs / 1000, attributes);
@@ -53,7 +54,7 @@ function finish(span: Span, layer: "tool" | "command", name: string, outcome: Ki
     // Server-generated HTTP correlation ID belongs on traces, never metric labels.
     if (requestId) span.setAttribute("mise.request_id", requestId);
     if (["exception", "tool_error", "protocol_error", "delivery_error", "interrupted", "unclassified"].includes(outcome)) span.setStatus({ code: SpanStatusCode.ERROR });
-    const meter = metrics.getMeter("mise.kitchen", "1");
+    const meter = kitchenMeter();
     meter.createCounter("mise.kitchen.operations", { description: "Observed command or MCP tool outcomes" }).add(1, attributes);
     meter.createHistogram("mise.kitchen.duration", { unit: "s" }).record(duration, attributes);
     const spanContext = span.spanContext();
@@ -66,7 +67,7 @@ function finish(span: Span, layer: "tool" | "command", name: string, outcome: Ki
 
 /** Wrap shared service calls, preserving their result and thrown error verbatim. */
 export function observeKitchenCommand<A extends unknown[], R>(name: string, command: (...args: A) => Promise<R>): (...args: A) => Promise<R> {
-  return (...args) => trace.getTracer("mise.kitchen", "1").startActiveSpan("kitchen.command", async span => {
+  return (...args) => kitchenTracer().startActiveSpan("kitchen.command", async span => {
     const started = performance.now();
     let outcome: KitchenOutcome = "exception";
     try {
@@ -103,7 +104,7 @@ export class ObservedMcpTransport implements Transport {
           ? Object.fromEntries(extra.request.headers.entries())
           : (extra as { requestInfo?: { headers?: Record<string, string> } } | undefined)?.requestInfo?.headers ?? {};
         const parent = propagation.extract(context.active(), headers);
-        const span = trace.getTracer("mise.kitchen", "1").startSpan("mcp.tool", { kind: SpanKind.SERVER, attributes: { "mise.operation": name } }, parent);
+        const span = kitchenTracer().startSpan("mcp.tool", { kind: SpanKind.SERVER, attributes: { "mise.operation": name } }, parent);
         this.pending.set(message.id, { span, name, started: performance.now() });
         context.with(trace.setSpan(parent, span), () => this.onmessage?.(message, extra));
       } else this.onmessage?.(message, extra);
