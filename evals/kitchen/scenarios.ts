@@ -70,3 +70,7 @@ export const compositionScenarios: Scenario[] = [
   { id: "composition-equipment-lifecycle", maxModelRequests: 18, prompt: "Add a skillet to my kitchen equipment.", followUps: ["Rename that skillet to Cast iron skillet.", "I gave that skillet away. Remove it from my kitchen equipment."], seed: [], checkpoints: [{ pantry: [], equipment: [{ name: "skillet", kind: "cookware" }] }, { pantry: [], equipment: [{ name: "cast iron skillet", kind: "cookware" }] }, { pantry: [], equipment: [] }], pantry: [], equipment: [] },
   { id: "composition-proposal-only", prompt: "I'm considering buying six eggs and cumin, and throwing away the mayo. Show me what those changes would mean, but don't save any changes yet.", seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }, { name: "Mayo" }], pantry: [{ name: "eggs", quantity: "4" }, { name: "mayo", quantity: "" }], equipment: [], forbidWrites: true, preserveIds: true },
 ];
+
+export const rolloutScenarios: Scenario[] = [
+  { id: "rollout-three-spices", prompt: "I bought three new spices. Please add cumin, paprika, and chili powder, 12 ounces each.", seed: [], pantry: [{ name: "chili powder", quantity: "12 oz" }, { name: "cumin", quantity: "12 oz" }, { name: "paprika", quantity: "12 oz" }], equipment: [] },
+];

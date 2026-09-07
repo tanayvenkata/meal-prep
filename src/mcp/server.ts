@@ -1,18 +1,28 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
-import { InvalidTokenError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
-import { requireBearerAuth } from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
-import type { OAuthTokenVerifier } from "@modelcontextprotocol/sdk/server/auth/provider.js";
 import {
+  McpServer,
+  WebStandardStreamableHTTPServerTransport,
+  createMcpHandler,
+  isLegacyRequest,
+  OAuthError,
+  OAuthErrorCode,
+  type AuthInfo,
+  type JSONRPCMessage,
+  type Transport,
+} from "@modelcontextprotocol/server";
+import {
+  createMcpExpressApp,
   getOAuthProtectedResourceMetadataUrl,
   mcpAuthMetadataRouter,
-} from "@modelcontextprotocol/sdk/server/auth/router.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+  requireBearerAuth,
+  type OAuthTokenVerifier,
+} from "@modelcontextprotocol/express";
+import {
+  NodeStreamableHTTPServerTransport,
+  toNodeHandler,
+  toWebRequest,
+} from "@modelcontextprotocol/node";
 import { z } from "zod";
 import {
   getMcpAuthChallenge,
@@ -89,6 +99,7 @@ type KitchenToolDeleter = typeof removeKitchenTool;
 
 type MiseServerOptions = {
   toolSurface?: "baseline" | "four";
+  addItems?: typeof addKitchenItems;
   loadKitchenContext?: KitchenContextLoader;
   setPantryItemQuantity?: PantryQuantityUpdater;
   adjustPantryItemQuantity?: PantryQuantityAdjuster;
@@ -740,10 +751,42 @@ export function addOpenAiToolSecuritySchemes(message: JSONRPCMessage): JSONRPCMe
   } as JSONRPCMessage;
 }
 
-class OpenAiCompatibleStreamableHTTPServerTransport extends StreamableHTTPServerTransport {
+function getUserIdFromContext(ctx: unknown): string | undefined {
+  if (!ctx || typeof ctx !== "object") return undefined;
+  const c = ctx as {
+    http?: { authInfo?: AuthInfo };
+    authInfo?: AuthInfo;
+  };
+  const userId = c.http?.authInfo?.extra?.userId ?? c.authInfo?.extra?.userId;
+  return typeof userId === "string" ? userId : undefined;
+}
+
+export async function patchOpenAiSecuritySchemes(response: Response): Promise<Response> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return response;
+  }
+  try {
+    const text = await response.text();
+    const data = JSON.parse(text);
+    const patched = addOpenAiToolSecuritySchemes(data);
+    const patchedText = JSON.stringify(patched);
+    const headers = new Headers(response.headers);
+    headers.set("content-length", String(Buffer.byteLength(patchedText)));
+    return new Response(patchedText, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  } catch {
+    return response;
+  }
+}
+
+class OpenAiCompatibleNodeStreamableHTTPServerTransport extends NodeStreamableHTTPServerTransport {
   override send(
     message: JSONRPCMessage,
-    options?: Parameters<StreamableHTTPServerTransport["send"]>[1],
+    options?: Parameters<NodeStreamableHTTPServerTransport["send"]>[1],
   ) {
     return super.send(addOpenAiToolSecuritySchemes(message), options);
   }
@@ -760,7 +803,8 @@ class OpenAiCompatibleWebStandardStreamableHTTPServerTransport extends WebStanda
 
 export async function createMiseServer(
   {
-    toolSurface = process.env.MISE_TOOL_SURFACE === "four" ? "four" : "baseline",
+    toolSurface = process.env.MISE_TOOL_SURFACE === "baseline" ? "baseline" : "four",
+    addItems = addKitchenItems,
     loadKitchenContext: getKitchenContext = loadKitchenContext,
     setPantryItemQuantity = updatePantryItemQuantity,
     adjustPantryItemQuantity = adjustPantryQuantity,
@@ -773,6 +817,7 @@ export async function createMiseServer(
     updateKitchenTool = editKitchenTool,
     deleteKitchenTool = removeKitchenTool,
   }: MiseServerOptions = {},
+  requestId?: string,
 ) {
   getKitchenContext = observeKitchenCommand(KITCHEN_CONTEXT_TOOL, getKitchenContext);
   setPantryItemQuantity = observeKitchenCommand(SET_PANTRY_ITEM_QUANTITY_TOOL, setPantryItemQuantity);
@@ -794,6 +839,22 @@ export async function createMiseServer(
     },
   );
 
+  const originalMcpConnect = server.connect.bind(server);
+  server.connect = async (transport: Transport) => {
+    const observed = transport instanceof ObservedMcpTransport
+      ? transport
+      : new ObservedMcpTransport(transport, AUTHENTICATED_MISE_TOOLS, requestId);
+    return originalMcpConnect(observed);
+  };
+  const originalServerConnect = server.server.connect.bind(server.server);
+  server.server.connect = async (transport: Transport) => {
+    const observed = transport instanceof ObservedMcpTransport
+      ? transport
+      : new ObservedMcpTransport(transport, AUTHENTICATED_MISE_TOOLS, requestId);
+    return originalServerConnect(observed);
+  };
+
+
   server.registerTool(
     toolSurface === "four" ? "read_kitchen" : KITCHEN_CONTEXT_TOOL,
     {
@@ -814,7 +875,7 @@ export async function createMiseServer(
       },
     },
     async (extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -837,10 +898,18 @@ export async function createMiseServer(
       const observed = observeKitchenCommand(name, command);
       server.registerTool(name, {
         description, inputSchema: schema,
+        outputSchema: z.object({
+          status: z.enum(["applied", "rejected", "request_id_reused", "invalid_input"]),
+          requestId: z.string().uuid().optional(),
+          replayed: z.boolean().optional().describe("Historical result returned for an identical retry; reread for current state."),
+          results: z.array(z.record(z.string(), z.json())).optional().describe("Per-entry applied outcomes in input order."),
+          index: z.number().int().nonnegative().optional().describe("Rejected entry index; no entries in this batch committed."),
+          reason: z.string().optional().describe("Domain rejection reason; reread inventory before correcting and issuing a new request."),
+        }).strict(),
         annotations: { readOnlyHint: false, destructiveHint: name !== "add_items", idempotentHint: true, openWorldHint: false },
         _meta: { securitySchemes: MISE_OAUTH_SECURITY_SCHEMES },
       }, async (input, extra) => {
-        const userId = extra.authInfo?.extra?.userId;
+        const userId = getUserIdFromContext(extra);
         if (typeof userId !== "string") return {
           isError: true, content: [{ type: "text" as const, text: "Connect your Mise account to continue." }],
           _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
@@ -853,7 +922,7 @@ export async function createMiseServer(
         };
       });
     };
-    registerWrite("add_items", "Save one or more explicitly owned pantry items or pieces of equipment. A name is enough for pantry: omit quantity when unspecified, and do not ask for an amount. Food and spices default to collection pantry; specify equipment for kitchen equipment. Quantity and turnover are optional. To record a purchase of more existing pantry stock, use operation increase with a fresh item ID, expectedName, expectedQuantity, and positive same-unit delta. Mix new items and increases in one list for a confirmed receipt; all commit together. A plain named add of an existing item leaves it unchanged. Use one request UUID per requested list, reused only for an identical retry. All entries commit together or none do. Never infer ownership from recipes or an unconfirmed receipt.", candidateInputs.add_items, addKitchenItems);
+    registerWrite("add_items", "Save one or more explicitly owned pantry items or pieces of equipment. Preserve the user-supplied name; do not expand synonyms (mayo stays mayo). A name is enough for pantry: omit quantity when unspecified, and do not ask for an amount. Food and spices default to collection pantry; specify equipment for kitchen equipment. Quantity and turnover are optional. To record a purchase of more existing pantry stock, use operation increase with a fresh item ID, expectedName, expectedQuantity, and positive same-unit delta. Mix new items and increases in one list for a confirmed receipt; all commit together. A plain named add of an existing item leaves it unchanged. Use one request UUID per requested list, reused only for an identical retry. All entries commit together or none do. Never infer ownership from recipes or an unconfirmed receipt.", candidateInputs.add_items, addItems);
     registerWrite("edit_items", "Edit saved pantry or equipment from a fresh read_kitchen result. Use replace for a stated total, description, unknown quantity, rename, or turnover change; increase for more purchased; decrease for an explicit amount consumed. Relative edits require a positive same-unit delta and fresh expected quantity. Pass stable IDs and exact current names. Lists are atomic; reuse UUID only for identical retries. Planning never authorizes an edit.", candidateInputs.edit_items, editKitchenItems);
     registerWrite("remove_items", "Remove saved pantry items or equipment explicitly requested in the current turn. A pantry item reported fully finished or used up counts as removal intent. Partial use, a stored zero alone, and hypothetical plans do not. Read read_kitchen first and use stable IDs and exact current names. If absent, confirm absence without a write. All listed removals commit together; reuse UUID only for identical retries.", candidateInputs.remove_items, removeKitchenItems);
     return server;
@@ -880,7 +949,7 @@ export async function createMiseServer(
       },
     },
     async ({ name, quantity, turnover }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -939,7 +1008,7 @@ export async function createMiseServer(
       },
     },
     async ({ id, expectedName, name, quantity, turnover }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1022,7 +1091,7 @@ export async function createMiseServer(
       },
     },
     async ({ id, expectedName }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1075,7 +1144,7 @@ export async function createMiseServer(
       },
     },
     async ({ name, kind }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1129,7 +1198,7 @@ export async function createMiseServer(
       },
     },
     async ({ id, expectedName, name, kind }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1208,7 +1277,7 @@ export async function createMiseServer(
       },
     },
     async ({ id, expectedName }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1261,7 +1330,7 @@ export async function createMiseServer(
       },
     },
     async ({ name, quantity }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1344,7 +1413,7 @@ export async function createMiseServer(
         },
       },
       async ({ name, expectedQuantity, deltaQuantity }, extra) => {
-        const userId = extra.authInfo?.extra?.userId;
+        const userId = getUserIdFromContext(extra);
         if (typeof userId !== "string") {
           return {
             isError: true,
@@ -1402,7 +1471,7 @@ export async function createMiseServer(
       },
     },
     async ({ changes }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1462,7 +1531,7 @@ export async function createMiseServer(
       },
     },
     async ({ requestId, lines }, extra) => {
-      const userId = extra.authInfo?.extra?.userId;
+      const userId = getUserIdFromContext(extra);
       if (typeof userId !== "string") {
         return {
           isError: true,
@@ -1510,6 +1579,7 @@ export async function createMiseServer(
     },
   );
 
+
   return server;
 }
 
@@ -1517,6 +1587,7 @@ type VerifyAccessToken = (token: string) => Promise<AuthInfo>;
 
 type MiseHttpServerOptions = {
   toolSurface?: "baseline" | "four";
+  addItems?: typeof addKitchenItems;
   verifyAccessToken?: VerifyAccessToken;
   loadKitchenContext?: KitchenContextLoader;
   setPantryItemQuantity?: PantryQuantityUpdater;
@@ -1558,7 +1629,8 @@ export async function handleMiseMcpRequest(
   request: Request,
   {
     verifyAccessToken = verifyMcpAccessToken,
-    toolSurface = process.env.MISE_TOOL_SURFACE === "four" ? "four" : "baseline",
+    toolSurface = process.env.MISE_TOOL_SURFACE === "baseline" ? "baseline" : "four",
+    addItems = addKitchenItems,
     loadKitchenContext: getKitchenContext = loadKitchenContext,
     setPantryItemQuantity = updatePantryItemQuantity,
     adjustPantryItemQuantity = adjustPantryQuantity,
@@ -1574,6 +1646,7 @@ export async function handleMiseMcpRequest(
     MiseHttpServerOptions,
     | "verifyAccessToken"
     | "toolSurface"
+    | "addItems"
     | "loadKitchenContext"
     | "setPantryItemQuantity"
     | "adjustPantryItemQuantity"
@@ -1634,8 +1707,53 @@ export async function handleMiseMcpRequest(
     return observeResponse(invalidTokenResponse(authConfig));
   }
 
-  const server = await createMiseServer({
+  if (await isLegacyRequest(request.clone())) {
+    const server = await createMiseServer({
+      toolSurface,
+      addItems,
+      loadKitchenContext: getKitchenContext,
+      setPantryItemQuantity,
+      adjustPantryItemQuantity,
+      adjustPantryItemQuantities,
+      applyReviewedReceiptImport,
+      createPantryItem,
+      updatePantryItem,
+      deletePantryItem,
+      createKitchenTool,
+      updateKitchenTool,
+      deleteKitchenTool,
+    }, requestId);
+    const transport =
+      new OpenAiCompatibleWebStandardStreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true,
+      });
+
+    try {
+      await server.connect(transport);
+      const response = await transport.handleRequest(request, { authInfo });
+      return observeResponse(response);
+    } catch {
+      console.error(JSON.stringify({
+        event: "mcp_request_failed",
+        requestId,
+      }));
+      return observeResponse(Response.json(
+        {
+          jsonrpc: "2.0",
+          error: { code: -32603, message: "Internal server error." },
+          id: null,
+        },
+        { status: 500 },
+      ));
+    } finally {
+      await server.close();
+    }
+  }
+
+  const serverOptions = {
     toolSurface,
+    addItems,
     loadKitchenContext: getKitchenContext,
     setPantryItemQuantity,
     adjustPantryItemQuantity,
@@ -1647,17 +1765,16 @@ export async function handleMiseMcpRequest(
     createKitchenTool,
     updateKitchenTool,
     deleteKitchenTool,
-  });
-  const transport =
-    new OpenAiCompatibleWebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    });
+  };
+  const modernHandler = createMcpHandler(
+    () => createMiseServer(serverOptions, requestId),
+    { legacy: "reject", responseMode: "auto" },
+  );
 
   try {
-    await server.connect(new ObservedMcpTransport(transport, AUTHENTICATED_MISE_TOOLS, requestId));
-    const response = await transport.handleRequest(request, { authInfo });
-    return observeResponse(response);
+    const response = await modernHandler.fetch(request, { authInfo });
+    const patchedResponse = await patchOpenAiSecuritySchemes(response);
+    return observeResponse(patchedResponse);
   } catch {
     console.error(JSON.stringify({
       event: "mcp_request_failed",
@@ -1671,14 +1788,13 @@ export async function handleMiseMcpRequest(
       },
       { status: 500 },
     ));
-  } finally {
-    await server.close();
   }
 }
 
 export function createMiseHttpServer({
   verifyAccessToken = verifyMcpAccessToken,
-  toolSurface = process.env.MISE_TOOL_SURFACE === "four" ? "four" : "baseline",
+  toolSurface = process.env.MISE_TOOL_SURFACE === "baseline" ? "baseline" : "four",
+    addItems = addKitchenItems,
     loadKitchenContext: getKitchenContext = loadKitchenContext,
   setPantryItemQuantity = updatePantryItemQuantity,
   adjustPantryItemQuantity = adjustPantryQuantity,
@@ -1711,7 +1827,8 @@ export function createMiseHttpServer({
         return await verifyAccessToken(token);
       } catch {
         console.warn(JSON.stringify({ event: "mcp_auth_failed" }));
-        throw new InvalidTokenError(
+        throw new OAuthError(
+          OAuthErrorCode.InvalidToken,
           "The Mise access token is invalid or expired.",
         );
       }
@@ -1766,37 +1883,65 @@ export function createMiseHttpServer({
   );
 
   app.post(MCP_PATH, async (req, res) => {
-    // This server is deliberately stateless: every MCP request gets a
-    // short-lived server and transport.
-    const server = await createMiseServer({
-    toolSurface,
-      loadKitchenContext: getKitchenContext,
-      setPantryItemQuantity,
-      adjustPantryItemQuantity,
-      adjustPantryItemQuantities,
-      applyReviewedReceiptImport,
-      createPantryItem,
-      updatePantryItem,
-      deletePantryItem,
-      createKitchenTool,
-      updateKitchenTool,
-      deleteKitchenTool,
-    });
-    const transport = new OpenAiCompatibleStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    });
-
-    try {
-      await server.connect(new ObservedMcpTransport(transport, AUTHENTICATED_MISE_TOOLS, res.locals.miseRequestId));
-      res.on("close", () => {
-        void transport.close();
-        void server.close();
+    const webRequest = await toWebRequest(req, req.body);
+    if (await isLegacyRequest(webRequest, req.body)) {
+      const server = await createMiseServer({
+      toolSurface,
+      addItems,
+        loadKitchenContext: getKitchenContext,
+        setPantryItemQuantity,
+        adjustPantryItemQuantity,
+        adjustPantryItemQuantities,
+        applyReviewedReceiptImport,
+        createPantryItem,
+        updatePantryItem,
+        deletePantryItem,
+        createKitchenTool,
+        updateKitchenTool,
+        deleteKitchenTool,
+      }, res.locals.miseRequestId);
+      const transport = new OpenAiCompatibleNodeStreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true,
       });
-      await transport.handleRequest(req, res, req.body);
-    } catch {
-      console.error(JSON.stringify({ event: "mcp_request_failed", requestId: res.locals.miseRequestId }));
-      if (!res.headersSent) res.status(500).send("Internal server error");
+
+      try {
+        await server.connect(transport);
+        res.on("close", () => {
+          void transport.close();
+          void server.close();
+        });
+        await transport.handleRequest(req, res, req.body);
+      } catch {
+        console.error(JSON.stringify({ event: "mcp_request_failed", requestId: res.locals.miseRequestId }));
+        if (!res.headersSent) res.status(500).send("Internal server error");
+      }
+    } else {
+      const serverOptions = {
+    toolSurface,
+        loadKitchenContext: getKitchenContext,
+        setPantryItemQuantity,
+        adjustPantryItemQuantity,
+        adjustPantryItemQuantities,
+        applyReviewedReceiptImport,
+        createPantryItem,
+        updatePantryItem,
+        deletePantryItem,
+        createKitchenTool,
+        updateKitchenTool,
+        deleteKitchenTool,
+      };
+      const modernHandler = createMcpHandler(
+        () => createMiseServer(serverOptions, res.locals.miseRequestId),
+        { legacy: "reject", responseMode: "auto" },
+      );
+      const nodeHandler = toNodeHandler({
+        fetch: async (request: Request, options?: { authInfo?: AuthInfo }) => {
+          const response = await modernHandler.fetch(request, options);
+          return patchOpenAiSecuritySchemes(response);
+        },
+      });
+      await nodeHandler(req, res, req.body);
     }
   });
 

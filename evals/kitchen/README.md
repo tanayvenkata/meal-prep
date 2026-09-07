@@ -150,10 +150,12 @@ until that turn.
 ## Comparing tool surfaces
 
 `MISE_TOOL_SURFACE=four pnpm run eval:kitchen --workflows` selects the experimental
-four-tool interface and the 23 non-fault cases. Baseline is the default. Report
+four-tool interface and the 23 non-fault cases. The application defaults to four;
+the comparison runner retains baseline unless MISE_TOOL_SURFACE=four is explicit. Report
 provenance records the surface and migration source alongside model/code hashes.
-Fault scenarios are excluded explicitly; candidate persistent-service fault
-injection is not wired, and the runner refuses to score that scenario on four.
+The --workflows selector excludes faults. Use --all for the 26-case corpus,
+including response loss and injected persistent add-service failure on either
+surface. Use --rollout for the three-spice purchase example (12 oz each).
 
 An isolated local stack can be selected with `KITCHEN_EVAL_DATABASE_URL` and
 `KITCHEN_EVAL_ADMIN_DATABASE_URL`. Both must target the same approved loopback

@@ -11,7 +11,7 @@ const quantity = z.union([
   measured,
   z.object({ mode: z.literal("unknown") }).strict(),
   z.object({ mode: z.literal("text"), text: name }).strict(),
-]);
+]).describe("Use amount/unit for stated numbers or fractions: half a jar is amount 0.5, unit jar. Use text for unmeasured descriptions such as a little left. Omit an unspecified starting quantity; unknown clears an existing quantity.");
 const pantryCollection = z.literal("pantry").default("pantry").describe("Food and spices; defaults to pantry.");
 const turnover = z.enum(["high", "low"]).optional().describe("Optional replenishment frequency, independent of item category.");
 const pantryRef = { id: z.number().int().positive().max(Number.MAX_SAFE_INTEGER), expectedName: name };

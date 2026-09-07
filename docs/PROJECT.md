@@ -135,3 +135,11 @@ Keep accepted decisions short, dated, evidence-backed, and revisitable. New audi
 proposals become project decisions when selected for implementation, not simply
 because an agent wrote them down.
 
+
+## Four-tool rollout preparation — 2026-09-06
+
+The user requested switching to four tools. The rollout branch integrates current
+main's MCP SDK v2 and defaults the application to read/add/edit/remove. The
+12-tool reference is explicit through MISE_TOOL_SURFACE=baseline; eval fixtures
+retain their explicit surface selection. Deployment is not implied by these local
+changes. The actual connected app changes after the rollout and catalog refresh.

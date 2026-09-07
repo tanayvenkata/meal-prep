@@ -1,5 +1,4 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { createMiseHttpServer } from "@/mcp/server";
 import { AsyncResource } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
@@ -192,7 +191,7 @@ it("exposes exactly four authenticated tools over MCP HTTP and saves unknown qua
   process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:55321";
   process.env.MCP_PUBLIC_URL = "http://localhost:8787/mcp";
   const token = randomUUID();
-  const server = createMiseHttpServer({ toolSurface: "four", verifyAccessToken: async presented => {
+  const server = createMiseHttpServer({ verifyAccessToken: async presented => {
     if (presented !== token) throw new Error("invalid_fixture_token");
     return { token, clientId: "candidate-test", scopes: ["openid"], expiresAt: Math.floor(Date.now()/1000)+300, extra: { userId: userA } };
   }});

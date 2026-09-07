@@ -9,9 +9,9 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   "Access-Control-Allow-Headers":
-    "Authorization, Content-Type, Last-Event-ID, MCP-Protocol-Version, MCP-Session-Id",
+    "Authorization, Content-Type, Last-Event-ID, MCP-Protocol-Version, MCP-Session-Id, Mcp-Method, Mcp-Name, Mcp-Param-*",
   "Access-Control-Expose-Headers":
-    "MCP-Protocol-Version, MCP-Session-Id, WWW-Authenticate",
+    "MCP-Protocol-Version, MCP-Session-Id, Mcp-Method, Mcp-Name, WWW-Authenticate",
 };
 
 function withCors(response: Response) {

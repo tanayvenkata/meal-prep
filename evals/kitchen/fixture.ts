@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import postgres from "postgres";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api";
+import type { addKitchenItems } from "../../src/lib/kitchen-commands";
 import type { createPantryItem } from "../../src/lib/kitchen-service";
 
 import { evaluationDatabases } from "./database-config";
@@ -13,7 +13,7 @@ export const LOCAL_APP_DATABASE = evaluationDatabase.app;
 const LOCAL_ADMIN_DATABASE = evaluationDatabase.admin;
 
 /** Synthetic identities and loopback only. Never inherit a production database. */
-export async function kitchenFixture(overrides: { createPantryItem?: typeof createPantryItem } = {}) {
+export async function kitchenFixture(overrides: { createPantryItem?: typeof createPantryItem; addItems?: typeof addKitchenItems } = {}) {
   if (process.env.DATABASE_URL !== LOCAL_APP_DATABASE) {
     throw new Error("Kitchen evaluations require the dedicated local mise_app database.");
   }
@@ -24,6 +24,7 @@ export async function kitchenFixture(overrides: { createPantryItem?: typeof crea
   const userId = randomUUID();
   const token = randomUUID();
   const server = createMiseHttpServer({
+    toolSurface: process.env.MISE_TOOL_SURFACE === "four" ? "four" : "baseline",
     ...overrides,
     verifyAccessToken: async (presented) => {
       if (presented !== token) throw new Error("Invalid fixture token");
