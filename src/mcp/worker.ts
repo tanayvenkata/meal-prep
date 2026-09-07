@@ -2,7 +2,7 @@ import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { handleMiseMcpRequest } from "./server";
 import { getMcpProtectedResourceMetadata, getSupabaseOAuthMetadata } from "./auth";
-import { flushKitchenTelemetry } from "@/lib/telemetry";
+import { startKitchenTelemetry, flushKitchenTelemetry } from "@/lib/telemetry";
 
 export type WorkerBindings = {
   DATABASE_URL?: string;
@@ -13,6 +13,13 @@ export type WorkerBindings = {
   MCP_TOKEN_AUDIENCE?: string;
   MISE_TOOL_SURFACE?: string;
   OTEL_EXPORTER_OTLP_ENDPOINT?: string;
+  OTEL_EXPORTER_OTLP_HEADERS?: string;
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT?: string;
+  OTEL_EXPORTER_OTLP_TRACES_HEADERS?: string;
+  OTEL_EXPORTER_OTLP_METRICS_ENDPOINT?: string;
+  OTEL_EXPORTER_OTLP_METRICS_HEADERS?: string;
+  MISE_ENVIRONMENT?: string;
+  MISE_RELEASE?: string;
 };
 
 type WorkerContext = Context<{ Bindings: WorkerBindings }>;
@@ -103,13 +110,16 @@ async function handleMcpRoute(c: WorkerContext) {
     );
   }
 
-  const response = await handleMiseMcpRequest(c.req.raw);
+  startKitchenTelemetry({ runtime: "cloudflare-workers" });
   try {
-    c.executionCtx?.waitUntil?.(flushKitchenTelemetry().catch(() => {}));
-  } catch {
-    // outside Cloudflare Workers execution or in test harness
+    return await handleMiseMcpRequest(c.req.raw);
+  } finally {
+    try {
+      c.executionCtx.waitUntil(flushKitchenTelemetry());
+    } catch {
+      // app.request() without an execution context is a local test harness.
+    }
   }
-  return response;
 }
 
 app.all("/mcp", handleMcpRoute);
