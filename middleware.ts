@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 const PUBLIC_ROUTES = [
   "/login",
   "/api/auth/login",
+  "/auth/callback",
+  "/reset-password",
   "/mcp",
   "/api/mcp",
   "/.well-known/oauth-protected-resource",

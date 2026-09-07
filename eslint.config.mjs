@@ -18,6 +18,8 @@ const eslintConfig = defineConfig([
     ".claude/**",
     // Cloudflare Wrangler local build state
     ".wrangler/**",
+    // Git worktrees
+    ".worktrees/**",
   ]),
   {
     files: ["src/__tests__/**/*.ts"],
