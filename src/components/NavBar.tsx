@@ -6,7 +6,7 @@ import SignOutButton from "@/components/SignOutButton";
 import ThemeToggle from "@/components/ThemeToggle";
 import type { ThemeMode } from "@/lib/theme";
 
-export default function NavBar({ initialThemeMode }: { initialThemeMode: ThemeMode }) {
+export default function NavBar({ initialThemeMode }: { initialThemeMode?: ThemeMode } = {}) {
   const pathname = usePathname();
   const isLogin = pathname === "/login";
 

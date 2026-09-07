@@ -4,10 +4,22 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 
-export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-);
+let _client: ReturnType<typeof createBrowserClient> | null = null;
+
+function getBrowserClient() {
+  if (!_client) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "placeholder-anon-key";
+    _client = createBrowserClient(url, key);
+  }
+  return _client;
+}
+
+export const supabase = new Proxy({} as ReturnType<typeof createBrowserClient>, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getBrowserClient(), prop, receiver);
+  },
+});
 
 // The access token for the current session, or null if signed out. Every authed
 // client fetch needs it for the `Authorization: Bearer` header — keep that dance
