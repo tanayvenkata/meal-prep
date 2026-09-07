@@ -50,6 +50,8 @@ function finish(span: Span, layer: "tool" | "command", name: string, outcome: Ki
   const duration = (performance.now() - started) / 1000;
   try {
     span.setAttributes(attributes);
+    // Server-generated HTTP correlation ID belongs on traces, never metric labels.
+    if (requestId) span.setAttribute("mise.request_id", requestId);
     if (["exception", "tool_error", "protocol_error", "delivery_error", "interrupted", "unclassified"].includes(outcome)) span.setStatus({ code: SpanStatusCode.ERROR });
     const meter = metrics.getMeter("mise.kitchen", "1");
     meter.createCounter("mise.kitchen.operations", { description: "Observed command or MCP tool outcomes" }).add(1, attributes);

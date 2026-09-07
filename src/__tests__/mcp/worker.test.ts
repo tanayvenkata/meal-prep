@@ -1,6 +1,12 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import { app } from "@/mcp/worker";
 
+const telemetryMocks = vi.hoisted(() => ({ start: vi.fn(), flush: vi.fn(async () => {}) }));
+vi.mock("@/lib/telemetry", () => ({
+  startKitchenTelemetry: telemetryMocks.start,
+  flushKitchenTelemetry: telemetryMocks.flush,
+}));
+
 const mockGetKitchenContext = vi.fn();
 const mockAddKitchenItems = vi.fn();
 const mockEditKitchenItems = vi.fn();
@@ -328,5 +334,23 @@ describe("Hono Cloudflare Worker MCP server", () => {
       expect(res.status).toBe(200);
       expect(process.env.CUSTOM_WORKER_VAR).toBe("test-value");
     });
+  });
+});
+
+
+describe("Worker telemetry lifetime", () => {
+  it("starts the provider and returns a response while its waitUntil flush is pending", async () => {
+    let finish!: () => void;
+    const pending = new Promise<void>(resolve => { finish = resolve; });
+    telemetryMocks.flush.mockReturnValueOnce(pending);
+    const waitUntil = vi.fn();
+    const response = await app.request("/mcp", { method: "POST" }, {}, {
+      waitUntil, passThroughOnException: vi.fn(), props: {},
+    });
+    expect(response.status).toBe(401);
+    expect(telemetryMocks.start).toHaveBeenCalledWith({ runtime: "cloudflare-workers" });
+    expect(waitUntil).toHaveBeenCalledWith(pending);
+    finish();
+    await pending;
   });
 });
