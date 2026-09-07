@@ -50,6 +50,9 @@ jobs:
       - name: Unit tests
         run: pnpm run test:unit
 
+      - name: Evaluation dependency smoke test
+        run: pnpm run test:eval-dependencies
+
   database:
     runs-on: ubuntu-latest
     timeout-minutes: 10

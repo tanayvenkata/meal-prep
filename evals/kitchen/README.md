@@ -29,7 +29,14 @@ Run `pnpm run eval:kitchen` (or append `add-unknown` for one scenario). This
 spends API credits using `OPENAI_API_KEY` from the environment or Doppler, and writes
 reports into ignored `.eval-results/kitchen/`. It is deliberately outside CI.
 Promptfoo 0.122.2 provides evaluation orchestration and assertion reports. Its
-installed OpenAI chat MCP callback
+unused optional Codex Security and Hugging Face Transformers integrations are
+excluded in `pnpm-workspace.yaml` to remove vulnerable transitive dependencies
+(Dependabot alerts #48–54). Kitchen evaluations use a custom provider and
+JavaScript assertions; `pnpm run test:eval-dependencies` checks that path offline
+in CI. Reassess the exclusions and upstream security fixes before adding either
+integration or local Transformers embeddings.
+
+Its installed OpenAI chat MCP callback
 path executes tools and returns their content without completing a subsequent
 model turn, so `run.ts` uses the official OpenAI SDK for at most six model turns
 and twelve tool calls. Response caching is disabled. Each report records the model

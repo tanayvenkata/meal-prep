@@ -16,6 +16,7 @@
     "test": "node scripts/build-inventory-ui.mjs && vitest",
     "test:unit": "node scripts/build-inventory-ui.mjs && vitest --run src/__tests__/api src/__tests__/components src/__tests__/services src/__tests__/lib/auth.test.ts src/__tests__/lib/db-config.test.ts src/__tests__/lib/inventory-list.test.ts src/__tests__/lib/pantry-api.test.ts src/__tests__/lib/theme.test.ts src/__tests__/middleware.test.ts src/__tests__/mcp",
     "test:integration": "node scripts/build-inventory-ui.mjs && vitest --run src/__tests__/lib",
+    "test:eval-dependencies": "node scripts/test-eval-dependencies.mjs",
     "eval:kitchen": "node scripts/eval-kitchen.mjs",
     "eval:kitchen:smoke": "node scripts/build-inventory-ui.mjs && tsx evals/kitchen/telemetry-smoke.ts",
     "eval:kitchen:inspector": "node scripts/build-inventory-ui.mjs && tsx evals/kitchen/inspector-smoke.ts",

@@ -16,6 +16,11 @@ it cannot prevent a host model from inventing an image without calling Mise.
 
 ## Implementation
 
+The installed production connector uses Vercel `/mcp`, as verified in the newly
+merged `docs/MCP-DEPLOYMENT.md`. This card works through that existing server
+registration; a Worker cutover is not a prerequisite. The Worker dry run below is
+additional portability evidence, not proof of the installed production path.
+
 The `vanilla-widget` archetype extends the existing MCP server. It follows the
 [OpenAI quickstart](https://developers.openai.com/plugins/quickstart) and
 [decoupled UI guidance](https://developers.openai.com/plugins/build/chatgpt-ui).
