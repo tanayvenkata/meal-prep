@@ -51,3 +51,6 @@ next-env.d.ts
 
 # IDE
 .vscode/
+
+# Bundled MCP card, rebuilt at install/build (no filesystem reads in Worker).
+/src/mcp/inventory-ui/generated.ts

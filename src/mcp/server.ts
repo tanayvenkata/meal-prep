@@ -52,6 +52,9 @@ import { addKitchenItems, editKitchenItems, removeKitchenItems } from "@/lib/kit
 import { PANTRY_QUANTITY_UNITS } from "@/lib/pantry-quantity";
 import { ObservedMcpTransport, observeKitchenCommand, recordMcpRequest } from "./observability";
 
+import { kitchenContextSchema } from "./inventory-ui/contract";
+import { inventoryHtml, inventoryResourceUri } from "./inventory-ui/generated";
+
 const MCP_PATH = "/mcp";
 const KITCHEN_CONTEXT_TOOL = "get_kitchen_context";
 const ADD_PANTRY_ITEM_TOOL = "add_pantry_item";
@@ -69,7 +72,7 @@ const MISE_OAUTH_SECURITY_SCHEMES = [
   { type: "oauth2", scopes: MCP_SCOPES },
 ];
 const AUTHENTICATED_MISE_TOOLS = new Set([
-  "read_kitchen", "add_items", "edit_items", "remove_items",
+  "show_kitchen", "read_kitchen", "add_items", "edit_items", "remove_items",
   KITCHEN_CONTEXT_TOOL,
   ADD_PANTRY_ITEM_TOOL,
   UPDATE_PANTRY_ITEM_TOOL,
@@ -112,28 +115,6 @@ type MiseServerOptions = {
   updateKitchenTool?: KitchenToolUpdater;
   deleteKitchenTool?: KitchenToolDeleter;
 };
-
-const kitchenContextSchema = z.object({
-  pantry: z.array(
-    z.object({
-      id: z.number().int().positive(),
-      name: z.string(),
-      quantity: z.string(),
-      quantityMode: z.enum([
-        "unknown",
-        "text",
-        "structured",
-        "unsupported",
-      ]),
-      quantityAmount: z.string().nullable(),
-      quantityUnit: z.string().nullable(),
-      turnover: z.enum(["high", "low"]),
-    }),
-  ),
-  tools: z.array(
-    z.object({ id: z.uuid(), name: z.string(), kind: z.string() }),
-  ),
-});
 
 const addKitchenToolInputSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -1130,6 +1111,7 @@ export async function createMiseServer(
   }: MiseServerOptions = {},
   requestId?: string,
 ) {
+  const inventoryUi = process.env.MISE_INVENTORY_UI === "1";
   getKitchenContext = observeKitchenCommand(KITCHEN_CONTEXT_TOOL, getKitchenContext);
   setPantryItemQuantity = observeKitchenCommand(SET_PANTRY_ITEM_QUANTITY_TOOL, setPantryItemQuantity);
   adjustPantryItemQuantity = observeKitchenCommand("adjust_pantry_item", adjustPantryItemQuantity);
@@ -1166,42 +1148,74 @@ export async function createMiseServer(
   };
 
 
-  server.registerTool(
-    toolSurface === "four" ? "read_kitchen" : KITCHEN_CONTEXT_TOOL,
-    {
-      title: "Show kitchen context",
-      description:
-        "Use this when the user asks what ingredients or kitchen equipment they have, or when cooking advice should account for their saved Mise kitchen. Returns only the signed-in user's pantry and kitchen tools.",
-      outputSchema: kitchenContextSchema,
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false,
+  const readSavedKitchen = async (extra: Parameters<typeof getUserIdFromContext>[0]) => {
+    const userId = getUserIdFromContext(extra);
+    if (typeof userId !== "string") {
+      return {
+        isError: true,
+        content: [{ type: "text" as const, text: "Connect your Mise account to continue." }],
+        _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+      };
+    }
+
+    const readAt = new Date().toISOString();
+    const kitchenContext = await getKitchenContext(userId);
+    return {
+      content: [{ type: "text" as const, text: "Returned your Mise kitchen context." }],
+      structuredContent: kitchenContext,
+      _meta: { "mise/readAt": readAt, "mise/refreshTool": toolSurface === "four" ? "read_kitchen" : KITCHEN_CONTEXT_TOOL },
+    };
+  };
+  const readAnnotations = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
+  server.registerTool(toolSurface === "four" ? "read_kitchen" : KITCHEN_CONTEXT_TOOL, {
+    title: "Read kitchen context",
+    description: "Use this when cooking advice, edits, or stock checks need the signed-in user's saved pantry and equipment. Returns data without opening a card." + (inventoryUi ? " Use show_kitchen only when the user asks to see their pantry or kitchen inventory visually." : ""),
+    outputSchema: kitchenContextSchema,
+    annotations: readAnnotations,
+    _meta: {
+      securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+      "openai/toolInvocation/invoking": "Checking your kitchen…",
+      "openai/toolInvocation/invoked": "Kitchen read finished.",
+    },
+  }, readSavedKitchen);
+
+  if (inventoryUi) {
+    // ext-apps 1.7.5 registration helpers target SDK v1. Keep v2's native
+    // registration and standard UI metadata; the browser uses the official App bridge.
+    server.registerResource("saved-kitchen", inventoryResourceUri, {
+      mimeType: "text/html;profile=mcp-app",
+    }, async () => ({ contents: [{
+      uri: inventoryResourceUri,
+      mimeType: "text/html;profile=mcp-app",
+      text: inventoryHtml,
+      _meta: {
+        ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } },
+        "openai/widgetDescription": "Saved Mise pantry and equipment from an authenticated read, with recorded quantities, read time, and a read-only refresh button.",
       },
+    }] }));
+    server.registerTool("show_kitchen", {
+      title: "Show saved kitchen",
+      description: "Open a read-only inventory card when the user explicitly asks to see their saved pantry or kitchen inventory. Reads the signed-in user's saved data directly. Do not use for background meal planning, receipt proposals, or as proof a write succeeded. Does not change stock or infer package sizes.",
+      inputSchema: z.object({}).strict(),
+      outputSchema: kitchenContextSchema,
+      annotations: readAnnotations,
       _meta: {
         securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
-        "openai/toolInvocation/invoking": "Checking your kitchen…",
-        "openai/toolInvocation/invoked": "Kitchen ready.",
+        ui: { resourceUri: inventoryResourceUri },
+        "openai/toolInvocation/invoking": "Reading saved kitchen…",
+        "openai/toolInvocation/invoked": "Kitchen read finished.",
       },
-    },
-    async (extra) => {
-      const userId = getUserIdFromContext(extra);
-      if (typeof userId !== "string") {
+    }, async (_input, extra) => {
+      try { return await readSavedKitchen(extra); }
+      catch {
         return {
           isError: true,
-          content: [{ type: "text", text: "Connect your Mise account to continue." }],
-          _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+          content: [{ type: "text" as const, text: "Could not read saved kitchen. Try again; no inventory was changed." }],
+          _meta: { "mise/refreshTool": toolSurface === "four" ? "read_kitchen" : KITCHEN_CONTEXT_TOOL },
         };
       }
-
-      const kitchenContext = await getKitchenContext(userId);
-      return {
-        content: [{ type: "text", text: "Returned your Mise kitchen context." }],
-        structuredContent: kitchenContext,
-      };
-    },
-  );
+    });
+  }
 
   registerMisePrompts(server, toolSurface);
 

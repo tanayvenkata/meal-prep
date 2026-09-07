@@ -39,7 +39,7 @@ export function classifyToolResult(message: JSONRPCMessage, tool: string): Kitch
   if (!("result" in message) || !record(message.result)) return "unclassified";
   if (message.result.isError === true) return "tool_error";
   const content = message.result.structuredContent;
-  if ((tool === "get_kitchen_context" || tool === "read_kitchen") && record(content) && Array.isArray(content.pantry) && Array.isArray(content.tools)) return "success";
+  if ((tool === "get_kitchen_context" || tool === "read_kitchen" || tool === "show_kitchen") && record(content) && Array.isArray(content.pantry) && Array.isArray(content.tools)) return "success";
   return outcomeOf(record(content) && record(content.outcome) ? content.outcome : content);
 }
 

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mise saved kitchen</title>
+<style>
+:root { color-scheme: light dark; font-family: var(--font-sans, system-ui, sans-serif); color: var(--color-text-primary, CanvasText); background: var(--color-background-primary, Canvas); }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 20px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+h1 { font-size: 1.25rem; margin: 0; } h2 { font-size: 1rem; margin: 24px 0 8px; }
+p { color: var(--color-text-secondary, CanvasText); font-size: .875rem; line-height: 1.5; }
+button { font: inherit; color: inherit; background: var(--color-background-secondary, ButtonFace); border: 1px solid var(--color-border-primary, ButtonBorder); border-radius: 8px; padding: 10px 14px; min-height: 44px; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--color-text-primary, Highlight); outline-offset: 3px; }
+button:disabled { opacity: .6; cursor: wait; }
+ul { padding: 0; margin: 0; list-style: none; }
+li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--color-border-tertiary, GrayText); overflow-wrap: anywhere; }
+li > span { min-width: 0; } .detail { color: var(--color-text-secondary, CanvasText); text-align: right; flex-shrink: 0; max-width: 48%; }
+@media(max-width: 360px) { body { padding: 12px; } li { flex-direction: column; gap: 4px; } .detail { text-align: left; max-width: 100%; } }
+</style></head><body><main><header><h1>Saved kitchen</h1><button id="refresh" type="button" disabled>Refresh</button></header><p id="read-time">Waiting for a saved inventory read.</p><p id="status" role="status" aria-live="polite">Loading Mise…</p><div id="inventory"></div></main><script type="module">/* MISE_APP */</script></body></html>

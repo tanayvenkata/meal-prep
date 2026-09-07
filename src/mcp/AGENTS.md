@@ -52,8 +52,10 @@ transitive dependencies.
 
 ## Architecture
 
-- Treat core MCP as the tool and data contract. The current Mise surface is
-  intentionally tool-only: do not attach a UI resource to `get_kitchen_context`.
+- Treat core MCP as the tool and data contract. The default Mise surface is
+  tool-only: do not attach a UI resource to `get_kitchen_context` or `read_kitchen`.
+  The opt-in `MISE_INVENTORY_UI=1` spike adds `show_kitchen` for explicitly
+  requested saved-inventory cards. Keep it disabled until ChatGPT host acceptance.
   Treat any future MCP App as an optional extension with an independently useful
   interaction, not a prerequisite for kitchen reads or writes.
 - Target ChatGPT first. If a future workflow earns a widget, use the standard MCP Apps
@@ -134,6 +136,30 @@ ChatGPT Developer Mode through the development HTTPS endpoint. If current docs
 and observed host behavior differ, preserve the smallest standards-compatible
 adapter proven to interoperate, cover it with a focused contract test, and
 record why it exists instead of silently hand-rolling more of the protocol.
+
+## Saved kitchen card spike (#242)
+
+- `show_kitchen` is a read-only presentation tool, enabled by `MISE_INVENTORY_UI=1`.
+  It loads authenticated service data itself and accepts no inventory or user ID
+  arguments. Routine data reads and mutations never attach a UI resource.
+- Refresh calls the existing read tool; server metadata records the read start
+  time and correct refresh tool for the four-tool or baseline surface. This is
+  an observation time, not a database revision or an atomic pantry/equipment snapshot.
+- Preserve recorded quantities; `2 count` does not establish cartons or 24 eggs.
+  Failed refreshes retain the old read and explicitly label it as potentially stale.
+- UI source is under `inventory-ui/`. `pnpm run build:mcp-ui` bundles the official
+  ext-apps browser bridge into generated HTML inside a TypeScript module. Development, test,
+  build, and MCP start/deploy scripts generate it; rebuild after UI edits. The
+  Worker never reads files at runtime. HTML content hashes version resource URIs.
+- ext-apps 1.7.5's server helpers target SDK v1. Use native modular SDK v2
+  registration with standard `_meta.ui.resourceUri` and resource MIME/CSP; use
+  the official `App`/`PostMessageTransport` in the browser. Do not cast the v2
+  server into a v1 type or hand-roll the bridge. Wire coverage lives in
+  `src/__tests__/mcp/inventory-card.test.ts`.
+- Run `pnpm run eval:inventory-card` for a loopback-only synthetic AppBridge host.
+  This validates local rendering and refresh, not ChatGPT acceptance. See
+  `docs/SAVED-KITCHEN-CARD-SPIKE.md` for the remaining host checks.
+
 
 ## Future UI defaults
 
