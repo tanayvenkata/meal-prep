@@ -843,7 +843,7 @@ export function registerMisePrompts(
             role: "user",
             content: {
               type: "text",
-              text: `Please inspect my kitchen inventory using ${readTool} and suggest 3 quick, delicious meal ideas for ${servings} serving(s)${notes}. Prioritize high-turnover ingredients and items that should be used soonest, and let me know if any equipment or staples are needed.`,
+              text: `Please inspect my kitchen inventory using ${readTool} and suggest 3 quick, delicious meal ideas for ${servings} serving(s)${notes}. Prioritize high-turnover ingredients and items that should be used soonest. Ground each recipe in my saved kitchen equipment (tailoring temperatures, preheat, and cook times to specific appliance models or cookware), and suggest preparation cuts and techniques (such as cubing, slicing, or pounding proteins) that optimize cook time, surface browning, and juiciness.`,
             },
           },
         ],
@@ -882,7 +882,7 @@ export function registerMisePrompts(
             role: "user",
             content: {
               type: "text",
-              text: `Please check my kitchen inventory using ${readTool} and propose 2-3 fast, satisfying meal ideas for ${servings} serving(s) ready in under ${minutes} minutes. Prioritize one-pot/one-pan cooking, minimal prep, and ingredients I already have on hand to keep dishes and cleanup to a minimum.`,
+              text: `Please check my kitchen inventory using ${readTool} and propose 2-3 fast, satisfying meal ideas for ${servings} serving(s) ready in under ${minutes} minutes. Prioritize my saved cookware and appliances (like air fryers or skillets), recommend prep techniques that slash cooking time (such as dicing or thin-slicing ingredients for rapid, high-heat cooking), and keep dishes and cleanup to a minimum.`,
             },
           },
         ],
@@ -925,7 +925,7 @@ export function registerMisePrompts(
             role: "user",
             content: {
               type: "text",
-              text: `I have time to cook and want to make something special for ${servings} serving(s)${vibe}. Please inspect my kitchen inventory using ${readTool}—including my cookware, tools, and spices—and propose an elevated, technique-driven dish. Teach the key culinary techniques and explain how to make the most of my saved equipment.`,
+              text: `I have time to cook and want to make something special for ${servings} serving(s)${vibe}. Please inspect my kitchen inventory using ${readTool}—including my cookware, tools, and spices—and propose an elevated, technique-driven dish. Teach key culinary prep cuts and techniques (e.g. scoring, dry brining, velvetting, or specific knife cuts) and explain how to calibrate times and temperatures to get the absolute most out of my specific saved equipment.`,
             },
           },
         ],
@@ -1119,7 +1119,7 @@ export async function createMiseServer(
     { name: "mise", version: "0.1.0" },
     {
       instructions: toolSurface === "four"
-        ? "Read read_kitchen before edits and removals. Add named items with unknown quantity when unspecified; never require an amount merely to save an item. Writes require current-turn intent. Finished pantry items are removed. Reuse a request UUID only for an identical retry; replay reports historical effects, not current inventory. Lists are atomic. Never infer writes from planning or receipt images. Reread after rejection. Never convert units. In voice mode, confirm concisely; never read aloud UUIDs or JSON."
+        ? "Read read_kitchen before edits and removals. Add named items with unknown quantity when unspecified; never require an amount merely to save an item. Writes require current-turn intent. Finished pantry items are removed. Ground meal suggestions in saved equipment (checking appliance model/size/specs to calibrate heat, preheat, and cook times), and suggest prep cuts and techniques (such as cubing, slicing, or pounding proteins) that optimize cook time and texture. In equipment records, preserve user-provided appliance models or quirks. Reuse a request UUID only for an identical retry; replay reports historical effects, not current inventory. Lists are atomic. Never infer writes from planning or receipt images. Reread after rejection. Never convert units. In voice mode, confirm concisely; never read aloud UUIDs or JSON."
         : "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; finished pantry items are removed. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying. In voice mode, confirm concisely.",
     },
   );
@@ -1145,7 +1145,7 @@ export async function createMiseServer(
     {
       title: "Show kitchen context",
       description:
-        "Use this when the user asks what ingredients or kitchen equipment they have, or when cooking advice should account for their saved Mise kitchen. Returns only the signed-in user's pantry and kitchen tools.",
+        "Use this when the user asks what ingredients or kitchen equipment they have, or when cooking advice should account for their saved Mise kitchen. Returns only the signed-in user's pantry and kitchen tools (including appliance names, models, and cookware).",
       outputSchema: kitchenContextSchema,
       annotations: {
         readOnlyHint: true,
@@ -1228,7 +1228,7 @@ export async function createMiseServer(
         };
       });
     };
-    registerWrite("add_items", "Save one or more explicitly owned pantry items or pieces of equipment. Preserve the user-supplied name; do not expand synonyms (mayo stays mayo). A name is enough for pantry: omit quantity when unspecified, and do not ask for an amount. Food and spices default to collection pantry; specify equipment for kitchen equipment. Quantity and turnover are optional. To record a purchase of more existing pantry stock, use operation increase with a fresh item ID, expectedName, expectedQuantity, and positive same-unit delta. Mix new items and increases in one list for a confirmed receipt; all commit together. A plain named add of an existing item leaves it unchanged. Use one request UUID per requested list, reused only for an identical retry. All entries commit together or none do. Never infer ownership from recipes or an unconfirmed receipt.", candidateInputs.add_items, addItems);
+    registerWrite("add_items", "Save one or more explicitly owned pantry items or pieces of equipment. Preserve the user-supplied name; do not expand synonyms (mayo stays mayo). A name is enough for pantry: omit quantity when unspecified, and do not ask for an amount. Food and spices default to collection pantry; specify equipment for kitchen equipment. For equipment, capture specific appliance models, capacity, or quirks in the name (e.g. 'Ninja Air Fryer 4qt', 'Cast iron skillet') when mentioned. Quantity and turnover are optional. To record a purchase of more existing pantry stock, use operation increase with a fresh item ID, expectedName, expectedQuantity, and positive same-unit delta. Mix new items and increases in one list for a confirmed receipt; all commit together. A plain named add of an existing item leaves it unchanged. Use one request UUID per requested list, reused only for an identical retry. All entries commit together or none do. Never infer ownership from recipes or an unconfirmed receipt.", candidateInputs.add_items, addItems);
     registerWrite("edit_items", "Edit saved pantry or equipment from a fresh read_kitchen result. Use replace for a stated total, description, unknown quantity, rename, or turnover change; increase for more purchased; decrease for an explicit amount consumed. Relative edits require a positive same-unit delta and fresh expected quantity. Pass stable IDs and exact current names. Lists are atomic; reuse UUID only for identical retries. Planning never authorizes an edit.", candidateInputs.edit_items, editKitchenItems);
     registerWrite("remove_items", "Remove saved pantry items or equipment explicitly requested in the current turn. A pantry item reported fully finished or used up counts as removal intent. Partial use, a stored zero alone, and hypothetical plans do not. Read read_kitchen first and use stable IDs and exact current names. If absent, confirm absence without a write. All listed removals commit together; reuse UUID only for identical retries.", candidateInputs.remove_items, removeKitchenItems);
     return server;

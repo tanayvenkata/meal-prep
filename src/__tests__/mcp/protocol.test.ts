@@ -2752,6 +2752,8 @@ describe("MCP Prompts wire contract", () => {
     const text = response.result.messages[0].content.text;
     expect(text).toContain("under 20 minutes");
     expect(text).toContain("1 serving(s)");
+    expect(text).toContain("saved cookware and appliances");
+    expect(text).toContain("prep techniques that slash cooking time");
     expect(text).toContain("get_kitchen_context");
   });
 
@@ -2780,6 +2782,8 @@ describe("MCP Prompts wire contract", () => {
     const text = response.result.messages[0].content.text;
     expect(text).toContain("braised comfort food");
     expect(text).toContain("cookware");
+    expect(text).toContain("prep cuts and techniques");
+    expect(text).toContain("saved equipment");
     expect(text).toContain("get_kitchen_context");
   });
 
@@ -2808,6 +2812,8 @@ describe("MCP Prompts wire contract", () => {
     const message = response.result.messages[0];
     expect(message.role).toBe("user");
     expect(message.content.text).toContain("1 serving(s)");
+    expect(message.content.text).toContain("saved kitchen equipment");
+    expect(message.content.text).toContain("preparation cuts and techniques");
     expect(message.content.text).toContain("get_kitchen_context");
   });
 
@@ -2838,6 +2844,7 @@ describe("MCP Prompts wire contract", () => {
     const message = response.result.messages[0];
     expect(message.content.text).toContain("4 serving(s)");
     expect(message.content.text).toContain("gluten-free, high-protein");
+    expect(message.content.text).toContain("saved kitchen equipment");
   });
 
   it("retrieves pantry_audit prompt", async () => {
