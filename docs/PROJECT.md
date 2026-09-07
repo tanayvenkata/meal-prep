@@ -68,24 +68,22 @@ tool behavior and host acceptance must still be verified against it.
 ## Current implementation, not a permanent target
 
 ```text
-ChatGPT → authenticated /mcp → kitchen service → Postgres
-Website → authenticated APIs → same service → same data
+ChatGPT → authenticated edge /mcp (Cloudflare Workers + Hono) → kitchen service → Postgres (Supavisor)
+Website → authenticated Next.js APIs → same service → same data
 ```
 
-- TypeScript, Next.js 16.3.4, Node **24**, React, Zod, and the MCP TypeScript SDK.
+- TypeScript, Next.js 16.3.4, Node **24**, React, Zod, and the MCP TypeScript SDK v2.
 - Supabase provides Postgres and authentication, including the MCP OAuth server.
-  `src/lib/db.ts` owns SQL; `src/lib/kitchen-service.ts` owns kitchen behavior.
-- MCP defaults to four tools: read_kitchen, add_items, edit_items, remove_items.
+  `src/lib/db.ts` owns SQL (with lazy client instantiation for edge workers, connecting via Supavisor transaction pooler); `src/lib/kitchen-service.ts` owns kitchen behavior.
+- MCP defaults to four tools: `read_kitchen`, `add_items`, `edit_items`, `remove_items`.
   All three write tools accept lists and expose structured outcomes. Food/spices
   default to pantry; equipment uses the same actions with an explicit collection.
   Preserve user-supplied names, optional quantities, and explicit removal intent.
   No unit conversion is implemented.
 - The MCP surface is tool-only. The old kitchen widget and native website chat/history
   UI were removed. The website supports login, consent, and inventory correction.
-- Production uses the Next `/mcp` route on Vercel. Standalone Express plus ngrok is
-  the existing local host-test loop. Both are stateless per request.
-- Deployment: https://meal-prep-tawny-kappa.vercel.app. Vercel auto-deploys `main`;
-  GitHub CI also applies database migrations after its checks.
+- Production MCP runs on Cloudflare Workers using Hono (`src/mcp/worker.ts`), achieving sub-100ms response times at the edge with asynchronous telemetry flush via `waitUntil`. Vercel hosts the Next.js web control plane and a fallback `/mcp` route handler. Standalone Express (`mcp:dev`) and Miniflare (`mcp:worker`) are the local test loops.
+- Deployment: Web app at https://meal-prep-tawny-kappa.vercel.app, Edge MCP at https://mise-mcp.tanayvenkata.workers.dev/mcp. Vercel auto-deploys `main` for web; GitHub CI also applies database migrations after its checks. Cloudflare Workers deploys via `pnpm run deploy:worker`.
 
 ## Operational facts to preserve through redesign
 
