@@ -1,6 +1,6 @@
 # Mise — current project brief
 
-Last reviewed: **2026-09-06**. Current implementation facts and accepted objectives
+Last reviewed: **2026-09-07**. Current implementation facts and accepted objectives
 live here. The backlog lives in GitHub Issues and the Mise Board; workflow is in
 `CONTRIBUTING.md`, setup and commands in `README.md`.
 
@@ -68,7 +68,7 @@ tool behavior and host acceptance must still be verified against it.
 ## Current implementation, not a permanent target
 
 ```text
-ChatGPT → authenticated edge /mcp (Cloudflare Workers + Hono) → kitchen service → Postgres (Supavisor)
+ChatGPT → authenticated /mcp (Next.js on Vercel, verified installed app) → kitchen service → Postgres
 Website → authenticated Next.js APIs → same service → same data
 ```
 
@@ -82,8 +82,9 @@ Website → authenticated Next.js APIs → same service → same data
   No unit conversion is implemented.
 - The MCP surface is tool-only. The old kitchen widget and native website chat/history
   UI were removed. The website supports login, consent, and inventory correction.
-- Production MCP runs on Cloudflare Workers using Hono (`src/mcp/worker.ts`), achieving sub-100ms response times at the edge with asynchronous telemetry flush via `waitUntil`. Vercel hosts the Next.js web control plane and a fallback `/mcp` route handler. Standalone Express (`mcp:dev`) and Miniflare (`mcp:worker`) are the local test loops.
-- Deployment: Web app at https://meal-prep-tawny-kappa.vercel.app, Edge MCP at https://mise-mcp.tanayvenkata.workers.dev/mcp. Vercel auto-deploys `main` for web; GitHub CI also applies database migrations after its checks. Cloudflare Workers deploys via `pnpm run deploy:worker`.
+- The installed production MCP app uses `https://meal-prep-tawny-kappa.vercel.app/mcp`, verified in ChatGPT settings on 2026-09-07. Vercel hosts both this handler and the web control plane.
+- Hono (`src/mcp/worker.ts`) is separately deployed at `https://mise-mcp.tanayvenkata.workers.dev/mcp`. It is not the verified installed app endpoint. Standalone Express (`mcp:dev`) and Miniflare (`mcp:worker`) remain local test loops.
+- Vercel auto-deploys `main`; GitHub CI applies database migrations after checks. The Worker deploys separately via `pnpm run deploy:worker`. Neither a merge nor a Worker deployment changes the installed connector URL. See [deployment verification](MCP-DEPLOYMENT.md) for evidence, endpoint checks, and cutover requirements.
 
 ## Operational facts to preserve through redesign
 
