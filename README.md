@@ -3,9 +3,10 @@
 Mise gives ChatGPT persistent, user-owned kitchen context through a focused MCP
 tool surface. It stores pantry items and kitchen tools, supports safe inventory
 changes, and keeps the data visible through a small Next.js account and kitchen
-management site. Built with Next.js 16, Supabase, and the MCP TypeScript SDK.
+management site. Built with Next.js 16, Cloudflare Workers (Hono), Supabase Postgres/Auth, and the MCP TypeScript SDK v2.
 
-Live: https://meal-prep-tawny-kappa.vercel.app
+Live web app: https://meal-prep-tawny-kappa.vercel.app
+Live MCP edge endpoint: https://mise-mcp.tanayvenkata.workers.dev/mcp
 
 ## Getting started
 
@@ -77,7 +78,7 @@ in, use the Pantry and Tools pages to inspect or correct the kitchen data ChatGP
  
 | Command | What it does |
 |---|---|
-| `pnpm dev` | Start dev server (Doppler injects secrets) |
+| `pnpm dev` | Start Next.js dev server (Doppler injects secrets) |
 | `pnpm run build` | Production build (bare — no secrets; Vercel/CI inject their own) |
 | `pnpm run build:local` | Production build on your laptop (Doppler injects secrets) |
 | `pnpm run lint` | Lint |
@@ -86,8 +87,10 @@ in, use the Pantry and Tools pages to inspect or correct the kitchen data ChatGP
 | `pnpm run test:integration` | DB integration tests (requires `supabase start`) |
 | `pnpm run test:related` | Run only tests affected by changed files (fast agent feedback) |
 | `pnpm run db:provision-app-role` | Set/rotate `mise_app` password (needs `ADMIN_DATABASE_URL` + `MISE_APP_DB_PASSWORD`) |
-| `pnpm run mcp:dev` | Start the local Mise MCP server with Doppler `dev` config |
-| `pnpm run mcp:serve` | Start the MCP process with environment variables supplied by the caller |
+| `pnpm run mcp:worker` | Start local Cloudflare Workers Miniflare simulation with Hono (`wrangler dev`) |
+| `pnpm run deploy:worker` | Deploy Hono MCP server to Cloudflare Workers (`wrangler deploy`) |
+| `pnpm run mcp:dev` | Start local standalone Node/Express MCP server with Doppler `dev` config |
+| `pnpm run mcp:serve` | Start MCP standalone process with environment variables supplied by caller |
  
 > **Why two build commands?** `build` is intentionally bare so it works where the Doppler
 > CLI doesn't exist — Vercel and CI inject the same secrets their own way. On your laptop,
@@ -96,48 +99,55 @@ in, use the Pantry and Tools pages to inspect or correct the kitchen data ChatGP
 ## Primary product: ChatGPT MCP app
 
 ChatGPT is Mise's primary conversational surface. Supabase OAuth 2.1 identifies
-the connected Mise user. `get_kitchen_context` returns only that user's pantry and kitchen
-tools as model-readable structured content, including stable IDs for follow-up actions. Focused
-actions cover the full pantry and kitchen-tool lifecycle: create, edit, and explicitly
-delete, plus exact quantity set/consume/restock commands. Edits and deletes require a fresh
-ID and exact display name so stale model context fails closed. A confirmed list can also
-consume/restock several existing structured items in one all-or-nothing MCP action. Missing
-or foreign IDs, duplicate names, unsupported quantities, stale expectations, and unsafe
-arithmetic leave the kitchen unchanged. There is no raw database CRUD or implicit upsert
-tool, and no MCP access to conversations or account data.
+the connected Mise user. Mise exposes a focused **four-tool composable surface**
+built on MCP TypeScript SDK v2:
 
-Exact quantity writes always carry a decimal `amount` and canonical `unit`; discrete items
-use `count`. The website uses the same structured contract for measurable inventory and
-offers an explicit custom-text fallback for estimates such as “about half a bag.” Formatted
-display text is never reparsed as mutation authority.
+1. `read_kitchen`: Returns the user's pantry items and kitchen tools with stable IDs,
+   canonical structured quantities (`amount` + `unit` or `count`), custom text estimates,
+   and turnover metadata.
+2. `add_items`: Atomic batch creation and restock for pantry items and equipment.
+   Supports caller-generated UUIDs for effect-once idempotency. Grocery runs and receipt
+   scans are resolved by ChatGPT into a single atomic `add_items` batch without needing
+   a dedicated receipt or OCR tool.
+3. `edit_items`: In-place updates to quantities, units, and notes. Requires a stable
+   resource ID and matching current display name so stale model context fails closed.
+4. `remove_items`: Explicit removal for consumed, discarded, or used-up items with
+   stale-name safety checks.
 
-Reviewed receipt additions use a separate backend command because they may mix
-new-item creation with existing-item restocks. Every line must explicitly choose
-`create` or `restock`; the whole 1–25 line request commits once or not at all. A
-private user-scoped operation receipt makes identical retries effect-once and
-rejects reuse of the same request ID for changed content. OCR/image extraction,
-and proposal review remain ChatGPT responsibilities. Only after the user confirms
-the exact typed proposal does `apply_reviewed_receipt_import` send it through the
-authenticated kitchen service; model output never writes directly to the pantry.
+Missing or foreign IDs, duplicate names, unsupported quantities, stale expectations, and
+unsafe arithmetic leave the kitchen completely unchanged. There is no raw database CRUD,
+and no MCP access to chat history or credentials.
 
-The hosted ChatGPT connector uses:
+### Production and Edge Architecture
 
-- MCP endpoint: `https://meal-prep-tawny-kappa.vercel.app/mcp`
-- Health check: `https://meal-prep-tawny-kappa.vercel.app/api/mcp/health`
-- Supabase Site URL: `https://meal-prep-tawny-kappa.vercel.app` (the application origin,
-  without `/mcp`)
+Mise decouples MCP execution from Next.js serverless to deliver sub-100ms response times
+at the edge:
 
-`MCP_PUBLIC_URL` is the canonical OAuth resource identifier and must equal the MCP
-endpoint exactly. It lives in Doppler `prd`, which syncs it to Vercel.
+- **Edge MCP Server (Cloudflare Workers + Hono)**:
+  - Endpoint: `https://mise-mcp.tanayvenkata.workers.dev/mcp`
+  - Health check: `https://mise-mcp.tanayvenkata.workers.dev/health`
+  - RFC 8414 OAuth discovery: `/.well-known/oauth-protected-resource`
+  - Background telemetry: Flushes OpenTelemetry spans asynchronously via `waitUntil` without blocking ChatGPT tool execution.
+- **Web Control Plane (Next.js on Vercel)**:
+  - Web application: `https://meal-prep-tawny-kappa.vercel.app`
+  - OAuth authorization & consent: `/oauth/consent`
+  - Supabase Site URL: `https://meal-prep-tawny-kappa.vercel.app` (application origin)
+  - Fallback serverless MCP handler: `/mcp`
 
-For local development, run the same MCP app as a standalone process:
+`MCP_PUBLIC_URL` is the canonical OAuth resource identifier and matches the public MCP endpoint.
+
+### Local development
+
+For local development, you can run the MCP app either as a Cloudflare Workers edge simulation or as a standalone process:
 
 ```bash
 # Terminal 1: Next app (login + OAuth consent screen)
 pnpm dev
 
-# Terminal 2: MCP server with local Supabase credentials
-pnpm run mcp:dev
+# Terminal 2: Edge MCP server (Miniflare simulation)
+pnpm run mcp:worker
+# Or run the standalone Node/Express server:
+# pnpm run mcp:dev
 
 # Terminal 3: temporary public HTTPS tunnel for ChatGPT Developer Mode
 ngrok http 8787
