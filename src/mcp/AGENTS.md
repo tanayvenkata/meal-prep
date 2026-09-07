@@ -185,7 +185,9 @@ The development connector runs entirely from the local checkout:
 
 ## Hosted production loop
 
-The production connector runs through the existing Next.js deployment:
+The installed production connector was verified in ChatGPT settings on 2026-09-07
+to use the existing Next.js deployment. See `docs/MCP-DEPLOYMENT.md` for the
+verification record and instructions; inspect the installed URL before choosing logs:
 
 `ChatGPT -> https://meal-prep-tawny-kappa.vercel.app/mcp -> Next route handler -> stateless MCP server`
 
@@ -210,7 +212,9 @@ The production connector runs through the existing Next.js deployment:
 ## Cloudflare Workers & Hono Edge Architecture
 
 In addition to the Next.js serverless route handler, Mise provides a standalone,
-ultra-low-latency edge MCP server running on Cloudflare Workers with Hono:
+edge MCP server running on Cloudflare Workers with Hono. This separate deployment
+is not the verified installed production connection. Its health and revision do
+not establish the state of the Vercel connector:
 
 - **Entry point**: `src/mcp/worker.ts` mounts Hono with dual-era CORS, RFC 8414 OAuth
   discovery (`/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`),

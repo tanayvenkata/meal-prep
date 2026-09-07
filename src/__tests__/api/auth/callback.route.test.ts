@@ -6,7 +6,8 @@ vi.mock("@supabase/ssr", () => ({
 }));
 
 import { createServerClient } from "@supabase/ssr";
-import { GET, safeReturnPath } from "@/app/auth/callback/route";
+import { GET } from "@/app/auth/callback/route";
+import { safeReturnPath } from "@/lib/auth-redirect";
 
 const mockCreateServerClient = vi.mocked(createServerClient);
 const exchangeCodeForSession = vi.fn();

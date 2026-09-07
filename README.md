@@ -6,7 +6,7 @@ changes, and keeps the data visible through a small Next.js account and kitchen
 management site. Built with Next.js 16, Cloudflare Workers (Hono), Supabase Postgres/Auth, and the MCP TypeScript SDK v2.
 
 Live web app: https://meal-prep-tawny-kappa.vercel.app
-Live MCP edge endpoint: https://mise-mcp.tanayvenkata.workers.dev/mcp
+Installed production MCP endpoint (verified 2026-09-07): https://meal-prep-tawny-kappa.vercel.app/mcp
 
 ## Getting started
 
@@ -34,7 +34,7 @@ cp .env.example .env.local
 
 # 4. Start the local Supabase stack (the dev app logs in against it)
 orbstack          # or open Docker Desktop
-supabase start    # first run seeds the test user — see "Logging in locally" below
+doppler run -- supabase start    # first run seeds the test user — see "Logging in locally" below
 # Seed passwords only apply on fresh init / db reset. If integration tests fail
 # with mise_app auth errors, run:
 #   ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres \
@@ -118,23 +118,30 @@ Missing or foreign IDs, duplicate names, unsupported quantities, stale expectati
 unsafe arithmetic leave the kitchen completely unchanged. There is no raw database CRUD,
 and no MCP access to chat history or credentials.
 
-### Production and Edge Architecture
+### Production endpoints
 
-Mise decouples MCP execution from Next.js serverless to deliver sub-100ms response times
-at the edge:
+The installed Mise app uses **Next.js on Vercel**, verified in ChatGPT plugin
+settings on 2026-09-07. The Cloudflare Worker is deployed separately; its existence
+and health do not establish that the installed app uses it.
 
-- **Edge MCP Server (Cloudflare Workers + Hono)**:
-  - Endpoint: `https://mise-mcp.tanayvenkata.workers.dev/mcp`
-  - Health check: `https://mise-mcp.tanayvenkata.workers.dev/health`
-  - RFC 8414 OAuth discovery: `/.well-known/oauth-protected-resource`
-  - Background telemetry: Flushes OpenTelemetry spans asynchronously via `waitUntil` without blocking ChatGPT tool execution.
-- **Web Control Plane (Next.js on Vercel)**:
-  - Web application: `https://meal-prep-tawny-kappa.vercel.app`
-  - OAuth authorization & consent: `/oauth/consent`
-  - Supabase Site URL: `https://meal-prep-tawny-kappa.vercel.app` (application origin)
-  - Fallback serverless MCP handler: `/mcp`
+| Surface | Endpoint | Current role |
+| --- | --- | --- |
+| Installed MCP app | `https://meal-prep-tawny-kappa.vercel.app/mcp` | Verified production connection |
+| Website and consent | `https://meal-prep-tawny-kappa.vercel.app` | Account, inventory, and `/oauth/consent` |
+| Hono Worker | `https://mise-mcp.tanayvenkata.workers.dev/mcp` | Separate deployment; not the verified installed connection |
 
-`MCP_PUBLIC_URL` is the canonical OAuth resource identifier and matches the public MCP endpoint.
+`MCP_PUBLIC_URL` is the OAuth resource identifier and must match the endpoint
+served by each deployment. Do not change Vercel's identifier to the Worker URL
+without an intentional connector migration. The Supabase Site URL remains the
+website origin.
+
+Vercel deploys the web app and its `/mcp` handler from `main`. Worker deployment
+uses `pnpm run deploy:worker`; merging a PR does not update that Worker or switch
+the installed app. Worker telemetry flushes through `waitUntil`; this does not
+establish end-to-end ChatGPT latency.
+
+See [the endpoint verification runbook](docs/MCP-DEPLOYMENT.md) before diagnosing
+connection errors, refreshing metadata, or planning a cutover.
 
 ### Local development
 
@@ -201,7 +208,7 @@ There is no separate website chat or conversation history. ChatGPT owns that exp
 ```bash
 # Once per dev session
 orbstack          # or open Docker Desktop
-supabase start
+doppler run -- supabase start
 ```
 
 ## Working in git worktrees
@@ -254,3 +261,56 @@ priority, and pull-request workflow. Report suspected vulnerabilities privately 
 ## License
 
 Mise is open source under the [MIT License](LICENSE).
+
+## Google and GitHub sign-in
+
+Both providers use the existing PKCE `/auth/callback` route. Provider registration
+contains two exact callback URLs:
+
+- Production: `https://omwvoxemybeukmhnyrhb.supabase.co/auth/v1/callback`
+- Local: `http://127.0.0.1:54321/auth/v1/callback`
+
+The provider callback belongs to Supabase; the subsequent application redirect
+belongs to Next.js (`http://127.0.0.1:3000/auth/callback` or
+`http://localhost:3000/auth/callback`). Do not point local Next.js at production
+Supabase to test login.
+
+Doppler `meal-prep/dev` holds `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID`,
+`SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`, `SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID`,
+and `SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET`. Inject these when starting Supabase:
+
+```sh
+doppler run --project meal-prep --config dev -- supabase start
+pnpm dev
+```
+
+After changing provider credentials or `supabase/config.toml`, stop and restart
+the local stack with those variables injected. `supabase stop` preserves data;
+do not use `--no-backup` or reset the database for provider configuration. Hosted
+provider settings are saved separately in the Supabase dashboard.
+
+Verification on 2026-09-07: Google and GitHub each completed consent, PKCE exchange,
+and navigation to the authenticated local pantry. Google session survived reload.
+Both identities linked to one local user for the same verified email. Google is
+currently in Testing with the owner's Google account added as a test user; broader
+availability requires finishing Google's publishing requirements. GitHub's login
+button reaches production only after the associated PR is merged and deployed.
+
+### Mobile ChatGPT connection verification — 2026-09-07
+
+Website sign-in and granting ChatGPT access are separate steps. A connection
+started from the host must preserve the consent URL through Google/GitHub login;
+the Connect form then returns the authorization code to the host's registered
+callback. A logged-in pantry alone does not prove host connection success.
+
+Production Supabase now allows the web app's `/auth/callback` redirect. Its empty
+allowlist previously caused unmatched social-login redirects to fall back to the
+Site URL, losing the consent destination.
+
+The app shell uses dynamic viewport height. Both consent and consent-error pages
+scroll inside the shell, with bottom safe-area padding and 44px decision buttons.
+At 390×650, the former page left Connect below the viewport with no scrollable
+container; the fixed page scrolls and the button passes a hit-target check. A real
+local OAuth request returned a code and matching state after Connect. A separate
+signed-out Google flow returned to the pending consent page. Actual iPhone ChatGPT
+modal dismissal remains a host check after deployment.

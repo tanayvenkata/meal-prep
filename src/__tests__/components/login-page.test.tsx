@@ -43,7 +43,7 @@ describe("LoginPage", () => {
     expect(screen.getByRole("button", { name: /sign up/i })).toBeInTheDocument();
   });
 
-  it("initiates Google OAuth preserving returnTo query param", async () => {
+  it.each(["google", "github"] as const)("initiates %s OAuth preserving returnTo query param", async (provider) => {
     mockGetSearchParams.mockReturnValue(
       new URLSearchParams({ returnTo: "/oauth/consent?authorization_id=req-1" }),
     );
@@ -51,12 +51,12 @@ describe("LoginPage", () => {
 
     render(<Login />);
 
-    const googleBtn = screen.getByRole("button", { name: /continue with google/i });
-    fireEvent.click(googleBtn);
+    const providerBtn = screen.getByRole("button", { name: new RegExp(`continue with ${provider}`, "i") });
+    fireEvent.click(providerBtn);
 
     await waitFor(() => {
       expect(mockSignInWithOAuth).toHaveBeenCalledWith({
-        provider: "google",
+        provider,
         options: {
           redirectTo: `${window.location.origin}/auth/callback?returnTo=%2Foauth%2Fconsent%3Fauthorization_id%3Dreq-1`,
         },
@@ -80,6 +80,24 @@ describe("LoginPage", () => {
         screen.getByText("Google OAuth popup was closed."),
       ).toBeInTheDocument();
     });
+  });
+
+  it.each(["google", "github"] as const)("recovers from a thrown %s sign-in error", async (provider) => {
+    mockSignInWithOAuth.mockRejectedValue(new Error("Network unavailable"));
+    render(<Login />);
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`continue with ${provider}`, "i") }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/unexpected error/i);
+    expect(screen.getByRole("button", { name: /continue with google/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /continue with github/i })).toBeEnabled();
+  });
+
+  it("prevents competing sign-in attempts while GitHub redirects", async () => {
+    mockSignInWithOAuth.mockReturnValue(new Promise(() => {}));
+    render(<Login />);
+    fireEvent.click(screen.getByRole("button", { name: /continue with github/i }));
+    expect(screen.getByRole("button", { name: /connecting to github/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /continue with google/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^sign in$/i })).toBeDisabled();
   });
 
   it("switches to forgot password mode and submits reset request", async () => {

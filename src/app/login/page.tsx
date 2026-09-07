@@ -28,7 +28,8 @@ function LoginForm() {
   const [mode, setMode] = useState<"sign-in" | "forgot-password">("sign-in");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [oauthProvider, setOAuthProvider] = useState<"google" | "github" | null>(null);
+  const oauthLoading = oauthProvider !== null;
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
   const [clientError, setClientError] = useState("");
@@ -41,7 +42,7 @@ function LoginForm() {
     const resetAfterBackNavigation = (event: PageTransitionEvent) => {
       if (event.persisted) {
         setLoading(false);
-        setGoogleLoading(false);
+        setOAuthProvider(null);
         setResetLoading(false);
       }
     };
@@ -50,25 +51,26 @@ function LoginForm() {
     return () => window.removeEventListener("pageshow", resetAfterBackNavigation);
   }, []);
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
+  const handleOAuthSignIn = async (provider: "google" | "github") => {
+    const providerName = provider === "google" ? "Google" : "GitHub";
+    setOAuthProvider(provider);
     setClientError("");
     try {
       const origin = window.location.origin;
       const redirectTo = `${origin}/auth/callback?returnTo=${encodeURIComponent(returnTo)}`;
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
+        provider,
         options: {
           redirectTo,
         },
       });
       if (error) {
-        setClientError(error.message || "Could not sign in with Google.");
-        setGoogleLoading(false);
+        setClientError(error.message || `Could not sign in with ${providerName}.`);
+        setOAuthProvider(null);
       }
     } catch {
-      setClientError("An unexpected error occurred while connecting to Google.");
-      setGoogleLoading(false);
+      setClientError(`An unexpected error occurred while connecting to ${providerName}.`);
+      setOAuthProvider(null);
     }
   };
 
@@ -196,8 +198,8 @@ function LoginForm() {
 
       <button
         type="button"
-        onClick={handleGoogleSignIn}
-        disabled={loading || googleLoading}
+        onClick={() => handleOAuthSignIn("google")}
+        disabled={loading || oauthLoading}
         className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-outline bg-surface-raised px-4 py-2.5 text-sm font-medium text-text-primary hover:border-outline-strong disabled:opacity-50 transition-colors"
       >
         <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -218,7 +220,16 @@ function LoginForm() {
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
           />
         </svg>
-        <span>{googleLoading ? "Connecting to Google…" : "Continue with Google"}</span>
+        <span>{oauthProvider === "google" ? "Connecting to Google…" : "Continue with Google"}</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => handleOAuthSignIn("github")}
+        disabled={loading || oauthLoading}
+        className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-outline bg-surface-raised px-4 py-2.5 text-sm font-medium text-text-primary hover:border-outline-strong disabled:opacity-50 transition-colors"
+      >
+        <span>{oauthProvider === "github" ? "Connecting to GitHub…" : "Continue with GitHub"}</span>
       </button>
 
       <div className="relative mb-4 flex items-center text-xs text-text-secondary before:flex-1 before:border-t before:border-outline after:flex-1 after:border-t after:border-outline">
@@ -242,7 +253,7 @@ function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          disabled={loading || googleLoading}
+          disabled={loading || oauthLoading}
         />
         <input
           className="mb-1 w-full rounded-xl border border-outline bg-surface-raised px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-outline-strong transition-colors"
@@ -252,7 +263,7 @@ function LoginForm() {
           placeholder="Password"
           autoComplete="current-password"
           required
-          disabled={loading || googleLoading}
+          disabled={loading || oauthLoading}
         />
 
         <div className="mb-4 flex justify-end">
@@ -284,7 +295,7 @@ function LoginForm() {
             name="intent"
             value="sign-in"
             className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-            disabled={loading || googleLoading}
+            disabled={loading || oauthLoading}
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>
@@ -293,7 +304,7 @@ function LoginForm() {
             name="intent"
             value="sign-up"
             className="flex-1 rounded-xl border border-outline bg-surface-raised px-4 py-2.5 text-sm text-text-primary disabled:opacity-50 hover:border-outline-strong transition-colors"
-            disabled={loading || googleLoading}
+            disabled={loading || oauthLoading}
           >
             Sign up
           </button>

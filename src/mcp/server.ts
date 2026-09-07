@@ -1008,6 +1008,110 @@ export function registerMisePrompts(
   );
 }
 
+export function summarizeMutationForSpeech(
+  toolName: "add_items" | "edit_items" | "remove_items",
+  input: unknown,
+  result: {
+    status: string;
+    replayed?: boolean;
+    reason?: string;
+    index?: number;
+    results?: unknown[];
+  },
+): string {
+  if (result.status === "invalid_input") {
+    return "The request was rejected due to invalid input. Please check the item details.";
+  }
+
+  if (result.status === "request_id_reused") {
+    return "This request was already used for a different operation. Please check your kitchen before retrying.";
+  }
+
+  if (result.status === "rejected") {
+    const pos =
+      typeof result.index === "number" ? ` (item #${result.index + 1})` : "";
+    const reasonText =
+      result.reason === "not_found"
+        ? "was not found"
+        : result.reason === "conflict"
+          ? "encountered a name or quantity conflict"
+          : result.reason || "could not be applied";
+    return `Could not update kitchen: the item${pos} ${reasonText}. Please check your current kitchen state.`;
+  }
+
+  if (result.status === "applied") {
+    if (result.replayed) {
+      return "This request was already applied earlier without changing your kitchen again.";
+    }
+
+    const items =
+      (input as { items?: Array<Record<string, unknown>> })?.items ?? [];
+    const count = items.length;
+
+    if (toolName === "add_items") {
+      const names = items
+        .map((i) =>
+          typeof i.name === "string"
+            ? i.name
+            : typeof i.expectedName === "string"
+              ? i.expectedName
+              : undefined,
+        )
+        .filter((n): n is string => Boolean(n));
+      if (count === 1 && names[0]) {
+        return `Added ${names[0]} to your kitchen.`;
+      }
+      if (names.length > 0) {
+        const itemWord = names.length === 1 ? "item" : "items";
+        return `Added ${names.length} ${itemWord} to your kitchen: ${names.join(", ")}.`;
+      }
+      return count === 1 ? "Added an item to your kitchen." : "Added items to your kitchen.";
+    }
+
+    if (toolName === "edit_items") {
+      const names = items
+        .map((i) =>
+          typeof i.name === "string"
+            ? i.name
+            : typeof i.expectedName === "string"
+              ? i.expectedName
+              : undefined,
+        )
+        .filter((n): n is string => Boolean(n));
+      if (count === 1 && names[0]) {
+        return `Updated ${names[0]} in your kitchen.`;
+      }
+      if (names.length > 0) {
+        const itemWord = names.length === 1 ? "item" : "items";
+        return `Updated ${names.length} ${itemWord} in your kitchen: ${names.join(", ")}.`;
+      }
+      return count === 1 ? "Updated an item in your kitchen." : "Updated items in your kitchen.";
+    }
+
+    if (toolName === "remove_items") {
+      const names = items
+        .map((i) =>
+          typeof i.expectedName === "string"
+            ? i.expectedName
+            : typeof i.name === "string"
+              ? i.name
+              : undefined,
+        )
+        .filter((n): n is string => Boolean(n));
+      if (count === 1 && names[0]) {
+        return `Removed ${names[0]} from your kitchen.`;
+      }
+      if (names.length > 0) {
+        const itemWord = names.length === 1 ? "item" : "items";
+        return `Removed ${names.length} ${itemWord} from your kitchen: ${names.join(", ")}.`;
+      }
+      return count === 1 ? "Removed an item from your kitchen." : "Removed items from your kitchen.";
+    }
+  }
+
+  return `The kitchen operation completed with status: ${result.status}.`;
+}
+
 export async function createMiseServer(
   {
     toolSurface = process.env.MISE_TOOL_SURFACE === "baseline" ? "baseline" : "four",
@@ -1041,8 +1145,8 @@ export async function createMiseServer(
     { name: "mise", version: "0.1.0" },
     {
       instructions: toolSurface === "four"
-        ? "Read read_kitchen before edits and removals. Add named items with unknown quantity when unspecified; never require an amount merely to save an item. Writes require current-turn intent. Finished pantry items are removed. Reuse a request UUID only for an identical retry; replay reports historical effects, not current inventory. Lists are atomic. Never infer writes from planning or receipt images. Reread after rejection. Never convert units."
-        : "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; finished pantry items are removed. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying.",
+        ? "Read read_kitchen before edits and removals. Add named items with unknown quantity when unspecified; never require an amount merely to save an item. Writes require current-turn intent. Finished pantry items are removed. Reuse a request UUID only for an identical retry; replay reports historical effects, not current inventory. Lists are atomic. Never infer writes from planning or receipt images. Reread after rejection. Never convert units. In voice mode, confirm concisely; never read aloud UUIDs or JSON."
+        : "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; finished pantry items are removed. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying. In voice mode, confirm concisely.",
     },
   );
 
@@ -1116,7 +1220,21 @@ export async function createMiseServer(
           reason: z.string().optional().describe("Domain rejection reason; reread inventory before correcting and issuing a new request."),
         }).strict(),
         annotations: { readOnlyHint: false, destructiveHint: name !== "add_items", idempotentHint: true, openWorldHint: false },
-        _meta: { securitySchemes: MISE_OAUTH_SECURITY_SCHEMES },
+        _meta: {
+          securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+          "openai/toolInvocation/invoking":
+            name === "add_items"
+              ? "Saving to kitchen…"
+              : name === "edit_items"
+                ? "Updating kitchen…"
+                : "Removing from kitchen…",
+          "openai/toolInvocation/invoked":
+            name === "add_items"
+              ? "Items saved."
+              : name === "edit_items"
+                ? "Items updated."
+                : "Items removed.",
+        },
       }, async (input, extra) => {
         const userId = getUserIdFromContext(extra);
         if (typeof userId !== "string") return {
@@ -1126,7 +1244,12 @@ export async function createMiseServer(
         const result = await observed(userId, input);
         return {
           isError: result.status === "invalid_input",
-          content: [{ type: "text" as const, text: JSON.stringify(result) }],
+          content: [
+            {
+              type: "text" as const,
+              text: summarizeMutationForSpeech(name, input, result),
+            },
+          ],
           structuredContent: result,
         };
       });
