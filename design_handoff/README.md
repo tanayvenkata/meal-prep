@@ -1,5 +1,9 @@
 # Handoff: Mise — mobile app (core 8 screens)
 
+> Active desktop design: [Account and kitchen control plane](DESKTOP-CONTROL-PLANE.md)
+> (issue #32, 2026-09-07). Implementation-ready spec; not yet shipped.
+> The chat-based designs below remain historical references.
+
 ## Overview
 **Mise** is a pantry-aware AI cooking app. The user chats with a sous-chef character ("Mise") who
 suggests meals from the ingredients they actually have. This handoff covers the **8 core mobile

@@ -1,5 +1,9 @@
 # Mise — Design System & Product Spec
 
+> Active desktop design: [Account and kitchen control plane](DESKTOP-CONTROL-PLANE.md)
+> (issue #32, 2026-09-07). Implementation-ready spec; not yet shipped.
+> The chat-based designs below remain historical references.
+
 (App renamed from "Meal Prep" to **Mise** — the app and the sous-chef character now share one name.)
 
 A pantry-aware AI cooking app. Conversation-first, with zero-friction capture (photo/receipt),
