@@ -801,7 +801,6 @@ class OpenAiCompatibleWebStandardStreamableHTTPServerTransport extends WebStanda
   }
 }
 
-<<<<<<< HEAD
 export function registerMisePrompts(
   server: McpServer,
   toolSurface: "baseline" | "four" = "four",
