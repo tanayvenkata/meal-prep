@@ -1,0 +1,735 @@
+[
+  {
+    "surface": "baseline",
+    "version": {
+      "model": "gpt-5.6-luna",
+      "node": "v24.20.0",
+      "head": "6f73136843f0e55c473bc4f20ad00520b6cbc2fc",
+      "sourceHash": "80bbd69fdbfd797216619dd11cf557d5f64e982efad09a774794e4357be8f1e2",
+      "toolSurface": "baseline"
+    },
+    "metrics": {
+      "evaluated": 23,
+      "taskSuccesses": 23,
+      "safeFailures": 0,
+      "accepted": 23
+    },
+    "statePasses": 23,
+    "actorCostUsd": 0.011984940000000001,
+    "knownTotalCostUsd": 0.03658044,
+    "medianActorMs": 4352,
+    "toolCalls": 45,
+    "modelToolDefinitionBytes": 18223,
+    "cases": [
+      {
+        "scenario": "add-unknown",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 3147.197583,
+        "calls": [
+          "add_pantry_item"
+        ],
+        "actorCostUsd": 0.0011935400000000003,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final pantry contains a mayo item, and the answer says \"Added mayo to your pantry,\" which matches the observed tool result and final state."
+        }
+      },
+      {
+        "scenario": "clear-quantity",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4351.999083000002,
+        "calls": [
+          "get_kitchen_context",
+          "update_pantry_item"
+        ],
+        "actorCostUsd": 0.00040308000000000005,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final state shows pantry item id 202 still named \"Mayo\" with quantity cleared to empty/unknown, matching the response \"Cleared Mayo\u2019s quantity. The pantry item remains saved with an unknown amount.\" The update event also confirms the item was updated successfully."
+        }
+      },
+      {
+        "scenario": "consume-eggs",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4141.952500000003,
+        "calls": [
+          "get_kitchen_context",
+          "consume_pantry_item"
+        ],
+        "actorCostUsd": 0.00043745000000000003,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The answer matches the evidence: the pantry initially had 6 eggs, the tool call consumed 2 eggs successfully, and the final pantry snapshot shows 4 eggs remaining."
+        }
+      },
+      {
+        "scenario": "dialogue-correct-total",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 8376.068,
+        "calls": [
+          "get_kitchen_context",
+          "set_pantry_item_quantity",
+          "get_kitchen_context",
+          "set_pantry_item_quantity"
+        ],
+        "actorCostUsd": 0.00084962,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The explanation matches the tool evidence and final state: Eggs were updated from 4 to 12 in the first turn, then from 12 to 10 in the second turn, ending with quantity 10."
+        }
+      },
+      {
+        "scenario": "dialogue-distinct-purchases",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 9402.56829200001,
+        "calls": [
+          "get_kitchen_context",
+          "restock_pantry_item",
+          "get_kitchen_context",
+          "restock_pantry_item"
+        ],
+        "actorCostUsd": 0.0009080700000000001,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The assistant\u2019s two update messages match the tool results and final state: eggs increased from 4 to 10 after the first addition of 6, then from 10 to 16 after the second addition of 6. The final pantry quantity is 16 eggs, consistent with the explanation."
+        }
+      },
+      {
+        "scenario": "dialogue-purchase-amount",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 8739.507666999998,
+        "calls": [
+          "get_kitchen_context",
+          "get_kitchen_context",
+          "restock_pantry_item"
+        ],
+        "actorCostUsd": 0.0007662299999999999,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The assistant\u2019s claims match the evidence: the context showed 4 eggs initially, and the restock tool applied a +12 count change with the quantity ending at 16. The final state also shows Eggs at 16."
+        }
+      },
+      {
+        "scenario": "duplicate-add",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4616.826166,
+        "calls": [
+          "get_kitchen_context",
+          "add_pantry_item"
+        ],
+        "actorCostUsd": 0.00043225,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The response matches the evidence: the initial pantry already contained Mayo, the add_pantry_item tool returned status \"already_exists,\" and the final pantry still contains exactly that Mayo item."
+        }
+      },
+      {
+        "scenario": "equipment",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 3385.5538330000054,
+        "calls": [
+          "add_kitchen_tool"
+        ],
+        "actorCostUsd": 0.00028406000000000004,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final state shows one equipment item named \"skillet\" with kind \"cookware,\" matching the answer's claim that a skillet was added to kitchen equipment. The event log also shows the add operation succeeded."
+        }
+      },
+      {
+        "scenario": "everyday-correct-total",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4373.034415999995,
+        "calls": [
+          "get_kitchen_context",
+          "set_pantry_item_quantity"
+        ],
+        "actorCostUsd": 0.00039347,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final state shows Eggs at quantity 12, and the tool result says \"Set Eggs from 4 to 12.\" The response accurately reflects that update."
+        }
+      },
+      {
+        "scenario": "everyday-finished",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4481.167665999994,
+        "calls": [
+          "get_kitchen_context",
+          "delete_pantry_item"
+        ],
+        "actorCostUsd": 0.00038488,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final pantry no longer contains Eggs, and the event log shows `delete_pantry_item` for id 212 with `status: deleted`. The response accurately states that Eggs were removed from the pantry."
+        }
+      },
+      {
+        "scenario": "everyday-new-purchase",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4862.709167000008,
+        "calls": [
+          "get_kitchen_context",
+          "add_pantry_item"
+        ],
+        "actorCostUsd": 0.0013330700000000002,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The response says \"Added 12 eggs to your pantry,\" which matches the final pantry state showing 12 eggs present, and the initial pantry was empty."
+        }
+      },
+      {
+        "scenario": "everyday-purchase-again",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 5345.487292000005,
+        "calls": [
+          "get_kitchen_context",
+          "restock_pantry_item"
+        ],
+        "actorCostUsd": 0.0005199,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final pantry shows Eggs at quantity 6, and the tool event reports the restock was applied successfully from 0 to 6. The answer\u2019s claim that 6 eggs were saved to the pantry matches the evidence."
+        }
+      },
+      {
+        "scenario": "everyday-purchase-more",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4115.885125000001,
+        "calls": [
+          "get_kitchen_context",
+          "restock_pantry_item"
+        ],
+        "actorCostUsd": 0.00043023,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The response matches the evidence: the tool restocked Eggs by 12 from 4 to 16, and the final pantry shows 16 eggs."
+        }
+      },
+      {
+        "scenario": "everyday-remove-absent",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 2594.925749999995,
+        "calls": [
+          "get_kitchen_context"
+        ],
+        "actorCostUsd": 0.00026467,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The pantry snapshot contains only Rice in both the initial and final state, with no mayo present. The response correctly states that mayo is not currently saved and nothing was removed."
+        }
+      },
+      {
+        "scenario": "everyday-remove",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4808.082959000007,
+        "calls": [
+          "get_kitchen_context",
+          "delete_pantry_item"
+        ],
+        "actorCostUsd": 0.00038134,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final state shows Mayo removed from the pantry, and the tool event reports successful deletion of id 216 with name Mayo. The response accurately reflects that outcome."
+        }
+      },
+      {
+        "scenario": "half-jar",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4266.365749999999,
+        "calls": [
+          "get_kitchen_context",
+          "add_pantry_item"
+        ],
+        "actorCostUsd": 0.00041294000000000004,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final pantry contains Mayo with quantity 0.5 jar, which matches the answer\u2019s claim that Mayo \u2014 \u00bd jar was added to the pantry. The tool event also reports the item was created successfully."
+        }
+      },
+      {
+        "scenario": "multi-add",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4722.088000000003,
+        "calls": [
+          "add_pantry_item",
+          "add_pantry_item"
+        ],
+        "actorCostUsd": 0.00044602,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final pantry contains Rice and Cumin, each with empty quantity fields, which supports the claim that they were added with quantities left unspecified. The tool events also show both add operations succeeded."
+        }
+      },
+      {
+        "scenario": "planning-no-write",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 3601.634333999995,
+        "calls": [
+          "get_kitchen_context"
+        ],
+        "actorCostUsd": 0.0003124,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The answer only suggests a possible dish (\u201ca simple vegetable omelet\u201d) and gives generic preparation steps. It does not claim additional ingredients are present, and the only confirmed pantry item is eggs, which is consistent with suggesting an egg-based recipe."
+        }
+      },
+      {
+        "scenario": "rename",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 3697.122374999999,
+        "calls": [
+          "get_kitchen_context",
+          "update_pantry_item"
+        ],
+        "actorCostUsd": 0.00039641000000000003,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final pantry state shows item id 204 renamed from \"Mayo\" to \"Mayonnaise,\" and the tool event reports a successful update. The answer matches that change."
+        }
+      },
+      {
+        "scenario": "text-quantity",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4031.021999999997,
+        "calls": [
+          "get_kitchen_context",
+          "add_pantry_item"
+        ],
+        "actorCostUsd": 0.00043755,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final state shows Rice in the pantry with quantity_text/quantity set to \"a little left,\" and the tool event confirms it was created with that text quantity. The answer accurately reports that result."
+        }
+      },
+      {
+        "scenario": "validation-consume",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4928.243999999999,
+        "calls": [
+          "get_kitchen_context",
+          "consume_pantry_item"
+        ],
+        "actorCostUsd": 0.00042979,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final answer matches the tool result and final state: 3 eggs were consumed from 8, leaving 5 eggs. No unsupported historical claim is made."
+        }
+      },
+      {
+        "scenario": "validation-planning",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 3357.781792000009,
+        "calls": [
+          "get_kitchen_context"
+        ],
+        "actorCostUsd": 0.00027246,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The response correctly reports that the pantry contains 4 eggs, and the initial and final snapshots both show the inventory unchanged. The claim about being enough for two omelettes is a conditional arithmetic statement consistent with having 4 eggs if 2 eggs are used per omelette."
+        }
+      },
+      {
+        "scenario": "validation-spice",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4168.661874999998,
+        "calls": [
+          "add_pantry_item"
+        ],
+        "actorCostUsd": 0.00029551,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final state shows smoked paprika in the pantry with an empty/unknown quantity, matching the answer\u2019s claim that it was saved and the quantity was marked unknown."
+        }
+      }
+    ]
+  },
+  {
+    "surface": "four",
+    "version": {
+      "model": "gpt-5.6-luna",
+      "node": "v24.20.0",
+      "head": "6f73136843f0e55c473bc4f20ad00520b6cbc2fc",
+      "sourceHash": "80bbd69fdbfd797216619dd11cf557d5f64e982efad09a774794e4357be8f1e2",
+      "toolSurface": "four"
+    },
+    "metrics": {
+      "evaluated": 23,
+      "taskSuccesses": 21,
+      "safeFailures": 0,
+      "accepted": 21
+    },
+    "statePasses": 22,
+    "actorCostUsd": 0.01022203,
+    "knownTotalCostUsd": 0.04243078,
+    "medianActorMs": 4042,
+    "toolCalls": 42,
+    "modelToolDefinitionBytes": 8108,
+    "cases": [
+      {
+        "scenario": "add-unknown",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 3333.959417,
+        "calls": [
+          "add_items"
+        ],
+        "actorCostUsd": 0.00031048,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The answer says \"Added mayo to your pantry,\" which matches the tool result and final state: the pantry was initially empty, the add_items call created a mayo item, and the final pantry contains mayo."
+        }
+      },
+      {
+        "scenario": "clear-quantity",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 6297.421417000001,
+        "calls": [
+          "read_kitchen",
+          "edit_items"
+        ],
+        "actorCostUsd": 0.00087001,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final state shows the same pantry item (id 227, name Mayo) with quantity cleared to unknown/null, matching the answer\u2019s claim that Mayo\u2019s quantity is now unknown and the item remains the same."
+        }
+      },
+      {
+        "scenario": "consume-eggs",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4060.2157910000024,
+        "calls": [
+          "read_kitchen",
+          "edit_items"
+        ],
+        "actorCostUsd": 0.00042213000000000005,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final state shows Eggs changed from 6 to 4, and the edit tool result confirms the decrease was applied. The answer accurately reports that update."
+        }
+      },
+      {
+        "scenario": "dialogue-correct-total",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 7842.971042000005,
+        "calls": [
+          "read_kitchen",
+          "edit_items",
+          "read_kitchen",
+          "edit_items"
+        ],
+        "actorCostUsd": 0.0008159700000000001,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The explanation matches the event log and final state: the assistant first updated Eggs from 4 to 12, then updated Eggs to 10 after the correction. The final pantry snapshot shows Eggs quantity 10."
+        }
+      },
+      {
+        "scenario": "dialogue-distinct-purchases",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 8326.570959000004,
+        "calls": [
+          "read_kitchen",
+          "edit_items",
+          "read_kitchen",
+          "edit_items"
+        ],
+        "actorCostUsd": 0.00091073,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The answer matches the recorded edits: the first update increased Eggs from 4 to 10, and the second increased Eggs from 10 to 16. The final pantry state also shows 16 eggs."
+        }
+      },
+      {
+        "scenario": "dialogue-purchase-amount",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 7695.991458000004,
+        "calls": [
+          "read_kitchen",
+          "edit_items"
+        ],
+        "actorCostUsd": 0.00062587,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The response matches the evidence: the initial pantry had 4 eggs, and after the user\u2019s follow-up of twelve more eggs, the edit applied increased Eggs to 16 total. The assistant\u2019s messages reflect those observed states without inventing extra details."
+        }
+      },
+      {
+        "scenario": "duplicate-add",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 2394.348499999999,
+        "calls": [
+          "read_kitchen"
+        ],
+        "actorCostUsd": 0.00018702000000000004,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The initial and final pantry snapshots both already contain Mayo with the same entry, so saying it was already in the pantry and that no duplicate was added is consistent with the evidence."
+        }
+      },
+      {
+        "scenario": "equipment",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4693.278375000002,
+        "calls": [
+          "read_kitchen",
+          "add_items"
+        ],
+        "actorCostUsd": 0.00036181,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final kitchen state includes exactly one equipment item named \"skillet\" with kind \"cookware,\" and the add_items event shows it was created successfully. The response accurately reflects that the skillet was added."
+        }
+      },
+      {
+        "scenario": "everyday-correct-total",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 5013.84266699999,
+        "calls": [
+          "read_kitchen",
+          "edit_items"
+        ],
+        "actorCostUsd": 0.00085939,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The response says the inventory was updated to 12 eggs. The tool result shows the edit was applied and the final pantry snapshot contains Eggs with quantity 12, matching the claim."
+        }
+      },
+      {
+        "scenario": "everyday-finished",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4041.8477080000084,
+        "calls": [
+          "read_kitchen",
+          "remove_items"
+        ],
+        "actorCostUsd": 0.00034924,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final pantry no longer contains Eggs, matching the tool result showing item id 237 was deleted (`status\":\"deleted\"`) and the final snapshot where only Rice remains."
+        }
+      },
+      {
+        "scenario": "everyday-new-purchase",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4128.4444169999915,
+        "calls": [
+          "read_kitchen",
+          "add_items"
+        ],
+        "actorCostUsd": 0.00036988000000000006,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final pantry contains a created eggs item with quantity 12, matching the response\u2019s claim that 12 eggs were added to the pantry."
+        }
+      },
+      {
+        "scenario": "everyday-purchase-again",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4395.281916000007,
+        "calls": [
+          "read_kitchen",
+          "edit_items"
+        ],
+        "actorCostUsd": 0.00048473000000000006,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The reply says \"Saved 6 eggs to your pantry,\" which matches the applied edit: Eggs increased from 0 to 6 in the pantry, and the final snapshot shows quantity 6."
+        }
+      },
+      {
+        "scenario": "everyday-purchase-more",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 3670.057124999992,
+        "calls": [
+          "read_kitchen",
+          "edit_items"
+        ],
+        "actorCostUsd": 0.00042529000000000004,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final state shows Eggs increased from 4 to 16, and the tool result explicitly reports the 12-count restock was applied. The answer matches both the operation and the resulting quantity."
+        }
+      },
+      {
+        "scenario": "everyday-remove-absent",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 2358.0910000000003,
+        "calls": [
+          "read_kitchen"
+        ],
+        "actorCostUsd": 0.00016417,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The pantry snapshots show only Rice in both the initial and final state, with no mayo present. The response\u2019s claim that mayo isn\u2019t currently in the pantry and there is nothing to remove is consistent with the evidence."
+        }
+      },
+      {
+        "scenario": "everyday-remove",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4435.400542000003,
+        "calls": [
+          "read_kitchen",
+          "remove_items"
+        ],
+        "actorCostUsd": 0.00034537,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final pantry no longer contains Mayo, and the remove_items event reports id 241 was deleted. The response accurately states that mayo was removed from the pantry."
+        }
+      },
+      {
+        "scenario": "half-jar",
+        "statePass": false,
+        "answerPass": true,
+        "actorMs": 3453.73575,
+        "calls": [
+          "add_items"
+        ],
+        "actorCostUsd": 0.00034904,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The response matches the tool result and final state: an item named Mayo was created in the pantry with quantity_text \"half a jar\". The wording does not make any unsupported historical claim."
+        }
+      },
+      {
+        "scenario": "multi-add",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 4586.032499999994,
+        "calls": [
+          "read_kitchen",
+          "add_items"
+        ],
+        "actorCostUsd": 0.0004559700000000001,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The answer says Rice and Cumin were added to the pantry with unknown quantities. The final state contains both items in the pantry with empty/unknown quantity fields, and the tool result shows both were created successfully."
+        }
+      },
+      {
+        "scenario": "planning-no-write",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 2994.942916,
+        "calls": [
+          "read_kitchen"
+        ],
+        "actorCostUsd": 0.00023300000000000003,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The reply stays consistent with the kitchen state: the pantry contains 6 eggs and no equipment, and the answer only suggests an omelet idea using 2\u20133 eggs. The mention of a pan is conditional (\u201cif available\u201d), so it does not falsely claim equipment exists. It also does not assert any cooking was done, matching the final state."
+        }
+      },
+      {
+        "scenario": "rename",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 3663.794417000001,
+        "calls": [
+          "read_kitchen",
+          "edit_items"
+        ],
+        "actorCostUsd": 0.00038040000000000003,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final pantry state shows item id 229 changed from \"Mayo\" to \"Mayonnaise\", and the edit event reports the update was applied. The answer accurately reflects that rename."
+        }
+      },
+      {
+        "scenario": "text-quantity",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 3530.006999999998,
+        "calls": [
+          "add_items"
+        ],
+        "actorCostUsd": 0.00035176,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The answer says Rice was added with the quantity \u201ca little left,\u201d which matches the tool result and final pantry state showing one created Rice item with quantity_text/quantity set to \u201ca little left.\u201d"
+        }
+      },
+      {
+        "scenario": "validation-consume",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 3995.2323340000003,
+        "calls": [
+          "read_kitchen",
+          "edit_items"
+        ],
+        "actorCostUsd": 0.00042605,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The answer matches the evidence: the tool call successfully decreased Eggs from 8 to 5, so saying \"you used 3 eggs\" and \"5 eggs remain\" is grounded in the final state and tool result."
+        }
+      },
+      {
+        "scenario": "validation-planning",
+        "statePass": true,
+        "answerPass": false,
+        "actorMs": 2240.900333000005,
+        "calls": [
+          "read_kitchen"
+        ],
+        "actorCostUsd": 0.00018781,
+        "answerEvaluation": {
+          "verdict": "uncertain",
+          "reason": "The inventory-related part is supported: the initial and final pantry both show 4 eggs, so it was left unchanged. But the claim that 4 eggs is enough for an omelette for two is not established by the provided evidence, since no serving-size or recipe standard is given."
+        }
+      },
+      {
+        "scenario": "validation-spice",
+        "statePass": true,
+        "answerPass": true,
+        "actorMs": 3399.791833000003,
+        "calls": [
+          "add_items"
+        ],
+        "actorCostUsd": 0.00033591000000000003,
+        "answerEvaluation": {
+          "verdict": "supported",
+          "reason": "The final state contains a pantry item named \"smoked paprika\" with no quantity specified, and the event shows it was created with `quantity: {mode: \"unknown\"}`. The answer\u2019s claim that it was saved with an unknown quantity matches the evidence."
+        }
+      }
+    ]
+  }
+]

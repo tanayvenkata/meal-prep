@@ -11,6 +11,9 @@ import { gradeAnswer } from "./grade-answer";
 
 import { actorModel, actorUsageCost } from "./models";
 
+const surface = process.env.MISE_TOOL_SURFACE === "four" ? "four" : "baseline";
+const readTool = surface === "four" ? "read_kitchen" : "get_kitchen_context";
+const addTool = surface === "four" ? "add_items" : "add_pantry_item";
 const MODEL = actorModel(process.env.KITCHEN_EVAL_MODEL);
 const MAX_OUTPUT = 2048;
 const directory = ".eval-results/kitchen";
@@ -24,7 +27,7 @@ async function main() {
   const usage = new RunUsage();
   let telemetry: ReturnType<typeof startKitchenTelemetry> | undefined;
   try {
-    const version = evaluationProvenance(MODEL);
+    const version = { ...evaluationProvenance(MODEL), toolSurface: surface };
     telemetry = startKitchenTelemetry({ release: version.sourceHash });
     const api = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: "https://api.openai.com/v1", maxRetries: 0, timeout: 60_000 });
     const { evaluate } = await import("promptfoo");
@@ -43,7 +46,7 @@ async function main() {
       const responses: unknown[] = [];
       try {
         for (const item of scenario.seed) {
-          const result = await kitchen.call("add_pantry_item", item);
+          const result = await kitchen.call(addTool, surface === "four" ? { requestId: randomUUID(), items: [{ collection: "pantry", ...item }] } : item);
           if (result.isError) throw new Error("Fixture seeding failed");
         }
         const initial = await kitchen.state();
@@ -67,12 +70,12 @@ async function main() {
             const pantry = state.pantry.map(item => ({ name: String(item.name).toLowerCase(), quantity: item.quantity })).sort((a, b) => a.name.localeCompare(b.name));
             turns.push({ ...turn, state, calls,
               statePass: !!expected && JSON.stringify(pantry) === JSON.stringify(expected.pantry) && JSON.stringify(state.equipment) === JSON.stringify(initial.equipment),
-              noUnauthorizedWrite: !expected?.forbidWrites || calls.every(call => call.name === "get_kitchen_context"),
+              noUnauthorizedWrite: !expected?.forbidWrites || calls.every(call => call.name === readTool),
             });
           },
           callTool: async (name, args) => {
             const result = await kitchen.call(name, args);
-            if (scenario.fault === "lose_add_response" && lostResponseAt === undefined && name === "add_pantry_item" && !result.isError) {
+            if (scenario.fault === "lose_add_response" && lostResponseAt === undefined && name === addTool && !result.isError) {
               lostResponseAt = kitchen.calls.length - 1;
               throw new Error("synthetic_lost_response");
             }
@@ -103,7 +106,7 @@ async function main() {
         };
         const checks = {
           expectedState: JSON.stringify(normalized) === JSON.stringify({ pantry: scenario.pantry, equipment: scenario.equipment }),
-          noUnauthorizedWrite: !scenario.forbidWrites || kitchen.calls.every(call => call.name === "get_kitchen_context"),
+          noUnauthorizedWrite: !scenario.forbidWrites || kitchen.calls.every(call => call.name === readTool),
           stableIdentity: !scenario.preserveIds || JSON.stringify(initial.pantry.map(item => item.id).sort()) === JSON.stringify(final.pantry.map(item => item.id).sort()),
           completed: completed && !error,
           intermediateStates: !scenario.followUps || (turns.length === scenario.followUps.length + 1 && turns.every(turn => turn.statePass && turn.noUnauthorizedWrite)),
@@ -120,7 +123,7 @@ async function main() {
         const statePass = Object.values(checks).every(Boolean);
         const answerPass = answerEvaluation.grade?.verdict === "supported";
         const faultExercised = scenario.fault === "lose_add_response" ? lostResponseAt !== undefined : scenario.fault === "create_unavailable" ? unavailableAttempts > 0 : true;
-        const recoveryRead = scenario.fault !== "lose_add_response" || (lostResponseAt !== undefined && kitchen.calls[lostResponseAt + 1]?.name === "get_kitchen_context");
+        const recoveryRead = scenario.fault !== "lose_add_response" || (lostResponseAt !== undefined && kitchen.calls[lostResponseAt + 1]?.name === readTool);
         const taskSuccess = statePass && answerPass;
         const safeFailure = !checks.expectedState && JSON.stringify(initial) === JSON.stringify(final) && completed && !error && answerPass && faultExercised;
         const acceptancePass = (scenario.expectedOutcome === "safe_failure" ? safeFailure : taskSuccess) && faultExercised && recoveryRead;
@@ -133,8 +136,9 @@ async function main() {
       } finally { await kitchen.close(); }
     }
     const allScenarios = [...scenarios, ...recoveryScenarios, ...validationScenarios, ...everydayScenarios, ...dialogueScenarios];
-    const selected = process.argv[2] === "--dialogue" ? dialogueScenarios : process.argv[2] === "--everyday" ? everydayScenarios : process.argv[2] === "--recovery" ? recoveryScenarios : process.argv[2] === "--validation" ? validationScenarios : process.argv[2] === "--all" ? allScenarios : process.argv[2] ? allScenarios.filter(scenario => scenario.id === process.argv[2]) : scenarios;
+    const selected = process.argv[2] === "--workflows" ? allScenarios.filter(scenario => !scenario.fault) : process.argv[2] === "--dialogue" ? dialogueScenarios : process.argv[2] === "--everyday" ? everydayScenarios : process.argv[2] === "--recovery" ? recoveryScenarios : process.argv[2] === "--validation" ? validationScenarios : process.argv[2] === "--all" ? allScenarios : process.argv[2] ? allScenarios.filter(scenario => scenario.id === process.argv[2]) : scenarios;
     if (!selected.length) throw new Error("Unknown scenario");
+    if (surface === "four" && selected.some(scenario => scenario.fault === "create_unavailable")) throw new Error("Candidate service fault injection is not wired; do not score an unexercised fault.");
     const result = await evaluate({
       description: "Mise local kitchen state baseline v1", writeLatestResults: false,
       prompts: ["{{scenarioId}}"],

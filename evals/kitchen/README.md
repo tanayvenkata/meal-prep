@@ -146,3 +146,17 @@ grounding across the recorded turns; it does not certify that each clarification
 was necessary or well phrased. Review the recorded questions separately before
 claiming clarification quality. No future user message is visible to the actor
 until that turn.
+
+## Comparing tool surfaces
+
+`MISE_TOOL_SURFACE=four pnpm run eval:kitchen --workflows` selects the experimental
+four-tool interface and the 23 non-fault cases. Baseline is the default. Report
+provenance records the surface and migration source alongside model/code hashes.
+Fault scenarios are excluded explicitly; candidate persistent-service fault
+injection is not wired, and the runner refuses to score that scenario on four.
+
+An isolated local stack can be selected with `KITCHEN_EVAL_DATABASE_URL` and
+`KITCHEN_EVAL_ADMIN_DATABASE_URL`. Both must target the same approved loopback
+port (54322 or 55322), database postgres, with mise_app and postgres respectively.
+Never put credential-bearing URLs in reports or committed configuration. Apply
+candidate migrations to the isolated stack before running candidate writes.
