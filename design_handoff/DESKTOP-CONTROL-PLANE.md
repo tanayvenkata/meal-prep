@@ -182,6 +182,13 @@ quantities, turnover, or bulk actions to Tools as part of this design.
 
 ## Account and connection states
 
+PR #248 independently adds the first Account page, including server-verified
+identity, password/account switching, and SDK-backed OAuth grants. Preserve that
+functionality when implementing this wider shell. A grant can be labeled
+“Authorized”; it does not establish live host connectivity or token health.
+Grant lookup failure must remain unknown. The initial source observations below
+predate that PR and do not require removing its verified authorization list.
+
 Proposed `/account` uses the same shell with two sections, not a statistics
 screen. At >=1200px: Account (400px) + 32px gap + Connection (remaining width).
 At 1024px and below: stacked, each section capped at 720px. Show authenticated
