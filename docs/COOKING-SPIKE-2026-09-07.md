@@ -5,22 +5,22 @@ Related: #224, #225, PRs #233 and #234.
 ## Recommendation
 
 **Defer the stove-side Cooking Mode widget. Keep the four inventory tools and use a
-plain-text recipe handoff in ChatGPT. First restore and verify a live kitchen
-read through the intended connection.** This is a recommendation from the
+plain-text recipe handoff in ChatGPT. The installed production read path has
+subsequently been verified; proceed with phone cooking acceptance.** This is a recommendation from the
 technical spike, not a claim that the phone study has passed or that the user
 has accepted a new product direction.
 
 A widget cannot resolve unavailable host tools or a failing connection. The
 existing tools already supply inventory and explicit updates; a recipe can be
 prepared by the host without new storage, a rendering tool, or a custom voice
-service. Keep the Worker/web separation. These observations do not justify a
-hosting migration.
+service. The installed production connector uses Vercel; the separate Worker is
+not a prerequisite. These observations do not justify a hosting migration.
 
 The target assumed for this recommendation is the regular ChatGPT mobile app.
 Paired Remote is a separate optional route, not a requirement to keep a laptop
 running to use a kitchen assistant.
 
-## What was actually checked
+## What was originally checked (historical failures; see follow-up below)
 
 Source baseline: `origin/main` at
 `5df19332e8d2a3c55e644fb9efc626d8dfa57964`. The original local checkout was
@@ -173,3 +173,22 @@ and narration changes are not present in that deployed script. A bounded
 sanitized tail captured no events and did not establish the cause of the
 connected-read error. #241 tracks connection diagnosis, deployment reconciliation,
 and actual host acceptance. No deployment or pantry mutation was performed.
+
+
+## Endpoint verification and card execution follow-up
+
+PR #244, merged on 2026-09-07, records the installed Mise connection as
+`https://meal-prep-tawny-kappa.vercel.app/mcp`, verified in ChatGPT settings and
+protected-resource metadata. Three fresh installed-app reads succeeded. The
+Foundation Test app instead used an offline ngrok tunnel. The previous connector
+and direct Worker errors were no longer reproducible; their historical causes
+remain unproven. See `docs/MCP-DEPLOYMENT.md` on main. The original failure table
+above is a record of earlier observations, not the current connection status.
+
+PR #243 now implements truthful per-item mutation confirmations and is ready for
+review with passing CI. Draft PR #246 implements the separate, explicitly
+requested read-only saved kitchen card: authenticated service reads, recorded
+quantities, read timestamp, and Refresh. Local unit, Inspector, browser bridge,
+and build checks pass; actual ChatGPT card acceptance remains pending. No Worker
+cutover is required. Continue that focused host check before expanding receipt
+review, while keeping phone voice/lock-screen cooking validation in #224.
