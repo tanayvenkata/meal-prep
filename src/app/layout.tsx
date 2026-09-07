@@ -1,9 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { cookies } from "next/headers";
 import { Geist, Geist_Mono, Spectral } from "next/font/google";
 import "./globals.css";
 import NavBar from "@/components/NavBar";
-import { isThemeMode, themeColorEntries, type ThemeMode } from "@/lib/theme";
+import { THEME_COLORS } from "@/lib/theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,31 +25,31 @@ export const metadata: Metadata = {
   description: "Your pantry-aware sous-chef",
 };
 
-// A function (not a static object) because the resolved color depends on
-// the theme-mode cookie — matching RootLayout avoids a browser-chrome flash.
-export async function generateViewport(): Promise<Viewport> {
-  const cookieStore = await cookies();
-  const rawMode = cookieStore.get("theme-mode")?.value;
-  const themeMode: ThemeMode = isThemeMode(rawMode) ? rawMode : "light";
-  return { themeColor: themeColorEntries(themeMode) };
-}
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: THEME_COLORS.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLORS.dark },
+  ],
+};
 
-export default async function RootLayout({
+const themeScript = `(function(){try{var m=document.cookie.match(/(?:^|; )theme-mode=([^;]+)/);var mode=m?decodeURIComponent(m[1]):(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(mode==='dark'){document.documentElement.classList.add('dark');}}catch(e){}})();`;
+
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const rawMode = cookieStore.get("theme-mode")?.value;
-  const themeMode: ThemeMode = isThemeMode(rawMode) ? rawMode : "light";
-
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${spectral.variable} h-full antialiased ${themeMode === "dark" ? "dark" : ""}`}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} ${spectral.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="flex h-full flex-col overflow-hidden bg-surface-base text-text-primary">
-        <NavBar initialThemeMode={themeMode} />
+        <NavBar />
         {children}
       </body>
     </html>
