@@ -842,35 +842,72 @@ export function registerMisePrompts(server: McpServer) {
   );
 
   server.registerPrompt(
-    "plan_dinner",
+    "quick_bite",
     {
-      title: "Plan Dinner",
+      title: "Quick Bite",
       description:
-        "Suggest 3 quick dinner ideas based on current kitchen inventory, defaulting to 1 serving.",
+        "Suggest fast meal ideas ready in under 20 minutes with minimal cleanup and 1 pot/pan, defaulting to 1 serving.",
       argsSchema: {
+        max_minutes: z
+          .string()
+          .optional()
+          .describe("Maximum cook and prep time in minutes (default: 20)"),
         servings: z
           .string()
           .optional()
           .describe("Number of servings to prepare (default: 1)"),
-        dietary_notes: z
-          .string()
-          .optional()
-          .describe("Dietary preferences, restrictions, or cravings"),
       },
     },
     async (args) => {
+      const minutes = args.max_minutes?.trim() || "20";
       const servings = args.servings?.trim() || "1";
-      const notes = args.dietary_notes?.trim()
-        ? ` with dietary notes: ${args.dietary_notes.trim()}`
-        : "";
       return {
-        description: `Plan dinner for ${servings} serving(s)`,
+        description: `Quick bite under ${minutes} minutes for ${servings} serving(s)`,
         messages: [
           {
             role: "user",
             content: {
               type: "text",
-              text: `Please check my kitchen inventory using read_kitchen and propose 3 quick dinner ideas for ${servings} serving(s)${notes}. Prioritize items near expiration or high turnover, and note if any equipment or staples are needed.`,
+              text: `Please check my kitchen inventory using read_kitchen and propose 2-3 fast, satisfying meal ideas for ${servings} serving(s) ready in under ${minutes} minutes. Prioritize one-pot/one-pan cooking, minimal prep, and ingredients I already have on hand to keep dishes and cleanup to a minimum.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  server.registerPrompt(
+    "cook_something_cool",
+    {
+      title: "Cook Something Cool",
+      description:
+        "Suggest an ambitious, technique-driven dish that showcases your kitchen equipment and spices.",
+      argsSchema: {
+        servings: z
+          .string()
+          .optional()
+          .describe("Number of servings to prepare (default: 1)"),
+        cuisine_or_vibe: z
+          .string()
+          .optional()
+          .describe(
+            "Cuisine, technique, or vibe you want to explore (e.g. braise, wok, Italian, comfort food)",
+          ),
+      },
+    },
+    async (args) => {
+      const servings = args.servings?.trim() || "1";
+      const vibe = args.cuisine_or_vibe?.trim()
+        ? ` with a '${args.cuisine_or_vibe.trim()}' vibe`
+        : "";
+      return {
+        description: `Ambitious cooking project for ${servings} serving(s)`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `I have time to cook and want to make something special for ${servings} serving(s)${vibe}. Please inspect my kitchen inventory using read_kitchen—including my cookware, tools, and spices—and propose an elevated, technique-driven dish. Teach the key culinary techniques and explain how to make the most of my saved equipment.`,
             },
           },
         ],

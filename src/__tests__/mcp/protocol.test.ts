@@ -2650,7 +2650,8 @@ describe("Modern 2026-07-28 protocol wire contract", () => {
       expect(result.prompts).toBeDefined();
       const promptNames = result.prompts.map((p) => p.name);
       expect(promptNames).toContain("plan_meal");
-      expect(promptNames).toContain("plan_dinner");
+      expect(promptNames).toContain("quick_bite");
+      expect(promptNames).toContain("cook_something_cool");
       expect(promptNames).toContain("pantry_audit");
       expect(promptNames).toContain("substitutions");
 
@@ -2658,8 +2659,67 @@ describe("Modern 2026-07-28 protocol wire contract", () => {
       expect(planMeal?.description).toContain("1 serving");
       expect(planMeal?.arguments?.some((a) => a.name === "servings")).toBe(true);
 
+      const quickBite = result.prompts.find((p) => p.name === "quick_bite");
+      expect(quickBite?.description).toContain("20 minutes");
+
+      const cookCool = result.prompts.find((p) => p.name === "cook_something_cool");
+      expect(cookCool?.description).toContain("technique-driven");
+
       const substitutions = result.prompts.find((p) => p.name === "substitutions");
       expect(substitutions?.arguments?.find((a) => a.name === "missing_ingredient")?.required).toBe(true);
+    });
+
+    it("retrieves quick_bite prompt defaulting to 20 min and 1 serving", async () => {
+      const httpResponse = await postMcp(
+        {
+          jsonrpc: "2.0",
+          id: 2021,
+          method: "prompts/get",
+          params: {
+            name: "quick_bite",
+            arguments: {},
+          },
+        },
+        "test-token",
+      );
+      expect(httpResponse.status).toBe(200);
+      const response = (await httpResponse.json()) as {
+        result: {
+          messages: Array<{ role: string; content: { type: string; text: string } }>;
+        };
+      };
+
+      const text = response.result.messages[0].content.text;
+      expect(text).toContain("under 20 minutes");
+      expect(text).toContain("1 serving(s)");
+      expect(text).toContain("read_kitchen");
+    });
+
+    it("retrieves cook_something_cool prompt with culinary vibe", async () => {
+      const httpResponse = await postMcp(
+        {
+          jsonrpc: "2.0",
+          id: 2022,
+          method: "prompts/get",
+          params: {
+            name: "cook_something_cool",
+            arguments: {
+              cuisine_or_vibe: "braised comfort food",
+            },
+          },
+        },
+        "test-token",
+      );
+      expect(httpResponse.status).toBe(200);
+      const response = (await httpResponse.json()) as {
+        result: {
+          messages: Array<{ role: string; content: { type: string; text: string } }>;
+        };
+      };
+
+      const text = response.result.messages[0].content.text;
+      expect(text).toContain("braised comfort food");
+      expect(text).toContain("cookware");
     });
 
     it("retrieves plan_meal prompt with default 1 serving", async () => {
