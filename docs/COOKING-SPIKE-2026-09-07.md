@@ -4,7 +4,7 @@ Related: #224, #225, PRs #233 and #234.
 
 ## Recommendation
 
-**Defer the Cooking Mode widget. Keep the four inventory tools and use a
+**Defer the stove-side Cooking Mode widget. Keep the four inventory tools and use a
 plain-text recipe handoff in ChatGPT. First restore and verify a live kitchen
 read through the intended connection.** This is a recommendation from the
 technical spike, not a claim that the phone study has passed or that the user
@@ -131,3 +131,45 @@ Keep pantry writes behind the existing explicit actions. A checklist tap must
 not silently consume inventory. Verify CSP, theme, restoration, and the actual
 phone host before shipping. A separate render tool would be a deliberate future
 extension, not a fifth inventory action introduced by this spike.
+
+
+## New evidence: receipt review is a different widget case
+
+Later on 2026-09-07 the user supplied two screenshots of a ChatGPT conversation.
+The displayed image claimed the pantry was updated; the assistant subsequently
+admitted it had generated the image and that it was not a Mise confirmation.
+This is evidence of misleading presentation. It does not prove which tools ran
+or what is saved, because the complete tool trace and original receipt were not
+provided.
+
+This changes the scope of the UI recommendation: **a real receipt-review and
+saved-result interface is now a justified prototype candidate** (#242), while
+the stove-side cooking widget remains deferred. The useful interaction is
+correcting proposed items and distinguishing unsaved changes from committed
+results. A widget alone cannot prevent host hallucinations, and its inputs must
+not be trusted merely because the host supplied them.
+
+Show source receipt lines separately from consolidated items. Two egg line items
+may represent two cartons; converting that into 24 eggs requires carton-size
+evidence or user confirmation. Keep draft, saving, rejected, outcome-unknown,
+unchanged, historical saved-result, and current inventory states distinguishable.
+Use server outcomes for commit claims and a fresh read for current saved state.
+
+Start with supported additive imports. The four tools provide atomic batches
+individually, each limited to 25 entries; a full replacement across removals and
+additions is not one atomic transaction. Do not offer a Replace Pantry action
+until a reviewed, retry-safe, concurrency-checked replacement contract exists.
+
+Follow-up investigation also confirmed two defects in merged #234: summaries
+can call an unchanged duplicate an addition, and static completion labels imply
+success even for rejected operations. #240 tracks a focused code correction.
+Neither defect is established as the cause of the screenshot incident.
+
+Read-only inspection through Cloudflare's API confirmed the current Worker
+script contains `read_kitchen`, but not `plan_meal` or
+`summarizeMutationForSpeech`. The latest listed deployment is version
+`b833823a-ec4d-468f-bd35-d676c8bad802`, dated 13:27:47 UTC. Thus the merged prompt
+and narration changes are not present in that deployed script. A bounded
+sanitized tail captured no events and did not establish the cause of the
+connected-read error. #241 tracks connection diagnosis, deployment reconciliation,
+and actual host acceptance. No deployment or pantry mutation was performed.
