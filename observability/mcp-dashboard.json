@@ -134,6 +134,41 @@
         },
         "overrides": []
       }
+    },
+    {
+      "id": 5,
+      "title": "Latest exported tool counters",
+      "description": "Sum of the latest samples from active instances, not a lifetime call total. Useful for low-volume serverless traffic where rate panels need more samples.",
+      "type": "bargauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (mise_operation, mise_outcome) (mise_kitchen_operations_total{mise_layer=\"tool\"})",
+          "instant": true,
+          "legendFormat": "{{mise_operation}} \u00b7 {{mise_outcome}}"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient"
+      }
     }
   ],
   "description": "Semantic outcomes and timings. HTTP 200 does not prove a write applied. Rates require multiple samples; inspect traces for short-lived instances. See docs/OBSERVABILITY.md."

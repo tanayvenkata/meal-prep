@@ -2,7 +2,7 @@ import { parseKeyPairsIntoRecord } from "@opentelemetry/core";
 import { metrics, trace, type Tracer, type Meter } from "@opentelemetry/api";
 import { randomUUID } from "node:crypto";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
-import { BatchSpanProcessor, type SpanExporter } from "@opentelemetry/sdk-trace-base";
+import { AlwaysOnSampler, BatchSpanProcessor, type SpanExporter } from "@opentelemetry/sdk-trace-base";
 import { MeterProvider, PeriodicExportingMetricReader, type PushMetricExporter } from "@opentelemetry/sdk-metrics";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
@@ -53,7 +53,7 @@ export function startKitchenTelemetry(exporters: { traceExporter?: SpanExporter;
   const environment = ["production", "preview", "development"].includes(process.env.VERCEL_ENV ?? process.env.MISE_ENVIRONMENT ?? "")
     ? (process.env.VERCEL_ENV ?? process.env.MISE_ENVIRONMENT)! : "development";
   const resource = resourceFromAttributes({ "service.name": "mise-kitchen", "service.version": release, "service.instance.id": randomUUID(), "mise.runtime": runtime, "deployment.environment.name": environment });
-  const tracerProvider = new NodeTracerProvider({ resource, spanProcessors: traceExporter ? [new BatchSpanProcessor(traceExporter, { scheduledDelayMillis: 1000, exportTimeoutMillis: 1500 })] : [] });
+  const tracerProvider = new NodeTracerProvider({ resource, sampler: new AlwaysOnSampler(), spanProcessors: traceExporter ? [new BatchSpanProcessor(traceExporter, { scheduledDelayMillis: 1000, exportTimeoutMillis: 1500 })] : [] });
   tracerProvider.register();
   const meterProvider = new MeterProvider({ resource, readers: metricExporter ? [new PeriodicExportingMetricReader({ exporter: metricExporter, exportIntervalMillis: 10_000, exportTimeoutMillis: 1500 })] : [] });
   metrics.setGlobalMeterProvider(meterProvider);

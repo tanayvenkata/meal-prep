@@ -1,4 +1,4 @@
-import { trace, metrics } from "@opentelemetry/api";
+import { trace, metrics, context, ROOT_CONTEXT, TraceFlags } from "@opentelemetry/api";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { createServer } from "node:http";
@@ -67,6 +67,15 @@ it("exports authenticated traces and metrics with correlation and no sensitive p
   for (const entry of received) expect(entry.body).not.toContain(secret);
   expect(JSON.stringify(logs.mock.calls)).not.toContain(secret);
   await transport.close();
+});
+
+it("exports manual spans even when the incoming platform parent was not sampled", async () => {
+  const traceId = "abababababababababababababababab";
+  await context.with(trace.setSpanContext(ROOT_CONTEXT, {
+    traceId, spanId: "cdcdcdcdcdcdcdcd", traceFlags: TraceFlags.NONE, isRemote: true,
+  }), () => observeKitchenCommand("get_kitchen_context", async () => ({}))());
+  await telemetry.flush();
+  expect(received.some(entry => entry.path === "/custom-traces" && entry.body.includes(traceId))).toBe(true);
 });
 
 it("bounds a stalled collector flush without changing the command result", async () => {

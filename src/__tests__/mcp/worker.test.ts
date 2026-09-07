@@ -2,7 +2,8 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 import { app } from "@/mcp/worker";
 
 const telemetryMocks = vi.hoisted(() => ({ start: vi.fn(), flush: vi.fn(async () => {}) }));
-vi.mock("@/lib/telemetry", () => ({
+vi.mock("@/lib/telemetry", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/telemetry")>(),
   startKitchenTelemetry: telemetryMocks.start,
   flushKitchenTelemetry: telemetryMocks.flush,
 }));

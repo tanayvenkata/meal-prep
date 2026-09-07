@@ -170,11 +170,44 @@ are not a complete audit ledger. Spans are best effort and may be sampled/droppe
 
 ### Verification status — 2026-09-07
 
-Local authenticated OTLP/HTTP export, payload exclusion, and actual workerd
-trace/metric ingestion are verified in this change. Production Doppler currently
-has no OTLP endpoint/headers; collector provisioning, production deployment, and
-remote acceptance are pending. Historical local evidence is in
-[audit telemetry verification](audits/2026-09-06/telemetry-verification.json).
+Grafana Cloud stack `bronzecider1112` (1821415) is provisioned. Its stack-scoped
+`mise-production-telemetry` access policy allows only metrics and traces ingestion.
+OTLP settings are stored in Doppler `meal-prep/prd` and synced to Vercel production;
+the separate Worker has the same settings in Worker secrets.
+
+[Production dashboard](https://bronzecider1112.grafana.net/d/mise-mcp-operations/mise-mcp-operations)
+is provisioned from this repository. The automation service account
+`mise-observability-automation` has the Admin role, as requested by the owner.
+Its token is stored separately in Doppler `mise-observability/prd` and is never
+synced to the application. Both ingestion and automation tokens currently have
+no expiry; rotate them in Grafana and update their corresponding Doppler config.
+For the ingestion token, resync Worker secrets and redeploy both runtimes.
+
+### CLI administration
+
+From the repository, with the existing authenticated Doppler CLI:
+
+```sh
+doppler run -p mise-observability -c prd -- node scripts/grafana.mjs status
+doppler run -p mise-observability -c prd -- node scripts/grafana.mjs dashboard
+doppler run -p mise-observability -c prd -- node scripts/grafana.mjs metrics
+doppler run -p mise-observability -c prd -- node scripts/grafana.mjs traces
+doppler run -p mise-observability -c prd -- node scripts/grafana.mjs trace <trace-id>
+```
+
+`dashboard` idempotently updates the saved dashboard. `metrics` accepts PromQL;
+`traces` accepts TraceQL. These commands load credentials directly from Doppler,
+without pasting tokens into chat or shell arguments. Dashboard edits should be
+made in `observability/mcp-dashboard.json` and synchronized with the command.
+
+**Vercel provider finding:** hosting instrumentation can register the global
+OpenTelemetry provider first. Mise retains its own tracer and meter and shares
+its SDK state across Next bundles, so platform instrumentation cannot divert
+manual spans away from the configured Grafana exporter. The HTTP exporter test
+also pre-registers unrelated global providers to cover this production failure.
+Manual Mise spans are always sampled, including when the caller or hosting
+platform supplies an unsampled parent. This preserves the parent trace ID without
+letting client sampling flags silence our operational telemetry.
 
 References: [OpenTelemetry exporters](https://opentelemetry.io/docs/languages/js/exporters/),
 [manual instrumentation](https://opentelemetry.io/docs/languages/js/instrumentation/),
