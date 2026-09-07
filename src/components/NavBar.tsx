@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import SignOutButton from "@/components/SignOutButton";
 import ThemeToggle from "@/components/ThemeToggle";
 import type { ThemeMode } from "@/lib/theme";
 
@@ -24,17 +23,19 @@ export default function NavBar({ initialThemeMode }: { initialThemeMode?: ThemeM
           <>
             <Link
               href="/pantry"
-              className="text-sm text-text-secondary transition-colors hover:text-text-primary"
+              className="text-sm text-text-primary transition-colors hover:text-text-primary"
             >
               Pantry
             </Link>
             <Link
               href="/tools"
-              className="text-sm text-text-secondary transition-colors hover:text-text-primary"
+              className="text-sm text-text-primary transition-colors hover:text-text-primary"
             >
               Tools
             </Link>
-            <SignOutButton />
+            <Link href="/account" aria-current={pathname === "/account" ? "page" : undefined} className="text-sm text-text-primary transition-colors hover:text-text-primary">
+              Account
+            </Link>
           </>
         )}
         <ThemeToggle initialMode={initialThemeMode} />

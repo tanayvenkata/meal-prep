@@ -196,6 +196,9 @@ The website has a deliberately narrow role:
 - During ChatGPT account linking, `/oauth/consent` sends an unauthenticated user to
   `/login`. That page can create a Mise account or sign into an existing one, then return
   to the pending consent request.
+- `/account` shows verified identity, linked sign-in providers, password update and
+  account switching, and current OAuth app authorizations. Grant status is not a
+  live ChatGPT connectivity or token-health check; failed lookups remain unknown.
 - `/pantry` and `/tools` provide a direct way to inspect and correct the same kitchen data
   exposed through MCP.
 - `/mcp`, the OAuth metadata routes, and the health endpoint host the production
