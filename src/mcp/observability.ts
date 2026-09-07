@@ -19,7 +19,19 @@ export function recordMcpRequest(requestId: string, status: number, durationMs: 
     const attributes = { "http.response.status_code": status };
     meter.createCounter("mise.mcp.requests").add(1, attributes);
     meter.createHistogram("mise.mcp.request.duration", { unit: "s" }).record(durationMs / 1000, attributes);
-    console.info(JSON.stringify({ event: "mcp_request", requestId, status, durationMs: Math.round(durationMs) }));
+    // Requests rejected before tool dispatch need a trace too (for example, 401).
+    // Record only status, duration, and our correlation ID; never bearer tokens.
+    const failed = status >= 400 ? kitchenTracer().startSpan("mcp.request", {
+      kind: SpanKind.SERVER,
+      startTime: Date.now() - durationMs,
+      attributes: { ...attributes, "mise.request_id": requestId },
+    }) : undefined;
+    if (failed) {
+      failed.setStatus({ code: SpanStatusCode.ERROR });
+      failed.end();
+    }
+    console.info(JSON.stringify({ event: "mcp_request", requestId, status, durationMs: Math.round(durationMs),
+      ...(failed ? { traceId: failed.spanContext().traceId, spanId: failed.spanContext().spanId } : {}) }));
   } catch { /* A logging/export failure must not change an HTTP response. */ }
 }
 

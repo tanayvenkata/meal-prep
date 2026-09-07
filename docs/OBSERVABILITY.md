@@ -145,7 +145,9 @@ or cloud credentials. Its fixture entry point must never be deployed.
   real pantry to manufacture an incident.
 - Verify unexpected exceptions and response delivery failures with local fixtures
   (`observability.test.ts`); do not add a public production failure-injection route.
-  For production, the safe rejection above satisfies the synthetic-failure gate.
+  For production, either an isolated write rejection or a deliberately unauthenticated
+  POST satisfies the synthetic-failure gate. Failed HTTP requests emit an error
+  `mcp.request` span with a server-generated request ID, without reaching inventory.
 - Confirm the dashboard sees outcomes/durations and the caller receives responses
   without waiting for collector availability. Check both Vercel and Worker if both
   are enabled. Inspect exported attributes for absence of sensitive data.
@@ -207,7 +209,10 @@ manual spans away from the configured Grafana exporter. The HTTP exporter test
 also pre-registers unrelated global providers to cover this production failure.
 Manual Mise spans are always sampled, including when the caller or hosting
 platform supplies an unsampled parent. This preserves the parent trace ID without
-letting client sampling flags silence our operational telemetry.
+letting client sampling flags silence our operational telemetry. A processor
+allowlist exports only `mise.kitchen` and local `mise.eval` instrumentation, even
+when Next uses the same global provider. Failed HTTP requests also emit a manual
+`mcp.request` error span, carrying status and request ID only.
 
 References: [OpenTelemetry exporters](https://opentelemetry.io/docs/languages/js/exporters/),
 [manual instrumentation](https://opentelemetry.io/docs/languages/js/instrumentation/),

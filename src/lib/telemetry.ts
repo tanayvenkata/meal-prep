@@ -53,7 +53,17 @@ export function startKitchenTelemetry(exporters: { traceExporter?: SpanExporter;
   const environment = ["production", "preview", "development"].includes(process.env.VERCEL_ENV ?? process.env.MISE_ENVIRONMENT ?? "")
     ? (process.env.VERCEL_ENV ?? process.env.MISE_ENVIRONMENT)! : "development";
   const resource = resourceFromAttributes({ "service.name": "mise-kitchen", "service.version": release, "service.instance.id": randomUUID(), "mise.runtime": runtime, "deployment.environment.name": environment });
-  const tracerProvider = new NodeTracerProvider({ resource, sampler: new AlwaysOnSampler(), spanProcessors: traceExporter ? [new BatchSpanProcessor(traceExporter, { scheduledDelayMillis: 1000, exportTimeoutMillis: 1500 })] : [] });
+  const batch = traceExporter ? new BatchSpanProcessor(traceExporter, { scheduledDelayMillis: 1000, exportTimeoutMillis: 1500 }) : undefined;
+  const tracerProvider = new NodeTracerProvider({ resource, sampler: new AlwaysOnSampler(), spanProcessors: batch ? [{
+    onStart: (span, parent) => batch.onStart(span, parent),
+    onEnd: span => {
+      // When we own the global provider, Next can use it too. Export only our
+      // manual instrumentation, never framework HTTP/SQL/content spans.
+      if (["mise.kitchen", "mise.eval"].includes(span.instrumentationScope.name)) batch.onEnd(span);
+    },
+    forceFlush: () => batch.forceFlush(),
+    shutdown: () => batch.shutdown(),
+  }] : [] });
   tracerProvider.register();
   const meterProvider = new MeterProvider({ resource, readers: metricExporter ? [new PeriodicExportingMetricReader({ exporter: metricExporter, exportIntervalMillis: 10_000, exportTimeoutMillis: 1500 })] : [] });
   metrics.setGlobalMeterProvider(meterProvider);

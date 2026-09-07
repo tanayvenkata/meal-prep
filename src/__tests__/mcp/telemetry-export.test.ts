@@ -4,7 +4,7 @@ import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { createServer } from "node:http";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { startKitchenTelemetry } from "@/lib/telemetry";
-import { observeKitchenCommand, ObservedMcpTransport } from "@/mcp/observability";
+import { observeKitchenCommand, ObservedMcpTransport, recordMcpRequest } from "@/mcp/observability";
 import type { Transport } from "@modelcontextprotocol/server";
 
 // Real OTLP HTTP serialization and authentication, with no database or cloud account.
@@ -76,6 +76,16 @@ it("exports manual spans even when the incoming platform parent was not sampled"
   }), () => observeKitchenCommand("get_kitchen_context", async () => ({}))());
   await telemetry.flush();
   expect(received.some(entry => entry.path === "/custom-traces" && entry.body.includes(traceId))).toBe(true);
+});
+
+it("exports failed HTTP requests with request correlation and no authentication payload", async () => {
+  const requestId = "22222222-2222-4222-8222-222222222222";
+  recordMcpRequest(requestId, 401, 10);
+  await telemetry.flush();
+  const body = received.filter(entry => entry.path === "/custom-traces").map(entry => entry.body).join("");
+  expect(body).toContain('"mcp.request"');
+  expect(body).toContain(requestId);
+  expect(body).toContain('"http.response.status_code"');
 });
 
 it("bounds a stalled collector flush without changing the command result", async () => {
