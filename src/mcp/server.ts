@@ -1044,72 +1044,46 @@ export function summarizeMutationForSpeech(
       return "This request was already applied earlier without changing your kitchen again.";
     }
 
-    const items =
-      (input as { items?: Array<Record<string, unknown>> })?.items ?? [];
-    const count = items.length;
-
-    if (toolName === "add_items") {
-      const names = items
-        .map((i) =>
-          typeof i.name === "string"
-            ? i.name
-            : typeof i.expectedName === "string"
-              ? i.expectedName
-              : undefined,
-        )
-        .filter((n): n is string => Boolean(n));
-      if (count === 1 && names[0]) {
-        return `Added ${names[0]} to your kitchen.`;
-      }
-      if (names.length > 0) {
-        const itemWord = names.length === 1 ? "item" : "items";
-        return `Added ${names.length} ${itemWord} to your kitchen: ${names.join(", ")}.`;
-      }
-      return count === 1 ? "Added an item to your kitchen." : "Added items to your kitchen.";
+    const items = (input as { items?: Array<Record<string, unknown>> })?.items ?? [];
+    // A committed batch can include no-ops. Narrate its returned effects, not
+    // the requested action or a speculative rendering of the request.
+    const effects = result.results;
+    if (!effects?.length || effects.length !== items.length) {
+      return "The request completed, but item outcomes could not be confirmed. Read your kitchen to verify what is saved.";
     }
-
-    if (toolName === "edit_items") {
-      const names = items
-        .map((i) =>
-          typeof i.name === "string"
-            ? i.name
-            : typeof i.expectedName === "string"
-              ? i.expectedName
-              : undefined,
-        )
-        .filter((n): n is string => Boolean(n));
-      if (count === 1 && names[0]) {
-        return `Updated ${names[0]} in your kitchen.`;
+    const allowedStatuses = toolName === "add_items" ? ["created", "already_exists", "applied"]
+      : toolName === "edit_items" ? ["updated", "unchanged", "applied"] : ["deleted"];
+    const groups = new Map<string, string[]>();
+    for (const [index, value] of effects.entries()) {
+      const effect = value as { status?: string; name?: unknown; item?: { name?: unknown }; tool?: { name?: unknown } } | null;
+      const verb = effect?.status === "created" ? "Added"
+        : effect?.status === "already_exists" || effect?.status === "unchanged" ? "Left unchanged"
+        : effect?.status === "updated" || effect?.status === "applied" ? "Updated"
+        : effect?.status === "deleted" ? "Removed" : undefined;
+      if (!verb || !allowedStatuses.includes(effect?.status ?? "")) {
+        return "The request completed, but item outcomes could not be confirmed. Read your kitchen to verify what is saved.";
       }
-      if (names.length > 0) {
-        const itemWord = names.length === 1 ? "item" : "items";
-        return `Updated ${names.length} ${itemWord} in your kitchen: ${names.join(", ")}.`;
-      }
-      return count === 1 ? "Updated an item in your kitchen." : "Updated items in your kitchen.";
+      const item = items[index];
+      const name = effect?.item?.name ?? effect?.tool?.name ?? effect?.name
+        ?? item.expectedName ?? item.name;
+      const names = groups.get(verb) ?? [];
+      names.push(typeof name === "string" && name ? name : "an item");
+      groups.set(verb, names);
     }
-
-    if (toolName === "remove_items") {
-      const names = items
-        .map((i) =>
-          typeof i.expectedName === "string"
-            ? i.expectedName
-            : typeof i.name === "string"
-              ? i.name
-              : undefined,
-        )
-        .filter((n): n is string => Boolean(n));
-      if (count === 1 && names[0]) {
-        return `Removed ${names[0]} from your kitchen.`;
-      }
-      if (names.length > 0) {
-        const itemWord = names.length === 1 ? "item" : "items";
-        return `Removed ${names.length} ${itemWord} from your kitchen: ${names.join(", ")}.`;
-      }
-      return count === 1 ? "Removed an item from your kitchen." : "Removed items from your kitchen.";
-    }
+    return [...groups].map(([verb, names]) => {
+      const location = verb === "Removed" ? "from" : verb === "Added" ? "to" : "in";
+      if (names.length === 1) return verb === "Left unchanged"
+        ? `Left ${names[0]} unchanged in your kitchen.`
+        : `${verb} ${names[0]} ${location} your kitchen.`;
+      const shown = names.slice(0, 3).join(", ");
+      const remainder = names.length > 3 ? `, and ${names.length - 3} more` : "";
+      return verb === "Left unchanged"
+        ? `Left ${names.length} items unchanged in your kitchen: ${shown}${remainder}.`
+        : `${verb} ${names.length} items ${location} your kitchen: ${shown}${remainder}.`;
+    }).join(" ");
   }
 
-  return `The kitchen operation completed with status: ${result.status}.`;
+  return "The kitchen outcome could not be confirmed. Read your kitchen before retrying.";
 }
 
 export async function createMiseServer(
@@ -1230,10 +1204,10 @@ export async function createMiseServer(
                 : "Removing from kitchen…",
           "openai/toolInvocation/invoked":
             name === "add_items"
-              ? "Items saved."
+              ? "Save request finished."
               : name === "edit_items"
-                ? "Items updated."
-                : "Items removed.",
+                ? "Update request finished."
+                : "Removal request finished.",
         },
       }, async (input, extra) => {
         const userId = getUserIdFromContext(extra);
