@@ -1,6 +1,6 @@
 # Four-tool experiment — issue #203
 
-Status: input contracts and tested transaction/retry primitives. Service handlers execute local writes, but the MCP tools are not registered
+Status: input contracts and tested transaction/retry primitives. Service handlers execute local writes and the four-tool catalog is selectable with `MISE_TOOL_SURFACE=four`; baseline remains the default
 and have not been evaluated by a model. The baseline remains the 12-tool server.
 
 The candidate is a tool-only app: `read_kitchen`, `add_items`, `edit_items`, and
@@ -62,3 +62,15 @@ strength of schema tests alone.
 References: [tool planning](https://developers.openai.com/plugins/plan/tools),
 [MCP server](https://developers.openai.com/plugins/build/mcp-server),
 [reference](https://developers.openai.com/plugins/reference).
+
+## Updated stopping point — user direction
+
+Determine whether 12, four, or another tool variation best serves the kitchen
+workflow, explain the evidence and tradeoffs, then stop. Complete only candidate
+work needed for a valid comparison. Do not automatically adopt, merge, deploy,
+or continue broader product work after reaching that decision.
+
+Four-tool MCP HTTP smoke passes: exactly four advertised tools, unauthenticated
+401, OAuth security metadata on the wire, unknown-quantity add, independent SQL
+state, and a fresh kitchen read. Fourteen transaction/command/HTTP cases pass on
+the isolated database. This is not yet a model comparison.

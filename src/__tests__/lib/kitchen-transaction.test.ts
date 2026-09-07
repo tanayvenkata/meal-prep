@@ -1,3 +1,6 @@
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { createMiseHttpServer } from "@/mcp/server";
 import { AsyncResource } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import postgres from "postgres";
@@ -150,4 +153,46 @@ describe("candidate command effects", () => {
     expect(await removeKitchenItems(userA, command)).toEqual({ ...first, replayed: true });
     expect((await getItems(userA)).some(x => x.id === eggs.id)).toBe(false);
   });
+});
+
+
+it("exposes exactly four authenticated tools over MCP HTTP and saves unknown quantity", async () => {
+  const previous = { supabase: process.env.NEXT_PUBLIC_SUPABASE_URL, publicUrl: process.env.MCP_PUBLIC_URL };
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:55321";
+  process.env.MCP_PUBLIC_URL = "http://localhost:8787/mcp";
+  const token = randomUUID();
+  const server = createMiseHttpServer({ toolSurface: "four", verifyAccessToken: async presented => {
+    if (presented !== token) throw new Error("invalid_fixture_token");
+    return { token, clientId: "candidate-test", scopes: ["openid"], expiresAt: Math.floor(Date.now()/1000)+300, extra: { userId: userA } };
+  }});
+  const client = new Client({ name: "candidate-test", version: "1" });
+  try {
+    await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("no_test_address");
+    const url = new URL(`http://127.0.0.1:${address.port}/mcp`);
+    const unauthenticated = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    expect(unauthenticated.status).toBe(401);
+    expect(unauthenticated.headers.get("www-authenticate")).toContain("resource_metadata");
+    await client.connect(new StreamableHTTPClientTransport(url, { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
+    const catalog = await client.listTools();
+    expect(catalog.tools.map(x => x.name).sort()).toEqual(["add_items", "edit_items", "read_kitchen", "remove_items"]);
+    for (const tool of catalog.tools) expect(tool).toMatchObject({ _meta: { securitySchemes: [{ type: "oauth2" }] } });
+    // SDK parsing strips extension fields; inspect the wire for top-level compatibility metadata.
+    const wire = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "content-type": "application/json", accept: "application/json, text/event-stream" }, body: JSON.stringify({ jsonrpc: "2.0", id: 99, method: "tools/list", params: {} }) });
+    const wireBody = await wire.json();
+    for (const tool of wireBody.result.tools) expect(tool).toMatchObject({ securitySchemes: [{ type: "oauth2" }] });
+    const result = await client.callTool({ name: "add_items", arguments: { requestId: randomUUID(), items: [{ collection: "pantry", name: "HTTP mayo" }] } });
+    expect(result.isError).toBe(false);
+    expect(result.structuredContent).toMatchObject({ status: "applied" });
+    const read = await client.callTool({ name: "read_kitchen", arguments: {} });
+    expect(read.structuredContent).toMatchObject({ pantry: expect.arrayContaining([expect.objectContaining({ name: "HTTP mayo", quantityMode: "unknown" })]) });
+    expect((await getItems(userA)).filter(x => x.name === "HTTP mayo")).toHaveLength(1);
+  } finally {
+    await client.close();
+    if (server.listening) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    for (const [key, value] of Object.entries({ NEXT_PUBLIC_SUPABASE_URL: previous.supabase, MCP_PUBLIC_URL: previous.publicUrl })) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
 });

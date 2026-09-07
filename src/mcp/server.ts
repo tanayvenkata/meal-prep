@@ -37,6 +37,8 @@ import {
   type AdjustPantryItemQuantityBatchOutcome,
   type AdjustPantryItemQuantityOutcome,
 } from "@/lib/kitchen-service";
+import { candidateInputs } from "@/lib/kitchen-command-contract";
+import { addKitchenItems, editKitchenItems, removeKitchenItems } from "@/lib/kitchen-commands";
 import { PANTRY_QUANTITY_UNITS } from "@/lib/pantry-quantity";
 import { ObservedMcpTransport, observeKitchenCommand, recordMcpRequest } from "./observability";
 
@@ -57,6 +59,7 @@ const MISE_OAUTH_SECURITY_SCHEMES = [
   { type: "oauth2", scopes: MCP_SCOPES },
 ];
 const AUTHENTICATED_MISE_TOOLS = new Set([
+  "read_kitchen", "add_items", "edit_items", "remove_items",
   KITCHEN_CONTEXT_TOOL,
   ADD_PANTRY_ITEM_TOOL,
   UPDATE_PANTRY_ITEM_TOOL,
@@ -85,6 +88,7 @@ type KitchenToolUpdater = typeof editKitchenTool;
 type KitchenToolDeleter = typeof removeKitchenTool;
 
 type MiseServerOptions = {
+  toolSurface?: "baseline" | "four";
   loadKitchenContext?: KitchenContextLoader;
   setPantryItemQuantity?: PantryQuantityUpdater;
   adjustPantryItemQuantity?: PantryQuantityAdjuster;
@@ -756,6 +760,7 @@ class OpenAiCompatibleWebStandardStreamableHTTPServerTransport extends WebStanda
 
 export async function createMiseServer(
   {
+    toolSurface = process.env.MISE_TOOL_SURFACE === "four" ? "four" : "baseline",
     loadKitchenContext: getKitchenContext = loadKitchenContext,
     setPantryItemQuantity = updatePantryItemQuantity,
     adjustPantryItemQuantity = adjustPantryQuantity,
@@ -783,13 +788,14 @@ export async function createMiseServer(
   const server = new McpServer(
     { name: "mise", version: "0.1.0" },
     {
-      instructions:
-        "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; finished pantry items are removed. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying.",
+      instructions: toolSurface === "four"
+        ? "Read read_kitchen before edits and removals. Add named items with unknown quantity when unspecified; never require an amount merely to save an item. Writes require current-turn intent. Finished pantry items are removed. Reuse a request UUID only for an identical retry; replay reports historical effects, not current inventory. Lists are atomic. Never infer writes from planning or receipt images. Reread after rejection. Never convert units."
+        : "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; finished pantry items are removed. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying.",
     },
   );
 
   server.registerTool(
-    KITCHEN_CONTEXT_TOOL,
+    toolSurface === "four" ? "read_kitchen" : KITCHEN_CONTEXT_TOOL,
     {
       title: "Show kitchen context",
       description:
@@ -824,6 +830,34 @@ export async function createMiseServer(
       };
     },
   );
+
+  if (toolSurface === "four") {
+    const registerWrite = (name: "add_items" | "edit_items" | "remove_items", description: string,
+      schema: z.ZodObject, command: typeof addKitchenItems) => {
+      const observed = observeKitchenCommand(name, command);
+      server.registerTool(name, {
+        description, inputSchema: schema,
+        annotations: { readOnlyHint: false, destructiveHint: name !== "add_items", idempotentHint: true, openWorldHint: false },
+        _meta: { securitySchemes: MISE_OAUTH_SECURITY_SCHEMES },
+      }, async (input, extra) => {
+        const userId = extra.authInfo?.extra?.userId;
+        if (typeof userId !== "string") return {
+          isError: true, content: [{ type: "text" as const, text: "Connect your Mise account to continue." }],
+          _meta: { "mcp/www_authenticate": [getMcpAuthChallenge()] },
+        };
+        const result = await observed(userId, input);
+        return {
+          isError: result.status === "invalid_input",
+          content: [{ type: "text" as const, text: JSON.stringify(result) }],
+          structuredContent: result,
+        };
+      });
+    };
+    registerWrite("add_items", "Save one or more explicitly owned pantry items or pieces of equipment. A name is enough for pantry: omit quantity when unspecified, and do not ask for an amount. Existing pantry names remain unchanged; use edit_items increase for a measured purchase of more. Use one request UUID per requested list, reused only for an identical retry. All entries commit together or none do. Never infer ownership from recipes or an unconfirmed receipt.", candidateInputs.add_items, addKitchenItems);
+    registerWrite("edit_items", "Edit saved pantry or equipment from a fresh read_kitchen result. Use replace for a stated total, description, unknown quantity, rename, or turnover change; increase for more purchased; decrease for an explicit amount consumed. Relative edits require a positive same-unit delta and fresh expected quantity. Pass stable IDs and exact current names. Lists are atomic; reuse UUID only for identical retries. Planning never authorizes an edit.", candidateInputs.edit_items, editKitchenItems);
+    registerWrite("remove_items", "Remove saved pantry items or equipment explicitly requested in the current turn. A pantry item reported fully finished or used up counts as removal intent. Partial use, a stored zero alone, and hypothetical plans do not. Read read_kitchen first and use stable IDs and exact current names. If absent, confirm absence without a write. All listed removals commit together; reuse UUID only for identical retries.", candidateInputs.remove_items, removeKitchenItems);
+    return server;
+  }
 
   server.registerTool(
     ADD_PANTRY_ITEM_TOOL,
@@ -1482,6 +1516,7 @@ export async function createMiseServer(
 type VerifyAccessToken = (token: string) => Promise<AuthInfo>;
 
 type MiseHttpServerOptions = {
+  toolSurface?: "baseline" | "four";
   verifyAccessToken?: VerifyAccessToken;
   loadKitchenContext?: KitchenContextLoader;
   setPantryItemQuantity?: PantryQuantityUpdater;
@@ -1523,6 +1558,7 @@ export async function handleMiseMcpRequest(
   request: Request,
   {
     verifyAccessToken = verifyMcpAccessToken,
+    toolSurface = process.env.MISE_TOOL_SURFACE === "four" ? "four" : "baseline",
     loadKitchenContext: getKitchenContext = loadKitchenContext,
     setPantryItemQuantity = updatePantryItemQuantity,
     adjustPantryItemQuantity = adjustPantryQuantity,
@@ -1537,6 +1573,7 @@ export async function handleMiseMcpRequest(
   }: Pick<
     MiseHttpServerOptions,
     | "verifyAccessToken"
+    | "toolSurface"
     | "loadKitchenContext"
     | "setPantryItemQuantity"
     | "adjustPantryItemQuantity"
@@ -1598,6 +1635,7 @@ export async function handleMiseMcpRequest(
   }
 
   const server = await createMiseServer({
+    toolSurface,
     loadKitchenContext: getKitchenContext,
     setPantryItemQuantity,
     adjustPantryItemQuantity,
@@ -1640,7 +1678,8 @@ export async function handleMiseMcpRequest(
 
 export function createMiseHttpServer({
   verifyAccessToken = verifyMcpAccessToken,
-  loadKitchenContext: getKitchenContext = loadKitchenContext,
+  toolSurface = process.env.MISE_TOOL_SURFACE === "four" ? "four" : "baseline",
+    loadKitchenContext: getKitchenContext = loadKitchenContext,
   setPantryItemQuantity = updatePantryItemQuantity,
   adjustPantryItemQuantity = adjustPantryQuantity,
   adjustPantryItemQuantities = adjustPantryQuantities,
@@ -1730,6 +1769,7 @@ export function createMiseHttpServer({
     // This server is deliberately stateless: every MCP request gets a
     // short-lived server and transport.
     const server = await createMiseServer({
+    toolSurface,
       loadKitchenContext: getKitchenContext,
       setPantryItemQuantity,
       adjustPantryItemQuantity,
