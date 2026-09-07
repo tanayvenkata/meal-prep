@@ -22,7 +22,7 @@ not a commitment to rebuild its features.
 The [2026-09-06 audit](FOUNDATION-AUDIT-2026-09-06.md) contains findings, source
 references, cost comparisons, an observability/evaluation proposal, and candidate
 work packages. **Its recommendations are proposals, not adopted implementations.**
-The local evaluation slice is now being implemented in issue #191; its runnable
+The local evaluation slice is implemented; its runnable
 instructions and limitations live in [the evaluation README](../evals/kitchen/README.md).
 Read the relevant sections when making a foundation decision; do not load all
 historical documents for routine changes.
@@ -33,10 +33,10 @@ The local evaluation loop is implemented and the user selected four composable
 tools. See [the decision](audits/2026-09-06/four-tool-decision.md) and
 [rollout evidence](audits/2026-09-06/four-tool-rollout-final.json). The final combined
 Luna regression accepted 26/26 cases (25 task successes and one expected safe
-failure). These are measured cases, not a universal reliability claim. Local
-OpenTelemetry correlates command/tool/HTTP outcomes; production collection remains
-a separate operational choice. Actual rollout status lives in PR #208 and issue
-#203; older audit stages are not active implementation requirements.
+failure). These are measured cases, not a universal reliability claim.
+OpenTelemetry correlates command/tool/HTTP outcomes. Production ingestion on
+Vercel and the separate Worker is verified in [OBSERVABILITY.md](OBSERVABILITY.md).
+The four-tool rollout merged in PR #208; older audit stages are historical evidence.
 
 ## Evaluation spending — 2026-09-06
 
@@ -96,11 +96,10 @@ Website → authenticated Next.js APIs → same service → same data
   non-owner role without RLS bypass. `withUserContext` sets trusted user identity and
   enters the authenticated role transactionally. Do not replace this with an owner
   connection to make tests or a migration easier.
-- **Local and preview cannot write production.** Local development uses Supabase at
+- **Keep local and preview isolated from production.** Local development uses Supabase at
   `127.0.0.1`; production secrets come through Doppler/Vercel. Preview is currently
   credential-free and proves the build, not authenticated runtime behavior. Verify
-  actual configuration rather than following obsolete provider references in the
-  historical `docs/environments.md` narrative.
+  actual configuration using [the environment runbook](environments.md).
 - **Retry guarantees are per request.** Four-tool writes use durable operation
   receipts plus fresh expectations. The legacy baseline relative tools retain
   older expected-quantity-only limitations; do not confuse their guarantees.
@@ -126,10 +125,16 @@ proposals become project decisions when selected for implementation, not simply
 because an agent wrote them down.
 
 
-## Four-tool rollout preparation — 2026-09-06
+## Current capability and prompt map
 
-The user requested switching to four tools. The rollout branch integrates current
-main's MCP SDK v2 and defaults the application to read/add/edit/remove. The
-12-tool reference is explicit through MISE_TOOL_SURFACE=baseline; eval fixtures
-retain their explicit surface selection. Deployment is not implied by these local
-changes. The actual connected app changes after the rollout and catalog refresh.
+See [the source audit](audits/2026-09-07/capability-audit.md) for the dated issue
+assessment and runtime entry points. ChatGPT supplies conversation, vision, and
+recipe generation; Mise does not run a production model loop. Five MCP prompt
+templates are registered in `src/mcp/server.ts`; they are not automatically
+applied system instructions or proof of visible ChatGPT starters. Server
+instructions and tool descriptors are separate runtime guidance. Repository
+Markdown and historical persona designs are not loaded into the host.
+
+The read-only card PR #246 was closed without merging after its spike was
+shelved. It is not an active implementation or a shipped widget. Dish logging
+and Cooking Wrapped remain unimplemented candidates (#13 and #31).
