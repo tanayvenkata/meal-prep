@@ -27,7 +27,7 @@ export default function SignOutButton() {
       <button
         disabled={pending}
         onClick={signOut}
-        className="min-h-11 disabled:opacity-50 text-sm text-text-secondary hover:text-text-primary transition-colors"
+        className="min-h-11 disabled:opacity-50 text-sm text-text-primary hover:text-text-primary transition-colors"
       >
         {pending ? "Signing out…" : "Sign out / switch account"}
       </button>

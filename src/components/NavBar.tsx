@@ -23,17 +23,17 @@ export default function NavBar({ initialThemeMode }: { initialThemeMode?: ThemeM
           <>
             <Link
               href="/pantry"
-              className="text-sm text-text-secondary transition-colors hover:text-text-primary"
+              className="text-sm text-text-primary transition-colors hover:text-text-primary"
             >
               Pantry
             </Link>
             <Link
               href="/tools"
-              className="text-sm text-text-secondary transition-colors hover:text-text-primary"
+              className="text-sm text-text-primary transition-colors hover:text-text-primary"
             >
               Tools
             </Link>
-            <Link href="/account" aria-current={pathname === "/account" ? "page" : undefined} className="text-sm text-text-secondary transition-colors hover:text-text-primary">
+            <Link href="/account" aria-current={pathname === "/account" ? "page" : undefined} className="text-sm text-text-primary transition-colors hover:text-text-primary">
               Account
             </Link>
           </>
