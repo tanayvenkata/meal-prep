@@ -4,9 +4,9 @@ import { readFile } from 'node:fs/promises';
 const base = process.env.GRAFANA_URL;
 const token = process.env.GRAFANA_SERVICE_ACCOUNT_TOKEN;
 if (!base || !token) throw new Error('Run through Doppler mise-observability/prd to load Grafana credentials.');
-async function api(path, body) {
+async function api(path, body, method = body ? 'POST' : 'GET') {
   const response = await fetch(new URL(path, base), {
-    method: body ? 'POST' : 'GET',
+    method,
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     ...(body ? { body: JSON.stringify(body) } : {}),
     signal: AbortSignal.timeout(20000),
@@ -27,6 +27,8 @@ if (command === 'status') {
   delete dashboard.__inputs;
   const result = await api('/api/dashboards/db', { dashboard, overwrite: true, message: 'Sync Mise observability dashboard from repository' });
   console.log(JSON.stringify({ status: result.status, url: new URL(result.url, base).href }, null, 2));
+} else if (command === 'home') {
+  console.log(JSON.stringify(await api('/api/org/preferences', { homeDashboardUID: 'mise-mcp-operations' }, 'PUT'), null, 2));
 } else if (command === 'metrics') {
   const query = args.join(' ') || 'mise_kitchen_operations_total';
   console.log(JSON.stringify(await api('/api/datasources/proxy/uid/grafanacloud-prom/api/v1/query?' + new URLSearchParams({ query })), null, 2));
@@ -36,5 +38,5 @@ if (command === 'status') {
 } else if (command === 'trace' && /^[a-f0-9]{32}$/.test(args[0] ?? '')) {
   console.log(JSON.stringify(await api('/api/datasources/proxy/uid/grafanacloud-traces/api/traces/' + args[0]), null, 2));
 } else {
-  throw new Error('Commands: status, dashboard, metrics [PromQL], traces [TraceQL], trace <trace-id>');
+  throw new Error('Commands: status, dashboard, home, metrics [PromQL], traces [TraceQL], trace <trace-id>');
 }

@@ -185,6 +185,12 @@ synced to the application. Both ingestion and automation tokens currently have
 no expiry; rotate them in Grafana and update their corresponding Doppler config.
 For the ingestion token, resync Worker secrets and redeploy both runtimes.
 
+Production ingestion is verified on both runtimes: an installed-app read has
+linked tool/command spans and a matching platform request ID; synthetic HTTP 401
+failures have correlated error spans in Tempo on Vercel and Workers. Dashboard
+counters contain the real read outcome. All exported span attributes passed the
+allowlist check. See [sanitized production evidence](audits/2026-09-07/production-telemetry.json).
+
 ### CLI administration
 
 From the repository, with the existing authenticated Doppler CLI:
@@ -192,12 +198,13 @@ From the repository, with the existing authenticated Doppler CLI:
 ```sh
 doppler run -p mise-observability -c prd -- node scripts/grafana.mjs status
 doppler run -p mise-observability -c prd -- node scripts/grafana.mjs dashboard
+doppler run -p mise-observability -c prd -- node scripts/grafana.mjs home
 doppler run -p mise-observability -c prd -- node scripts/grafana.mjs metrics
 doppler run -p mise-observability -c prd -- node scripts/grafana.mjs traces
 doppler run -p mise-observability -c prd -- node scripts/grafana.mjs trace <trace-id>
 ```
 
-`dashboard` idempotently updates the saved dashboard. `metrics` accepts PromQL;
+`dashboard` idempotently updates the saved dashboard. `home` makes it the organization home dashboard. `metrics` accepts PromQL;
 `traces` accepts TraceQL. These commands load credentials directly from Doppler,
 without pasting tokens into chat or shell arguments. Dashboard edits should be
 made in `observability/mcp-dashboard.json` and synchronized with the command.
