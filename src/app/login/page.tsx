@@ -35,7 +35,7 @@ function LoginForm() {
 
   const errorCode = searchParams.get("error");
   const serverError = errorCode ? AUTH_ERRORS[errorCode] ?? "Mise could not sign you in." : "";
-  const displayError = clientError || serverError;
+  const displayError = clientError || (mode === "sign-in" ? serverError : "");
 
   useEffect(() => {
     const resetAfterBackNavigation = (event: PageTransitionEvent) => {

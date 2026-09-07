@@ -64,6 +64,14 @@ describe("AuthListener", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  it("does not redirect when on /reset-password", () => {
+    mockPathname = "/reset-password";
+    render(<AuthListener />);
+
+    expect(authCallback).toBeNull();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
   it("unsubscribes on unmount", () => {
     const { unmount } = render(<AuthListener />);
     unmount();
