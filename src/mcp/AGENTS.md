@@ -135,6 +135,15 @@ and observed host behavior differ, preserve the smallest standards-compatible
 adapter proven to interoperate, cover it with a focused contract test, and
 record why it exists instead of silently hand-rolling more of the protocol.
 
+## Truthful mutation presentation
+
+- Derive confirmation text from returned per-entry effects. A committed batch
+  may contain unchanged items; do not narrate every requested add as creation.
+- Keep static tool-completion metadata outcome-neutral. It is not a receipt and
+  cannot encode whether a particular call was applied, rejected, or replayed.
+- Preserve structured outcomes alongside text. A generated image or receipt
+  draft is not evidence of a saved change; fresh reads establish current state.
+
 ## Future UI defaults
 
 - Prefer semantic HTML and host-provided design tokens over a custom visual
