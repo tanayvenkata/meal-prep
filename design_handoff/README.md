@@ -1,3 +1,10 @@
+> Historical native-chat design bundle; not the current product specification.
+> Chat/history routes and the old model loop were removed. Persona copy below is
+> design evidence, not instructions loaded into ChatGPT. Use
+> [the current project brief](../docs/PROJECT.md) and the
+> [desktop control-plane design](DESKTOP-CONTROL-PLANE.md) for current work.
+> Future dish logging and summaries belong in GitHub Issues, not this build order.
+
 # Handoff: Mise — mobile app (core 8 screens)
 
 > Active desktop design: [Account and kitchen control plane](DESKTOP-CONTROL-PLANE.md)

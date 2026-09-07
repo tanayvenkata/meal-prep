@@ -118,6 +118,18 @@ Missing or foreign IDs, duplicate names, unsupported quantities, stale expectati
 unsafe arithmetic leave the kitchen completely unchanged. There is no raw database CRUD,
 and no MCP access to chat history or credentials.
 
+### AI behavior and what is implemented
+
+ChatGPT handles conversation, images, and recipe generation. Mise supplies saved
+inventory and authenticated actions; there is no production model/API-key loop.
+Server instructions, tool descriptions, and five optional MCP prompt templates
+live in `src/mcp/server.ts`. Templates being registered does not prove that
+ChatGPT displays or invokes them. Old design/persona documents are not loaded
+at runtime. See [the capability audit](docs/audits/2026-09-07/capability-audit.md).
+
+Dish logging, Cooking Wrapped, and receipt-review UI are not implemented on main.
+The inventory-card spike (#246) was shelved without merging.
+
 ### Production endpoints
 
 The installed Mise app uses **Next.js on Vercel**, verified in ChatGPT plugin

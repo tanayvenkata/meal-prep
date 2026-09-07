@@ -186,16 +186,16 @@ and direct Worker errors were no longer reproducible; their historical causes
 remain unproven. See `docs/MCP-DEPLOYMENT.md` on main. The original failure table
 above is a record of earlier observations, not the current connection status.
 
-PR #243 now implements truthful per-item mutation confirmations and is ready for
-review with passing CI. Draft PR #246 implements the separate, explicitly
-requested read-only saved kitchen card: authenticated service reads, recorded
-quantities, read timestamp, and Refresh. Local unit, Inspector, browser bridge,
-and build checks pass; actual ChatGPT card acceptance remains pending. No Worker
-cutover is required. Continue that focused host check before expanding receipt
-review, while keeping phone voice/lock-screen cooking validation in #224.
+PR #243 merged the truthful per-item mutation confirmation fix. PR #246 was
+closed without merging after local evaluation: the passive saved-inventory card
+was shelved because it did not demonstrate enough value over text. Its local
+bridge tests remain historical spike evidence, not shipped UI or ChatGPT host
+acceptance. #242 still contains superseded draft-PR instructions and needs scope
+reconciliation before any renewed UI work. Continue the phone text-to-voice and
+lock-screen cooking checks in #224 independently.
 
 ## Merge scope
 
 This PR preserves completed technical findings. Phone voice, recipe resumption,
 and locked-screen timer acceptance remain in #224; they do not block merging
-this research document. Card host acceptance remains separately tracked in #242.
+this research document. Any renewed receipt-review UI scope must first be reconciled in #242.

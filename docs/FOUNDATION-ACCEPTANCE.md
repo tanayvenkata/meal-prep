@@ -1,8 +1,13 @@
 # Kitchen foundation: decision and verification
 
-Reviewed 2026-09-06. The active goal ends at determining the tool interface and why,
+Historical acceptance snapshot, 2026-09-06. The foundation goal ended at determining the tool interface and why,
 with a repeatable local measurement loop. The user selected four tools. This is
 not a declaration that every release requirement or future kitchen feature is done.
+
+Subsequent rollout: PR #208 merged. Production telemetry is now verified in
+[OBSERVABILITY.md](OBSERVABILITY.md); serving-endpoint evidence lives in
+[MCP-DEPLOYMENT.md](MCP-DEPLOYMENT.md). The table below preserves the evidence
+available at the original decision, including then-pending rollout work.
 
 The current decision is [four composable kitchen tools](audits/2026-09-06/four-tool-decision.md).
 Older roadmap/audit proposals remain historical evidence, not mandatory scope.

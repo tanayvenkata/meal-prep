@@ -1,6 +1,14 @@
 # Kitchen evaluation foundation
 
-Work tracked in [#191](https://github.com/tanayvenkata/meal-prep/issues/191).
+Foundation implemented in [#191](https://github.com/tanayvenkata/meal-prep/issues/191).
+
+**Select the surface explicitly:** the runner defaults to the historical 12-tool
+baseline, while the application defaults to four. For current-product checks use
+`MISE_TOOL_SURFACE=four pnpm run eval:kitchen`. Use
+`MISE_TOOL_SURFACE=baseline` only for intentional reference comparisons.
+The runner consumes MCP server instructions and tool schemas; it does not invoke
+the five registered MCP prompt templates. Its scenarios are text-only, so a pass
+does not establish receipt-image interpretation or ChatGPT/mobile acceptance.
 
 The first layer verifies effects through an actual MCP SDK client, HTTP transport,
 tool validation, kitchen service, restricted database connection, and local Postgres.
