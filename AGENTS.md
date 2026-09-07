@@ -26,7 +26,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## MCP and ChatGPT Apps routing
 
-- Production edge MCP runs on Cloudflare Workers using Hono (`src/mcp/worker.ts`), while Next.js powers the web control plane and OAuth consent screens (`/oauth/consent`).
+- The installed production MCP app uses Vercel `/mcp` (verified 2026-09-07). Next.js also powers the web control plane and OAuth consent. Hono (`src/mcp/worker.ts`) is a separate Cloudflare deployment; verify the installed endpoint before assuming requests reach it. See `docs/MCP-DEPLOYMENT.md`.
 - For any task involving MCP, ChatGPT Apps, the MCP Apps widget, tool
   descriptors, account linking, or OAuth used by the MCP app, read
   `src/mcp/AGENTS.md` before implementation. This applies even when the edited
