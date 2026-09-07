@@ -1,5 +1,9 @@
 # Mise Design Handoff — Implementation Status
 
+> Active desktop design: [Account and kitchen control plane](DESKTOP-CONTROL-PLANE.md)
+> (issue #32, 2026-09-07). Implementation-ready spec; not yet shipped.
+> The chat-based designs below remain historical references.
+
 Tracks which screens from `README.md` are done, partial, or not started.
 Update this file as each screen is implemented. "Visual only" means colors/fonts/layout only — no new backend.
 
@@ -40,8 +44,8 @@ Surfaced here so they don't get lost in the per-screen tables. Grouped by what u
   dish log. Monthly engine first, yearly is the same card scaled. Stay concept-level until scheduled.
 
 ### Not yet designed at all
-- **Desktop pass** (mirror house style to a real desktop layout) — we adapted visually within `max-w-2xl`,
-  but a true desktop design doesn't exist yet.
+- **Desktop pass** — specified in [the active desktop design](DESKTOP-CONTROL-PLANE.md);
+  application implementation is pending. The original desktop design gap is resolved.
 - **Onboarding / signup flow** and **settings / account** screens.
 
 ---
