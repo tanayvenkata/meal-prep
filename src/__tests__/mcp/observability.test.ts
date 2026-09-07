@@ -1,3 +1,4 @@
+import { trace } from "@opentelemetry/api";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
 import { AggregationTemporality, DataPointType, InMemoryMetricExporter } from "@opentelemetry/sdk-metrics";
@@ -31,6 +32,12 @@ async function call(name: string, args: unknown, options: Parameters<typeof hand
   return { status: response.status, body };
 }
 function events() { return logs.mock.calls.map(([line]) => JSON.parse(String(line))).filter(event => event.event === "kitchen_operation"); }
+
+it("does not export framework spans that share our global provider", async () => {
+  trace.getTracer("next.js").startSpan("PRIVATE automatic request span").end();
+  await telemetry.flush();
+  expect(spans.getFinishedSpans()).toHaveLength(0);
+});
 
 describe("semantic observations at the real MCP response boundary", () => {
   it("observes default four-tool writes and dependency failure through SDK v2", async () => {

@@ -50,6 +50,9 @@ jobs:
       - name: Unit tests
         run: pnpm run test:unit
 
+      - name: Worker telemetry runtime smoke test
+        run: pnpm run test:telemetry-worker
+
       - name: Evaluation dependency smoke test
         run: pnpm run test:eval-dependencies
 

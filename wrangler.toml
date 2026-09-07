@@ -8,3 +8,11 @@ NEXT_PUBLIC_SUPABASE_URL = "https://omwvoxemybeukmhnyrhb.supabase.co"
 MCP_PUBLIC_URL = "https://mise-mcp.tanayvenkata.workers.dev/mcp"
 MCP_TOKEN_AUDIENCE = "authenticated"
 MISE_TOOL_SURFACE = "four"
+MISE_ENVIRONMENT = "production"
+
+# OTLP credentials belong in Worker secrets, never in this file.
+[observability]
+enabled = true
+
+[observability.traces]
+enabled = true
