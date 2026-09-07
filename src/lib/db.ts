@@ -22,7 +22,41 @@ import {
 // Production uses Supavisor's transaction pooler, where consecutive queries can
 // land on different Postgres connections. Prepared statements are connection-local,
 // so Postgres.js must send each query without trying to reuse one across connections.
-const sql = postgres(process.env.DATABASE_URL!, { prepare: false });
+let sqlInstance: postgres.Sql | null = null;
+let currentDatabaseUrl: string | undefined;
+
+function createPostgresClient(url: string) {
+  return postgres(url, { prepare: false });
+}
+
+if (process.env.DATABASE_URL) {
+  currentDatabaseUrl = process.env.DATABASE_URL;
+  sqlInstance = createPostgresClient(currentDatabaseUrl);
+}
+
+export function getDatabaseClient(): postgres.Sql {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error("DATABASE_URL environment variable is not defined");
+  }
+  if (!sqlInstance || currentDatabaseUrl !== url) {
+    if (sqlInstance) {
+      sqlInstance.end({ timeout: 1 }).catch(() => {});
+    }
+    currentDatabaseUrl = url;
+    sqlInstance = createPostgresClient(url);
+  }
+  return sqlInstance;
+}
+
+const sql = new Proxy((() => {}) as unknown as postgres.Sql, {
+  apply(_target, thisArg, argArray) {
+    return Reflect.apply(getDatabaseClient(), thisArg, argArray);
+  },
+  get(_target, prop, receiver) {
+    return Reflect.get(getDatabaseClient(), prop, receiver);
+  },
+});
 
 export type Turnover = "high" | "low";
 

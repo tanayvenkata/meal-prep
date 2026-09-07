@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "design_handoff/**",
     // Claude Code local tooling (worktrees, session state) — not our code
     ".claude/**",
+    // Cloudflare Wrangler local build state
+    ".wrangler/**",
   ]),
   {
     files: ["src/__tests__/**/*.ts"],

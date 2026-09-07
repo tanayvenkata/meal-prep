@@ -207,6 +207,30 @@ The production connector runs through the existing Next.js deployment:
   The production OAuth connection is only proven after the stable production
   hostname serves the matching code and the ChatGPT app is reconnected there.
 
+## Cloudflare Workers & Hono Edge Architecture
+
+In addition to the Next.js serverless route handler, Mise provides a standalone,
+ultra-low-latency edge MCP server running on Cloudflare Workers with Hono:
+
+- **Entry point**: `src/mcp/worker.ts` mounts Hono with dual-era CORS, RFC 8414 OAuth
+  discovery (`/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`),
+  health probes (`/health`, `/api/mcp/health`, `/`), and routes `/mcp` directly to
+  our Web-standard `handleMiseMcpRequest`.
+- **Runtime configuration**: `wrangler.toml` targets `compatibility_date = "2026-09-06"`
+  with `compatibility_flags = ["nodejs_compat"]`. Node.js compatibility provides the
+  standard crypto and net primitives used by Postgres.js and OTel.
+- **Database connection**: Connects to Supabase Postgres through transaction poolers
+  (Supavisor port 6543) with prepared statements disabled (`prepare: false`). `src/lib/db.ts`
+  initializes the Postgres client lazily on first access, allowing worker environment
+  bindings to populate seamlessly before database instantiation.
+- **Local simulation**: `pnpm run mcp:worker` starts a local Miniflare simulation
+  on port `8787` (or custom port).
+- **Deployment**: `pnpm run deploy:worker` deploys the worker bundle to Cloudflare
+  Workers (`mise-mcp.workers.dev` or custom domain). Secret bindings (`DATABASE_URL`,
+  `NEXT_PUBLIC_SUPABASE_URL`, etc.) are configured via Wrangler secrets or Doppler.
+- **Background telemetry**: Uses Cloudflare's `c.executionCtx.waitUntil(flushKitchenTelemetry())`
+  to flush spans asynchronously without penalizing ChatGPT response latency.
+
 ## Host refresh and future-widget test rules
 
 - MCP Inspector is the fast inner loop for tools and protocol behavior. ChatGPT
