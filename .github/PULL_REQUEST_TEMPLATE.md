@@ -1,11 +1,10 @@
-## What changed
+### Context
+<!-- Why this change is needed. Reference problem, decision, or tradeoffs. -->
 
-<!-- Describe the smallest user-visible or technical outcome. -->
+### What changed
+<!-- Bullet list of specific user-visible or technical changes. -->
 
-## Why
+### Validation
+<!-- Automated tests, lint, manual checks, or host verifications. -->
 
-<!-- Explain the problem, decision, and important tradeoffs. -->
-
-## Validation
-
-<!-- List the exact checks you ran. Add screenshots for visual changes. -->
+Closes #

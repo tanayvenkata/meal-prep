@@ -100,7 +100,9 @@ what makes a ticket a real ticket instead of a vague sticky note.
 
 `Done when` is the part people skip and pros never do — it kills "wait, is this done?"
 
-Add a `type:` label on the issue. (Priority is **not** a label — it's a board field; set it
+Issue templates under `.github/ISSUE_TEMPLATE/` (`feature.md`, `tech_debt.md`, `bug.md`, `polish.md`) pre-fill this three-part structure and set the appropriate `type:` label automatically.
+
+Add a `type:` label on the issue if creating manually without a template. (Priority is **not** a label — it's a board field; set it
 after the issue exists, see "Setting priority from the CLI" below.) CLI example:
 
 ```bash
