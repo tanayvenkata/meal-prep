@@ -103,7 +103,8 @@ Copyable starting request:
 
 ## Next slice and decision gates
 
-**Immediate engineering slice: diagnose the connected read.** Confirm the
+**Completed follow-up: the installed read path was verified in #244.** The
+following was the original diagnostic plan, retained as context: confirm the
 installed endpoint and authentication state, inspect sanitized edge/transport
 outcomes for a correlated request, distinguish the Cloudflare probe denial from
 application failures, and prove one authenticated read in Inspector followed by
@@ -192,3 +193,9 @@ quantities, read timestamp, and Refresh. Local unit, Inspector, browser bridge,
 and build checks pass; actual ChatGPT card acceptance remains pending. No Worker
 cutover is required. Continue that focused host check before expanding receipt
 review, while keeping phone voice/lock-screen cooking validation in #224.
+
+## Merge scope
+
+This PR preserves completed technical findings. Phone voice, recipe resumption,
+and locked-screen timer acceptance remain in #224; they do not block merging
+this research document. Card host acceptance remains separately tracked in #242.
