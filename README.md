@@ -288,3 +288,22 @@ Both identities linked to one local user for the same verified email. Google is
 currently in Testing with the owner's Google account added as a test user; broader
 availability requires finishing Google's publishing requirements. GitHub's login
 button reaches production only after the associated PR is merged and deployed.
+
+### Mobile ChatGPT connection verification — 2026-09-07
+
+Website sign-in and granting ChatGPT access are separate steps. A connection
+started from the host must preserve the consent URL through Google/GitHub login;
+the Connect form then returns the authorization code to the host's registered
+callback. A logged-in pantry alone does not prove host connection success.
+
+Production Supabase now allows the web app's `/auth/callback` redirect. Its empty
+allowlist previously caused unmatched social-login redirects to fall back to the
+Site URL, losing the consent destination.
+
+The app shell uses dynamic viewport height. Both consent and consent-error pages
+scroll inside the shell, with bottom safe-area padding and 44px decision buttons.
+At 390×650, the former page left Connect below the viewport with no scrollable
+container; the fixed page scrolls and the button passes a hit-target check. A real
+local OAuth request returned a code and matching state after Connect. A separate
+signed-out Google flow returned to the pending consent page. Actual iPhone ChatGPT
+modal dismissal remains a host check after deployment.

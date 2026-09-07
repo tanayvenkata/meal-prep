@@ -41,8 +41,8 @@ export default async function OAuthConsentPage({ searchParams }: ConsentPageProp
   const scopes = data.scope.split(" ").filter(Boolean);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg items-center px-4 py-10">
-      <section className="w-full rounded-2xl bg-surface-raised p-6 shadow-md">
+    <main className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-y-auto px-4 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+      <section className="my-auto w-full shrink-0 rounded-2xl bg-surface-raised p-6 shadow-md">
         <div className="mb-6 text-center">
           <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-fill-inverse">
             <span className="font-serif text-2xl font-semibold text-text-inverse">M</span>
@@ -84,8 +84,8 @@ export default async function OAuthConsentPage({ searchParams }: ConsentPageProp
 
 function ConsentError({ message }: { message: string }) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg items-center px-4">
-      <section className="w-full rounded-2xl bg-surface-raised p-6 shadow-md">
+    <main className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col overflow-y-auto px-4 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom))]">
+      <section className="my-auto w-full shrink-0 rounded-2xl bg-surface-raised p-6 shadow-md">
         <h1 className="font-serif text-2xl font-semibold text-text-primary">
           Could not connect to Mise
         </h1>

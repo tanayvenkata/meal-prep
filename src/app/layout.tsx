@@ -49,7 +49,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="flex h-full flex-col overflow-hidden bg-surface-base text-text-primary">
+      <body className="flex h-dvh flex-col overflow-hidden bg-surface-base text-text-primary">
         <AuthListener />
         <NavBar />
         {children}
