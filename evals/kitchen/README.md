@@ -160,3 +160,10 @@ An isolated local stack can be selected with `KITCHEN_EVAL_DATABASE_URL` and
 port (54322 or 55322), database postgres, with mise_app and postgres respectively.
 Never put credential-bearing URLs in reports or committed configuration. Apply
 candidate migrations to the isolated stack before running candidate writes.
+
+Fresh composition comparison: run `evals/kitchen/run.ts --composition` using the
+same authorized local configuration and `MISE_TOOL_SURFACE` selection described
+above. This separate five-case set exercises multiple operations and equipment
+lifecycle checkpoints. It is deliberately excluded from historical `--workflows`
+and `--all` sets so their denominators do not silently change. Once used to tune
+tools, treat it as regression coverage, not held-out evidence.

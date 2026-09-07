@@ -3,7 +3,8 @@ export type Scenario = {
   id: string;
   prompt: string;
   followUps?: string[];
-  checkpoints?: Array<{ pantry: PantryExpectation[]; forbidWrites?: boolean }>;
+  maxModelRequests?: number;
+  checkpoints?: Array<{ pantry: PantryExpectation[]; equipment?: Array<{ name: string; kind: string }>; forbidWrites?: boolean }>;
   seed: Array<{ name: string; quantity?: { amount: string; unit: string } }>;
   pantry: PantryExpectation[];
   equipment: Array<{ name: string; kind: string }>;
@@ -57,4 +58,15 @@ export const dialogueScenarios: Scenario[] = [
   { id: "dialogue-purchase-amount", prompt: "Bought more eggs. Update my pantry.", followUps: ["Twelve more eggs."], seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }], checkpoints: [{ pantry: [{ name: "eggs", quantity: "4" }], forbidWrites: true }, { pantry: [{ name: "eggs", quantity: "16" }] }], pantry: [{ name: "eggs", quantity: "16" }], equipment: [], preserveIds: true },
   { id: "dialogue-correct-total", prompt: "I counted 12 eggs. Update the total.", followUps: ["Actually, ten eggs total. I miscounted."], seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }], checkpoints: [{ pantry: [{ name: "eggs", quantity: "12" }] }, { pantry: [{ name: "eggs", quantity: "10" }] }], pantry: [{ name: "eggs", quantity: "10" }], equipment: [], preserveIds: true },
   { id: "dialogue-distinct-purchases", prompt: "Bought six more eggs. Add them.", followUps: ["I made another trip and bought another six eggs. Add those too."], seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }], checkpoints: [{ pantry: [{ name: "eggs", quantity: "10" }] }, { pantry: [{ name: "eggs", quantity: "16" }] }], pantry: [{ name: "eggs", quantity: "16" }], equipment: [], preserveIds: true },
+];
+
+// Registered after the first surface pair, before running either surface on these
+// prompts. Judge final effects, not a prescribed tool sequence. Once inspected
+// for tuning, this set is a regression set rather than fresh validation evidence.
+export const compositionScenarios: Scenario[] = [
+  { id: "composition-grocery-trip", prompt: "Back from shopping: bought six more eggs and some cumin, no idea how much cumin. We finished the rice. Update my pantry with all of that.", seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }, { name: "Rice", quantity: { amount: "1", unit: "bag" } }], pantry: [{ name: "cumin", quantity: "" }, { name: "eggs", quantity: "10" }], equipment: [] },
+  { id: "composition-correction-remove", prompt: "Correct the eggs to 10 total, and remove the mayo. Leave the rice alone.", seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }, { name: "Mayo" }, { name: "Rice", quantity: { amount: "2", unit: "bag" } }], pantry: [{ name: "eggs", quantity: "10" }, { name: "rice", quantity: "2 bag" }], equipment: [] },
+  { id: "composition-cooking-use", prompt: "I cooked breakfast and used three eggs. We also finished the cumin. Record that, please.", seed: [{ name: "Eggs", quantity: { amount: "8", unit: "count" } }, { name: "Cumin" }], pantry: [{ name: "eggs", quantity: "5" }], equipment: [] },
+  { id: "composition-equipment-lifecycle", maxModelRequests: 18, prompt: "Add a skillet to my kitchen equipment.", followUps: ["Rename that skillet to Cast iron skillet.", "I gave that skillet away. Remove it from my kitchen equipment."], seed: [], checkpoints: [{ pantry: [], equipment: [{ name: "skillet", kind: "cookware" }] }, { pantry: [], equipment: [{ name: "cast iron skillet", kind: "cookware" }] }, { pantry: [], equipment: [] }], pantry: [], equipment: [] },
+  { id: "composition-proposal-only", prompt: "I'm considering buying six eggs and cumin, and throwing away the mayo. Show me what those changes would mean, but don't save any changes yet.", seed: [{ name: "Eggs", quantity: { amount: "4", unit: "count" } }, { name: "Mayo" }], pantry: [{ name: "eggs", quantity: "4" }, { name: "mayo", quantity: "" }], equipment: [], forbidWrites: true, preserveIds: true },
 ];

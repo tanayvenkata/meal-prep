@@ -54,3 +54,47 @@ present the incomplete receipt surface as equivalent to the existing receipt too
 - Model tool-definition JSON: baseline 18,223 bytes, four 8,108 bytes. These are
   bytes, not token counts. Wire catalog size is a different measurement.
 - No winner yet: candidate host acceptance and focused quantity follow-up remain.
+
+## Evaluation bias review
+
+The first pair is diagnostic, not a ranking. The `half-jar` verifier requires an
+exact storage representation despite a user request that permits faithful text.
+Whether structured fractions are necessary should be tested by a later arithmetic
+request, not assumed from this addition alone. Keep the original failed result;
+do not retrospectively count it as a pass. The omelette judgment exceeds the
+existing rubric, which already excludes recipe quality. Treat this as a grader
+calibration issue, not a demonstrated inventory-write error.
+
+For the next comparison, five fresh composition cases were registered before
+running either interface: a grocery trip with additions/restocking/removal;
+a correction plus removal; recorded cooking consumption plus a finished item;
+equipment add/rename/remove across three turns; and a proposed change with no
+permission to save it. Equipment is verified at each turn so an empty final
+inventory cannot hide a failed addition or rename. No tool sequence is prescribed.
+Run four first, then baseline, reversing the first pair's order. These are fresh
+validation prompts only until their results have informed tuning. They do not
+cover every workflow or establish statistical superiority.
+
+Keep separate conclusions for database effects, assistant factual grounding,
+representation quality, and efficiency. Tool descriptions, server instructions,
+input schemas, output size, and retry guarantees are part of the interface being
+compared; this is not a controlled experiment on tool count alone.
+
+The first composition attempt gave both interfaces 4/5 combined passes. Both hit
+the harness's shared six-request limit during the three-turn equipment lifecycle.
+The first two equipment checkpoints passed for the four-tool candidate; that does
+not prove removal. The rerun assigns this scenario 18 model requests (six per user
+message), equally for both interfaces, while retaining the 12-tool-attempt cap.
+Other scenarios keep their existing limits. The scenario definition records the
+allowance in each raw report. This is a harness correction, not a tool improvement;
+keep both attempts and do not treat them as independent untouched holdouts.
+
+Corrected composition pair: both interfaces passed all five cases, including every
+specified equipment checkpoint. Four used 19 tool calls, median actor 8694 ms,
+and estimated actor cost $0.00417284; baseline used 17 calls, median 6096 ms,
+and $0.00475350. This reverses the first pair's latency direction. The evidence
+supports composition capability, not a universal fewer-tools/faster claim.
+Both initial capped attempts and corrected runs are retained in
+[tool-composition-pairs.json](tool-composition-pairs.json), including source hashes,
+per-case checks, grading reasons, and request limits. Actual four-tool ChatGPT host
+selection and recovery parity remain unresolved before the final recommendation.

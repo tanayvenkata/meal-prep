@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import OpenAI from "openai";
 import { runConversation } from "./conversation";
 import { kitchenFixture, LOCAL_APP_DATABASE } from "./fixture";
-import { scenarios, recoveryScenarios, validationScenarios, everydayScenarios, dialogueScenarios, type Scenario } from "./scenarios";
+import { scenarios, recoveryScenarios, validationScenarios, everydayScenarios, dialogueScenarios, compositionScenarios, type Scenario } from "./scenarios";
 import { RunUsage } from "./usage";
 import { startKitchenTelemetry } from "../../src/lib/telemetry";
 import { evaluationProvenance } from "./provenance";
@@ -61,6 +61,7 @@ async function main() {
         const conversation = await runConversation({
           prompt: scenario.prompt,
           followUps: scenario.followUps,
+          maxTurns: scenario.maxModelRequests,
           onUserTurnComplete: async turn => {
             if (!scenario.followUps) return;
             const state = await kitchen.state();
@@ -69,7 +70,7 @@ async function main() {
             const expected = scenario.checkpoints?.[turn.index];
             const pantry = state.pantry.map(item => ({ name: String(item.name).toLowerCase(), quantity: item.quantity })).sort((a, b) => a.name.localeCompare(b.name));
             turns.push({ ...turn, state, calls,
-              statePass: !!expected && JSON.stringify(pantry) === JSON.stringify(expected.pantry) && JSON.stringify(state.equipment) === JSON.stringify(initial.equipment),
+              statePass: !!expected && JSON.stringify(pantry) === JSON.stringify(expected.pantry) && (expected.equipment ? JSON.stringify(state.equipment.map(item => ({ name: String(item.name).toLowerCase(), kind: item.kind })).sort((a, b) => a.name.localeCompare(b.name))) === JSON.stringify(expected.equipment) : JSON.stringify(state.equipment) === JSON.stringify(initial.equipment)),
               noUnauthorizedWrite: !expected?.forbidWrites || calls.every(call => call.name === readTool),
             });
           },
@@ -136,7 +137,7 @@ async function main() {
       } finally { await kitchen.close(); }
     }
     const allScenarios = [...scenarios, ...recoveryScenarios, ...validationScenarios, ...everydayScenarios, ...dialogueScenarios];
-    const selected = process.argv[2] === "--workflows" ? allScenarios.filter(scenario => !scenario.fault) : process.argv[2] === "--dialogue" ? dialogueScenarios : process.argv[2] === "--everyday" ? everydayScenarios : process.argv[2] === "--recovery" ? recoveryScenarios : process.argv[2] === "--validation" ? validationScenarios : process.argv[2] === "--all" ? allScenarios : process.argv[2] ? allScenarios.filter(scenario => scenario.id === process.argv[2]) : scenarios;
+    const selected = process.argv[2] === "--composition" ? compositionScenarios : process.argv[2] === "--workflows" ? allScenarios.filter(scenario => !scenario.fault) : process.argv[2] === "--dialogue" ? dialogueScenarios : process.argv[2] === "--everyday" ? everydayScenarios : process.argv[2] === "--recovery" ? recoveryScenarios : process.argv[2] === "--validation" ? validationScenarios : process.argv[2] === "--all" ? allScenarios : process.argv[2] ? allScenarios.filter(scenario => scenario.id === process.argv[2]) : scenarios;
     if (!selected.length) throw new Error("Unknown scenario");
     if (surface === "four" && selected.some(scenario => scenario.fault === "create_unavailable")) throw new Error("Candidate service fault injection is not wired; do not score an unexercised fault.");
     const result = await evaluate({
