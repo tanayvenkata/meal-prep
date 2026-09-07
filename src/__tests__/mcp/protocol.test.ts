@@ -2625,4 +2625,348 @@ describe("Modern 2026-07-28 protocol wire contract", () => {
     );
     expect(challenge).not.toContain("error=");
   });
+
+  it("publishes prompts via modern prompts/list with Mcp-Method header", async () => {
+    const response = await postModernMcp(
+      {
+        jsonrpc: "2.0",
+        id: 108,
+        method: "prompts/list",
+        params: {
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      },
+      { "mcp-method": "prompts/list" },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      result: { prompts: Array<{ name: string }> };
+    };
+    const names = body.result.prompts.map((p) => p.name);
+    expect(names).toContain("plan_meal");
+    expect(names).toContain("quick_bite");
+    expect(names).toContain("cook_something_cool");
+    expect(names).toContain("pantry_audit");
+    expect(names).toContain("substitutions");
+  });
+
+  it("retrieves prompt via modern prompts/get with Mcp-Method and Mcp-Name headers", async () => {
+    const response = await postModernMcp(
+      {
+        jsonrpc: "2.0",
+        id: 109,
+        method: "prompts/get",
+        params: {
+          name: "plan_meal",
+          arguments: { servings: "2" },
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+      },
+      {
+        "mcp-method": "prompts/get",
+        "mcp-name": "plan_meal",
+      },
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      result: {
+        messages: Array<{ role: string; content: { type: string; text: string } }>;
+      };
+    };
+    expect(body.result.messages[0].content.text).toContain("2 serving(s)");
+    expect(body.result.messages[0].content.text).toContain("get_kitchen_context");
+  });
 });
+
+describe("MCP Prompts wire contract", () => {
+  it("publishes cooking prompt starters in prompts/list", async () => {
+    const httpResponse = await postMcp(
+      {
+        jsonrpc: "2.0",
+        id: 201,
+        method: "prompts/list",
+      },
+      "test-token",
+    );
+    expect(httpResponse.status).toBe(200);
+    const response = (await httpResponse.json()) as Record<string, unknown>;
+    const result = response.result as {
+      prompts: Array<{
+        name: string;
+        title?: string;
+        description?: string;
+        arguments?: Array<{ name: string; required?: boolean; description?: string }>;
+      }>;
+    };
+
+    expect(result.prompts).toBeDefined();
+    const promptNames = result.prompts.map((p) => p.name);
+    expect(promptNames).toContain("plan_meal");
+    expect(promptNames).toContain("quick_bite");
+    expect(promptNames).toContain("cook_something_cool");
+    expect(promptNames).toContain("pantry_audit");
+    expect(promptNames).toContain("substitutions");
+
+    const planMeal = result.prompts.find((p) => p.name === "plan_meal");
+    expect(planMeal?.description).toContain("1 serving");
+    expect(planMeal?.arguments?.some((a) => a.name === "servings")).toBe(true);
+
+    const quickBite = result.prompts.find((p) => p.name === "quick_bite");
+    expect(quickBite?.description).toContain("20 minutes");
+
+    const cookCool = result.prompts.find((p) => p.name === "cook_something_cool");
+    expect(cookCool?.description).toContain("technique-driven");
+
+    const substitutions = result.prompts.find((p) => p.name === "substitutions");
+    expect(substitutions?.arguments?.find((a) => a.name === "missing_ingredient")?.required).toBe(true);
+  });
+
+  it("retrieves quick_bite prompt defaulting to 20 min and 1 serving", async () => {
+    const httpResponse = await postMcp(
+      {
+        jsonrpc: "2.0",
+        id: 2021,
+        method: "prompts/get",
+        params: {
+          name: "quick_bite",
+          arguments: {},
+        },
+      },
+      "test-token",
+    );
+    expect(httpResponse.status).toBe(200);
+    const response = (await httpResponse.json()) as {
+      result: {
+        messages: Array<{ role: string; content: { type: string; text: string } }>;
+      };
+    };
+
+    const text = response.result.messages[0].content.text;
+    expect(text).toContain("under 20 minutes");
+    expect(text).toContain("1 serving(s)");
+    expect(text).toContain("get_kitchen_context");
+  });
+
+  it("retrieves cook_something_cool prompt with culinary vibe", async () => {
+    const httpResponse = await postMcp(
+      {
+        jsonrpc: "2.0",
+        id: 2022,
+        method: "prompts/get",
+        params: {
+          name: "cook_something_cool",
+          arguments: {
+            cuisine_or_vibe: "braised comfort food",
+          },
+        },
+      },
+      "test-token",
+    );
+    expect(httpResponse.status).toBe(200);
+    const response = (await httpResponse.json()) as {
+      result: {
+        messages: Array<{ role: string; content: { type: string; text: string } }>;
+      };
+    };
+
+    const text = response.result.messages[0].content.text;
+    expect(text).toContain("braised comfort food");
+    expect(text).toContain("cookware");
+    expect(text).toContain("get_kitchen_context");
+  });
+
+  it("retrieves plan_meal prompt with default 1 serving", async () => {
+    const httpResponse = await postMcp(
+      {
+        jsonrpc: "2.0",
+        id: 202,
+        method: "prompts/get",
+        params: {
+          name: "plan_meal",
+          arguments: {},
+        },
+      },
+      "test-token",
+    );
+    expect(httpResponse.status).toBe(200);
+    const response = (await httpResponse.json()) as {
+      result: {
+        description: string;
+        messages: Array<{ role: string; content: { type: string; text: string } }>;
+      };
+    };
+
+    expect(response.result.messages).toHaveLength(1);
+    const message = response.result.messages[0];
+    expect(message.role).toBe("user");
+    expect(message.content.text).toContain("1 serving(s)");
+    expect(message.content.text).toContain("get_kitchen_context");
+  });
+
+  it("retrieves plan_meal prompt with custom servings and dietary preferences", async () => {
+    const httpResponse = await postMcp(
+      {
+        jsonrpc: "2.0",
+        id: 203,
+        method: "prompts/get",
+        params: {
+          name: "plan_meal",
+          arguments: {
+            servings: "4",
+            dietary_notes: "gluten-free, high-protein",
+          },
+        },
+      },
+      "test-token",
+    );
+    expect(httpResponse.status).toBe(200);
+    const response = (await httpResponse.json()) as {
+      result: {
+        description: string;
+        messages: Array<{ role: string; content: { type: string; text: string } }>;
+      };
+    };
+
+    const message = response.result.messages[0];
+    expect(message.content.text).toContain("4 serving(s)");
+    expect(message.content.text).toContain("gluten-free, high-protein");
+  });
+
+  it("retrieves pantry_audit prompt", async () => {
+    const httpResponse = await postMcp(
+      {
+        jsonrpc: "2.0",
+        id: 204,
+        method: "prompts/get",
+        params: {
+          name: "pantry_audit",
+          arguments: {
+            focus: "spices",
+          },
+        },
+      },
+      "test-token",
+    );
+    expect(httpResponse.status).toBe(200);
+    const response = (await httpResponse.json()) as {
+      result: {
+        messages: Array<{ role: string; content: { type: string; text: string } }>;
+      };
+    };
+
+    expect(response.result.messages[0].content.text).toContain("spices");
+    expect(response.result.messages[0].content.text).toContain("pantry audit");
+    expect(response.result.messages[0].content.text).toContain("get_kitchen_context");
+  });
+
+  it("retrieves substitutions prompt with ingredient and dish context", async () => {
+    const httpResponse = await postMcp(
+      {
+        jsonrpc: "2.0",
+        id: 205,
+        method: "prompts/get",
+        params: {
+          name: "substitutions",
+          arguments: {
+            missing_ingredient: "buttermilk",
+            recipe_dish: "pancakes",
+          },
+        },
+      },
+      "test-token",
+    );
+    expect(httpResponse.status).toBe(200);
+    const response = (await httpResponse.json()) as {
+      result: {
+        messages: Array<{ role: string; content: { type: string; text: string } }>;
+      };
+    };
+
+    const text = response.result.messages[0].content.text;
+    expect(text).toContain("buttermilk");
+    expect(text).toContain("pancakes");
+    expect(text).toContain("get_kitchen_context");
+  });
+
+  it("rejects substitutions prompt when missing_ingredient is missing", async () => {
+    const httpResponse = await postMcp(
+      {
+        jsonrpc: "2.0",
+        id: 206,
+        method: "prompts/get",
+        params: {
+          name: "substitutions",
+          arguments: {},
+        },
+      },
+      "test-token",
+    );
+    const response = (await httpResponse.json()) as {
+      error: { code: number; message: string };
+    };
+    expect(response.error).toBeDefined();
+    expect(response.error.code).toBe(-32602);
+  });
+
+  it("returns error for unknown prompt name", async () => {
+    const httpResponse = await postMcp(
+      {
+        jsonrpc: "2.0",
+        id: 207,
+        method: "prompts/get",
+        params: {
+          name: "non_existent_prompt",
+          arguments: {},
+        },
+      },
+      "test-token",
+    );
+    const response = (await httpResponse.json()) as {
+      error: { code: number; message: string };
+    };
+    expect(response.error).toBeDefined();
+  });
+
+  it("formats prompt instructions with read_kitchen when toolSurface is four", async () => {
+    const request = new Request("https://mcp.mise.example/mcp", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer test-token",
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-protocol-version": "2025-11-25",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 208,
+        method: "prompts/get",
+        params: {
+          name: "plan_meal",
+          arguments: {},
+        },
+      }),
+    });
+
+    const response = await handleMiseMcpRequest(request, {
+      toolSurface: "four",
+      verifyAccessToken: verifyTestAccessToken,
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      result: {
+        messages: Array<{ role: string; content: { type: string; text: string } }>;
+      };
+    };
+    expect(body.result.messages[0].content.text).toContain("read_kitchen");
+  });
+});
+

@@ -801,6 +801,317 @@ class OpenAiCompatibleWebStandardStreamableHTTPServerTransport extends WebStanda
   }
 }
 
+export function registerMisePrompts(
+  server: McpServer,
+  toolSurface: "baseline" | "four" = "four",
+) {
+  const readTool =
+    toolSurface === "four" ? "read_kitchen" : "get_kitchen_context";
+
+  server.registerPrompt(
+    "plan_meal",
+    {
+      title: "Plan Meal",
+      description:
+        "Suggest 3 quick, practical meal ideas based on current kitchen inventory, defaulting to 1 serving.",
+      argsSchema: z.object({
+        servings: z
+          .string()
+          .trim()
+          .max(20)
+          .optional()
+          .describe("Number of servings to prepare (default: 1)"),
+        dietary_notes: z
+          .string()
+          .trim()
+          .max(200)
+          .optional()
+          .describe(
+            "Dietary preferences, restrictions, or cravings (e.g. quick, high-protein, vegetarian)",
+          ),
+      }),
+    },
+    async (args) => {
+      const servings = args.servings?.trim() || "1";
+      const notes = args.dietary_notes?.trim()
+        ? ` with dietary notes: ${args.dietary_notes.trim()}`
+        : "";
+      return {
+        description: `Plan a meal for ${servings} serving(s)`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please inspect my kitchen inventory using ${readTool} and suggest 3 quick, delicious meal ideas for ${servings} serving(s)${notes}. Prioritize high-turnover ingredients and items that should be used soonest, and let me know if any equipment or staples are needed.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  server.registerPrompt(
+    "quick_bite",
+    {
+      title: "Quick Bite",
+      description:
+        "Suggest fast meal ideas ready in under 20 minutes with minimal cleanup and 1 pot/pan, defaulting to 1 serving.",
+      argsSchema: z.object({
+        max_minutes: z
+          .string()
+          .trim()
+          .max(20)
+          .optional()
+          .describe("Maximum cook and prep time in minutes (default: 20)"),
+        servings: z
+          .string()
+          .trim()
+          .max(20)
+          .optional()
+          .describe("Number of servings to prepare (default: 1)"),
+      }),
+    },
+    async (args) => {
+      const minutes = args.max_minutes?.trim() || "20";
+      const servings = args.servings?.trim() || "1";
+      return {
+        description: `Quick bite under ${minutes} minutes for ${servings} serving(s)`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please check my kitchen inventory using ${readTool} and propose 2-3 fast, satisfying meal ideas for ${servings} serving(s) ready in under ${minutes} minutes. Prioritize one-pot/one-pan cooking, minimal prep, and ingredients I already have on hand to keep dishes and cleanup to a minimum.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  server.registerPrompt(
+    "cook_something_cool",
+    {
+      title: "Cook Something Cool",
+      description:
+        "Suggest an ambitious, technique-driven dish that showcases your kitchen equipment and spices.",
+      argsSchema: z.object({
+        servings: z
+          .string()
+          .trim()
+          .max(20)
+          .optional()
+          .describe("Number of servings to prepare (default: 1)"),
+        cuisine_or_vibe: z
+          .string()
+          .trim()
+          .max(200)
+          .optional()
+          .describe(
+            "Cuisine, technique, or vibe you want to explore (e.g. braise, wok, Italian, comfort food)",
+          ),
+      }),
+    },
+    async (args) => {
+      const servings = args.servings?.trim() || "1";
+      const vibe = args.cuisine_or_vibe?.trim()
+        ? ` with a '${args.cuisine_or_vibe.trim()}' vibe`
+        : "";
+      return {
+        description: `Ambitious cooking project for ${servings} serving(s)`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `I have time to cook and want to make something special for ${servings} serving(s)${vibe}. Please inspect my kitchen inventory using ${readTool}—including my cookware, tools, and spices—and propose an elevated, technique-driven dish. Teach the key culinary techniques and explain how to make the most of my saved equipment.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  server.registerPrompt(
+    "pantry_audit",
+    {
+      title: "Pantry Audit",
+      description:
+        "Audit kitchen inventory for low stock, missing essentials, unit inconsistencies, and cleanup opportunities.",
+      argsSchema: z.object({
+        focus: z
+          .string()
+          .trim()
+          .max(50)
+          .optional()
+          .describe("Optional focus area (e.g. 'staples', 'spices', 'all')"),
+      }),
+    },
+    async (args) => {
+      const focus = args.focus?.trim() || "all";
+      return {
+        description: `Pantry audit focused on ${focus}`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please inspect my current kitchen inventory using ${readTool} and perform a pantry audit focused on '${focus}'. Highlight: 1) Essential staples or high-turnover items running low or missing; 2) Any inconsistencies in quantities or units; 3) Stale or unused items; and 4) Actionable suggestions for restocking or cleanup.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  server.registerPrompt(
+    "substitutions",
+    {
+      title: "Ingredient Substitutions",
+      description:
+        "Suggest pantry-available replacements for a missing recipe ingredient.",
+      argsSchema: z.object({
+        missing_ingredient: z
+          .string()
+          .trim()
+          .min(1, "Missing ingredient cannot be empty")
+          .max(100)
+          .describe("The ingredient that is missing or unavailable"),
+        recipe_dish: z
+          .string()
+          .trim()
+          .max(100)
+          .optional()
+          .describe("The recipe or dish being prepared for culinary context"),
+      }),
+    },
+    async (args) => {
+      const ingredient =
+        args.missing_ingredient?.trim() || "the missing ingredient";
+      const dishContext = args.recipe_dish?.trim()
+        ? ` while cooking ${args.recipe_dish.trim()}`
+        : "";
+      return {
+        description: `Ingredient substitutions for ${ingredient}`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `I need a substitution for '${ingredient}'${dishContext}. Please inspect my kitchen inventory using ${readTool} and recommend practical replacements using only ingredients and equipment I currently have on hand. Explain how each option affects flavor, texture, and cooking proportions.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+}
+
+export function summarizeMutationForSpeech(
+  toolName: "add_items" | "edit_items" | "remove_items",
+  input: unknown,
+  result: {
+    status: string;
+    replayed?: boolean;
+    reason?: string;
+    index?: number;
+    results?: unknown[];
+  },
+): string {
+  if (result.status === "invalid_input") {
+    return "The request was rejected due to invalid input. Please check the item details.";
+  }
+
+  if (result.status === "request_id_reused") {
+    return "This request was already used for a different operation. Please check your kitchen before retrying.";
+  }
+
+  if (result.status === "rejected") {
+    const pos =
+      typeof result.index === "number" ? ` (item #${result.index + 1})` : "";
+    const reasonText =
+      result.reason === "not_found"
+        ? "was not found"
+        : result.reason === "conflict"
+          ? "encountered a name or quantity conflict"
+          : result.reason || "could not be applied";
+    return `Could not update kitchen: the item${pos} ${reasonText}. Please check your current kitchen state.`;
+  }
+
+  if (result.status === "applied") {
+    if (result.replayed) {
+      return "This request was already applied earlier without changing your kitchen again.";
+    }
+
+    const items =
+      (input as { items?: Array<Record<string, unknown>> })?.items ?? [];
+    const count = items.length;
+
+    if (toolName === "add_items") {
+      const names = items
+        .map((i) =>
+          typeof i.name === "string"
+            ? i.name
+            : typeof i.expectedName === "string"
+              ? i.expectedName
+              : undefined,
+        )
+        .filter((n): n is string => Boolean(n));
+      if (count === 1 && names[0]) {
+        return `Added ${names[0]} to your kitchen.`;
+      }
+      if (names.length > 0) {
+        const itemWord = names.length === 1 ? "item" : "items";
+        return `Added ${names.length} ${itemWord} to your kitchen: ${names.join(", ")}.`;
+      }
+      return count === 1 ? "Added an item to your kitchen." : "Added items to your kitchen.";
+    }
+
+    if (toolName === "edit_items") {
+      const names = items
+        .map((i) =>
+          typeof i.name === "string"
+            ? i.name
+            : typeof i.expectedName === "string"
+              ? i.expectedName
+              : undefined,
+        )
+        .filter((n): n is string => Boolean(n));
+      if (count === 1 && names[0]) {
+        return `Updated ${names[0]} in your kitchen.`;
+      }
+      if (names.length > 0) {
+        const itemWord = names.length === 1 ? "item" : "items";
+        return `Updated ${names.length} ${itemWord} in your kitchen: ${names.join(", ")}.`;
+      }
+      return count === 1 ? "Updated an item in your kitchen." : "Updated items in your kitchen.";
+    }
+
+    if (toolName === "remove_items") {
+      const names = items
+        .map((i) =>
+          typeof i.expectedName === "string"
+            ? i.expectedName
+            : typeof i.name === "string"
+              ? i.name
+              : undefined,
+        )
+        .filter((n): n is string => Boolean(n));
+      if (count === 1 && names[0]) {
+        return `Removed ${names[0]} from your kitchen.`;
+      }
+      if (names.length > 0) {
+        const itemWord = names.length === 1 ? "item" : "items";
+        return `Removed ${names.length} ${itemWord} from your kitchen: ${names.join(", ")}.`;
+      }
+      return count === 1 ? "Removed an item from your kitchen." : "Removed items from your kitchen.";
+    }
+  }
+
+  return `The kitchen operation completed with status: ${result.status}.`;
+}
+
 export async function createMiseServer(
   {
     toolSurface = process.env.MISE_TOOL_SURFACE === "baseline" ? "baseline" : "four",
@@ -834,8 +1145,8 @@ export async function createMiseServer(
     { name: "mise", version: "0.1.0" },
     {
       instructions: toolSurface === "four"
-        ? "Read read_kitchen before edits and removals. Add named items with unknown quantity when unspecified; never require an amount merely to save an item. Writes require current-turn intent. Finished pantry items are removed. Reuse a request UUID only for an identical retry; replay reports historical effects, not current inventory. Lists are atomic. Never infer writes from planning or receipt images. Reread after rejection. Never convert units."
-        : "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; finished pantry items are removed. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying.",
+        ? "Read read_kitchen before edits and removals. Add named items with unknown quantity when unspecified; never require an amount merely to save an item. Writes require current-turn intent. Finished pantry items are removed. Reuse a request UUID only for an identical retry; replay reports historical effects, not current inventory. Lists are atomic. Never infer writes from planning or receipt images. Reread after rejection. Never convert units. In voice mode, confirm concisely; never read aloud UUIDs or JSON."
+        : "Read get_kitchen_context before edits, deletes, relative changes, or receipt writes; use its IDs and exact names. Writes require a clear current-turn request; finished pantry items are removed. Canonical create retries are safe. Receipt images and proposals alone never authorize writes; imports require exact confirmation. Reuse a receipt UUID only for an identical retry. Counts use count. Never convert units or fuzzy-match. On rejection or conflict, reread before retrying. In voice mode, confirm concisely.",
     },
   );
 
@@ -892,6 +1203,8 @@ export async function createMiseServer(
     },
   );
 
+  registerMisePrompts(server, toolSurface);
+
   if (toolSurface === "four") {
     const registerWrite = (name: "add_items" | "edit_items" | "remove_items", description: string,
       schema: z.ZodObject, command: typeof addKitchenItems) => {
@@ -907,7 +1220,21 @@ export async function createMiseServer(
           reason: z.string().optional().describe("Domain rejection reason; reread inventory before correcting and issuing a new request."),
         }).strict(),
         annotations: { readOnlyHint: false, destructiveHint: name !== "add_items", idempotentHint: true, openWorldHint: false },
-        _meta: { securitySchemes: MISE_OAUTH_SECURITY_SCHEMES },
+        _meta: {
+          securitySchemes: MISE_OAUTH_SECURITY_SCHEMES,
+          "openai/toolInvocation/invoking":
+            name === "add_items"
+              ? "Saving to kitchen…"
+              : name === "edit_items"
+                ? "Updating kitchen…"
+                : "Removing from kitchen…",
+          "openai/toolInvocation/invoked":
+            name === "add_items"
+              ? "Items saved."
+              : name === "edit_items"
+                ? "Items updated."
+                : "Items removed.",
+        },
       }, async (input, extra) => {
         const userId = getUserIdFromContext(extra);
         if (typeof userId !== "string") return {
@@ -917,7 +1244,12 @@ export async function createMiseServer(
         const result = await observed(userId, input);
         return {
           isError: result.status === "invalid_input",
-          content: [{ type: "text" as const, text: JSON.stringify(result) }],
+          content: [
+            {
+              type: "text" as const,
+              text: summarizeMutationForSpeech(name, input, result),
+            },
+          ],
           structuredContent: result,
         };
       });
