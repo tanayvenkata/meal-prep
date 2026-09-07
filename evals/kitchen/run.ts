@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import OpenAI from "openai";
+import { evaluationToolSurface } from "./tool-surface";
 import { runConversation } from "./conversation";
 import { kitchenFixture, LOCAL_APP_DATABASE } from "./fixture";
 import { scenarios, recoveryScenarios, validationScenarios, everydayScenarios, dialogueScenarios, compositionScenarios, rolloutScenarios, type Scenario } from "./scenarios";
@@ -11,7 +12,7 @@ import { gradeAnswer } from "./grade-answer";
 
 import { actorModel, actorUsageCost } from "./models";
 
-const surface = process.env.MISE_TOOL_SURFACE === "four" ? "four" : "baseline";
+const surface = evaluationToolSurface();
 const readTool = surface === "four" ? "read_kitchen" : "get_kitchen_context";
 const addTool = surface === "four" ? "add_items" : "add_pantry_item";
 const MODEL = actorModel(process.env.KITCHEN_EVAL_MODEL);

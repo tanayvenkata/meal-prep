@@ -2,10 +2,11 @@
 
 Foundation implemented in [#191](https://github.com/tanayvenkata/meal-prep/issues/191).
 
-**Select the surface explicitly:** the runner defaults to the historical 12-tool
-baseline, while the application defaults to four. For current-product checks use
-`MISE_TOOL_SURFACE=four pnpm run eval:kitchen`. Use
-`MISE_TOOL_SURFACE=baseline` only for intentional reference comparisons.
+The runner and fixture default to the current **four-tool** application surface.
+Use `MISE_TOOL_SURFACE=baseline pnpm run eval:kitchen` only for historical
+comparisons; invalid values fail instead of silently choosing a different catalog.
+The telemetry and Inspector smoke scripts explicitly exercise the historical
+baseline contract regardless of this environment setting.
 The runner consumes MCP server instructions and tool schemas; it does not invoke
 the five registered MCP prompt templates. Its scenarios are text-only, so a pass
 does not establish receipt-image interpretation or ChatGPT/mobile acceptance.
@@ -164,9 +165,9 @@ until that turn.
 
 ## Comparing tool surfaces
 
-`MISE_TOOL_SURFACE=four pnpm run eval:kitchen --workflows` selects the experimental
-four-tool interface and the 23 non-fault cases. The application defaults to four;
-the comparison runner retains baseline unless MISE_TOOL_SURFACE=four is explicit. Report
+`pnpm run eval:kitchen --workflows` selects the current four-tool interface
+and the 23 non-fault cases when no override is set. Repeat with
+`MISE_TOOL_SURFACE=baseline` for the historical comparison. Report
 provenance records the surface and migration source alongside model/code hashes.
 The --workflows selector excludes faults. Use --all for the 26-case corpus,
 including response loss and injected persistent add-service failure on either

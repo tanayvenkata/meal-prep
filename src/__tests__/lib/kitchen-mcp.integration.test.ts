@@ -4,7 +4,7 @@ import { createPantryItem } from "@/lib/kitchen-service";
 
 describe("kitchen writes through a real MCP client and local Postgres", () => {
   let kitchen: Awaited<ReturnType<typeof kitchenFixture>>;
-  beforeEach(async () => { kitchen = await kitchenFixture(); });
+  beforeEach(async () => { kitchen = await kitchenFixture({ toolSurface: "baseline" }); });
   afterEach(async () => { await kitchen?.close(); });
 
   it("adds Mayo without inventing a quantity", async () => {
@@ -93,7 +93,7 @@ describe("kitchen writes through a real MCP client and local Postgres", () => {
   });
 
   it("recovers from an actual committed write whose response fails without duplicating it", async () => {
-    const faulty = await kitchenFixture({ createPantryItem: async (...args) => {
+    const faulty = await kitchenFixture({ toolSurface: "baseline", createPantryItem: async (...args) => {
       const result = await createPantryItem(...args);
       if (result.ok && result.value.status === "created") return { ...result, value: { ...result.value, item: { ...result.value.item, created_at: new Date("invalid") as unknown as string } } };
       return result;
@@ -108,7 +108,7 @@ describe("kitchen writes through a real MCP client and local Postgres", () => {
   });
 
   it("prevents one MCP identity from editing another fixture kitchen", async () => {
-    const other = await kitchenFixture();
+    const other = await kitchenFixture({ toolSurface: "baseline" });
     try {
       await other.call("add_pantry_item", { name: "Mayo" });
       const before = await other.state();
