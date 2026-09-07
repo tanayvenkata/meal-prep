@@ -152,4 +152,16 @@ describe("LoginPage", () => {
       screen.getByText("That email or password is incorrect."),
     ).toBeInTheDocument();
   });
+
+  it("does not display sign-in server error when switching to forgot password mode", () => {
+    mockGetSearchParams.mockReturnValue(
+      new URLSearchParams({ error: "invalid_credentials" }),
+    );
+
+    render(<Login />);
+    expect(screen.getByText("That email or password is incorrect.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /forgot password\?/i }));
+    expect(screen.queryByText("That email or password is incorrect.")).not.toBeInTheDocument();
+  });
 });

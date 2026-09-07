@@ -10,7 +10,7 @@ export default function AuthListener() {
   const router = useRouter();
 
   useEffect(() => {
-    if (pathname === "/login") {
+    if (pathname === "/login" || pathname === "/reset-password") {
       return;
     }
 

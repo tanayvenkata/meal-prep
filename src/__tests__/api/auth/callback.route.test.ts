@@ -222,4 +222,47 @@ describe("GET /auth/callback", () => {
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe("http://localhost:3000/");
   });
+
+  it("redirects to login when token_hash is missing type parameter", async () => {
+    const response = await GET(
+      makeRequest("http://localhost:3000/auth/callback?token_hash=orphan-token"),
+    );
+
+    expect(response.status).toBe(303);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("error")).toBe("missing_code");
+  });
+
+  it("preserves cookies and sets reset_link_expired when verifyOtp fails in recovery", async () => {
+    verifyOtp.mockResolvedValue({
+      data: { session: null },
+      error: { message: "Token has expired" },
+    });
+
+    const response = await GET(
+      makeRequest(
+        "http://localhost:3000/auth/callback?token_hash=bad-token&type=recovery&next=/reset-password",
+      ),
+    );
+
+    expect(response.status).toBe(303);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("error")).toBe("reset_link_expired");
+    expect(response.headers.get("set-cookie")).toContain("sb-session=callback-session-token");
+  });
+
+  it("maps upstream error to reset_link_expired when in recovery flow", async () => {
+    const response = await GET(
+      makeRequest(
+        "http://localhost:3000/auth/callback?error=access_denied&error_code=otp_expired&next=/reset-password",
+      ),
+    );
+
+    expect(response.status).toBe(303);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("error")).toBe("reset_link_expired");
+  });
 });

@@ -49,15 +49,21 @@ export async function GET(request: NextRequest) {
   const rawNext = searchParams.get("next");
   const next = rawNext ? safeReturnPath(rawNext) : null;
   const errorParam = searchParams.get("error");
+  const errorCode = searchParams.get("error_code");
+  const isRecoveryFlow =
+    next?.includes("/reset-password") || type === "recovery" || errorCode === "otp_expired";
 
   if (errorParam) {
     const loginUrl = new URL("/login", origin);
     loginUrl.searchParams.set("returnTo", returnTo);
-    loginUrl.searchParams.set("error", errorParam);
+    loginUrl.searchParams.set(
+      "error",
+      isRecoveryFlow ? "reset_link_expired" : errorParam,
+    );
     return NextResponse.redirect(loginUrl, 303);
   }
 
-  if (!code && !tokenHash) {
+  if (!code && (!tokenHash || !type)) {
     const loginUrl = new URL("/login", origin);
     loginUrl.searchParams.set("returnTo", returnTo);
     loginUrl.searchParams.set("error", "missing_code");
@@ -98,8 +104,15 @@ export async function GET(request: NextRequest) {
   if (exchangeError) {
     const loginUrl = new URL("/login", origin);
     loginUrl.searchParams.set("returnTo", returnTo);
-    loginUrl.searchParams.set("error", "auth_callback_failed");
-    return NextResponse.redirect(loginUrl, 303);
+    loginUrl.searchParams.set(
+      "error",
+      isRecoveryFlow ? "reset_link_expired" : "auth_callback_failed",
+    );
+    const errorResponse = NextResponse.redirect(loginUrl, 303);
+    response.cookies.getAll().forEach((cookie) => {
+      errorResponse.cookies.set(cookie);
+    });
+    return errorResponse;
   }
 
   return response;

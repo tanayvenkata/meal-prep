@@ -9,10 +9,14 @@ import { supabase } from "@/lib/supabase";
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const rawReturnTo = searchParams.get("returnTo") ?? "/";
-  const returnTo =
+  const parsedReturnTo =
     rawReturnTo.startsWith("/") && !rawReturnTo.startsWith("//") && !rawReturnTo.startsWith("/\\")
       ? rawReturnTo
       : "/";
+  const returnTo =
+    parsedReturnTo.startsWith("/login") || parsedReturnTo.startsWith("/reset-password")
+      ? "/"
+      : parsedReturnTo;
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -26,12 +30,18 @@ function ResetPasswordForm() {
     let mounted = true;
 
     async function checkAuth() {
-      const { data } = await supabase.auth.getUser();
-      if (mounted) {
-        if (data?.user) {
-          setHasSession(true);
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (mounted) {
+          if (data?.user) {
+            setHasSession(true);
+          }
+          setCheckingSession(false);
         }
-        setCheckingSession(false);
+      } catch {
+        if (mounted) {
+          setCheckingSession(false);
+        }
       }
     }
 
