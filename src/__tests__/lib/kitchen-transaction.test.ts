@@ -191,7 +191,10 @@ it("exposes exactly four authenticated tools over MCP HTTP and saves unknown qua
   process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:55321";
   process.env.MCP_PUBLIC_URL = "http://localhost:8787/mcp";
   const token = randomUUID();
-  const server = createMiseHttpServer({ verifyAccessToken: async presented => {
+  const server = createMiseHttpServer({ addItems: async (userId, input) => {
+    if (JSON.stringify(input).includes("Failure spice")) throw new Error("synthetic_dependency_failure");
+    return addKitchenItems(userId, input);
+  }, verifyAccessToken: async presented => {
     if (presented !== token) throw new Error("invalid_fixture_token");
     return { token, clientId: "candidate-test", scopes: ["openid"], expiresAt: Math.floor(Date.now()/1000)+300, extra: { userId: userA } };
   }});
@@ -218,6 +221,17 @@ it("exposes exactly four authenticated tools over MCP HTTP and saves unknown qua
     const read = await client.callTool({ name: "read_kitchen", arguments: {} });
     expect(read.structuredContent).toMatchObject({ pantry: expect.arrayContaining([expect.objectContaining({ name: "HTTP mayo", quantityMode: "unknown" })]) });
     expect((await getItems(userA)).filter(x => x.name === "HTTP mayo")).toHaveLength(1);
+    const failure = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "content-type": "application/json", Accept: "application/json, text/event-stream", "mcp-method": "tools/call", "mcp-name": "add_items" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 90, method: "tools/call", params: {
+        name: "add_items", arguments: { requestId: randomUUID(), items: [{ name: "Failure spice" }] },
+        _meta: { "io.modelcontextprotocol/protocolVersion": "2026-07-28", "io.modelcontextprotocol/clientCapabilities": {} },
+      } }),
+    });
+    expect((await failure.json()).result.isError).toBe(true);
+    expect((await getItems(userA)).some(x => x.name === "Failure spice")).toBe(false);
+
   } finally {
     await client.close();
     if (server.listening) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

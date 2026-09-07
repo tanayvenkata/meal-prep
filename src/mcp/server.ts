@@ -1918,7 +1918,8 @@ export function createMiseHttpServer({
       }
     } else {
       const serverOptions = {
-    toolSurface,
+        toolSurface,
+        addItems,
         loadKitchenContext: getKitchenContext,
         setPantryItemQuantity,
         adjustPantryItemQuantity,
