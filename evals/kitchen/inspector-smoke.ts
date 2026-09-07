@@ -6,7 +6,8 @@ import { startKitchenTelemetry } from "../../src/lib/telemetry";
 async function main() {
   process.env.DATABASE_URL = LOCAL_APP_DATABASE;
   const telemetry = startKitchenTelemetry();
-  const kitchen = await kitchenFixture();
+  // This historical contract smoke intentionally exercises the baseline tools.
+  const kitchen = await kitchenFixture({ toolSurface: "baseline" });
   try {
     const initialized = await kitchen.inspect("initialize");
     const catalog = await kitchen.inspect("tools/list");

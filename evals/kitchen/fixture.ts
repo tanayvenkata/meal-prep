@@ -7,16 +7,18 @@ import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api"
 import type { addKitchenItems } from "../../src/lib/kitchen-commands";
 import type { createPantryItem } from "../../src/lib/kitchen-service";
 
+import { evaluationToolSurface, type EvaluationToolSurface } from "./tool-surface";
 import { evaluationDatabases } from "./database-config";
 const evaluationDatabase = evaluationDatabases();
 export const LOCAL_APP_DATABASE = evaluationDatabase.app;
 const LOCAL_ADMIN_DATABASE = evaluationDatabase.admin;
 
 /** Synthetic identities and loopback only. Never inherit a production database. */
-export async function kitchenFixture(overrides: { createPantryItem?: typeof createPantryItem; addItems?: typeof addKitchenItems } = {}) {
+export async function kitchenFixture(overrides: { toolSurface?: EvaluationToolSurface; createPantryItem?: typeof createPantryItem; addItems?: typeof addKitchenItems } = {}) {
   if (process.env.DATABASE_URL !== LOCAL_APP_DATABASE) {
     throw new Error("Kitchen evaluations require the dedicated local mise_app database.");
   }
+  const toolSurface = evaluationToolSurface(overrides.toolSurface);
   process.env.NEXT_PUBLIC_SUPABASE_URL = evaluationDatabase.authUrl;
   process.env.MCP_PUBLIC_URL = "http://localhost:8787/mcp";
   const { createMiseHttpServer } = await import("../../src/mcp/server");
@@ -24,7 +26,7 @@ export async function kitchenFixture(overrides: { createPantryItem?: typeof crea
   const userId = randomUUID();
   const token = randomUUID();
   const server = createMiseHttpServer({
-    toolSurface: process.env.MISE_TOOL_SURFACE === "four" ? "four" : "baseline",
+    toolSurface,
     ...overrides,
     verifyAccessToken: async (presented) => {
       if (presented !== token) throw new Error("Invalid fixture token");
