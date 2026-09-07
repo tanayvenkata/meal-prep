@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Spectral } from "next/font/google";
 import "./globals.css";
+import AuthListener from "@/components/AuthListener";
 import NavBar from "@/components/NavBar";
 import { THEME_COLORS } from "@/lib/theme";
 
@@ -49,6 +50,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="flex h-full flex-col overflow-hidden bg-surface-base text-text-primary">
+        <AuthListener />
         <NavBar />
         {children}
       </body>
