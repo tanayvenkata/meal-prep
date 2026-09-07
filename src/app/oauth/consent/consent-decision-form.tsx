@@ -38,7 +38,7 @@ export function ConsentDecisionForm({
         name="decision"
         value="deny"
         aria-disabled={submitting}
-        className={`flex-1 rounded-xl border border-outline bg-surface-raised px-4 py-2.5 text-sm text-text-primary hover:border-outline-strong ${
+        className={`min-h-11 flex-1 rounded-xl border border-outline bg-surface-raised px-4 py-2.5 text-sm text-text-primary hover:border-outline-strong ${
           submitting ? "pointer-events-none opacity-60" : ""
         }`}
       >
@@ -49,7 +49,7 @@ export function ConsentDecisionForm({
         name="decision"
         value="approve"
         aria-disabled={submitting}
-        className={`flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 ${
+        className={`min-h-11 flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 ${
           submitting ? "pointer-events-none opacity-60" : ""
         }`}
       >
