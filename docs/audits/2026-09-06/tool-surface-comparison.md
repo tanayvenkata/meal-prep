@@ -1,4 +1,8 @@
-# Tool-surface comparison — in progress
+> Final decision and current verification: [four-tool-decision.md](four-tool-decision.md).
+> The dated stages below preserve the experiment history; pending statements describe
+> their stage, not current status.
+
+# Tool-surface comparison — historical experiments
 
 The user’s stopping point is a recommendation: decide which tool variation best
 serves Mise’s actual kitchen workflows, explain what and why, then stop.

@@ -59,7 +59,8 @@ Food, spices, equipment, quantity changes, and batches belong within that surfac
 Use optional fields for information that is not necessary to execute a request;
 keep identifiers and concurrency checks explicit where correctness requires them.
 The selectable candidate is in PR #208; this decision does not claim deployment
-or completed ChatGPT host validation. The 12-tool interface remains an evaluation
+or production rollout. A fresh four-turn ChatGPT check passed on the isolated
+synthetic account; see the [decision record](audits/2026-09-06/four-tool-decision.md). The 12-tool interface remains an evaluation
 reference until the replacement is validated. See the tool-surface comparison for
 raw evidence and limitations. No fifth receipt-specific tool is planned: a confirmed
 purchase can combine creation and restocking inside an atomic add batch.

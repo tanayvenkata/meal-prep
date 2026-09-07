@@ -1,0 +1,202 @@
+[
+  {
+    "report": "2026-09-07T00-25-48.642Z-55376ec3-summary.json",
+    "version": {
+      "model": "gpt-5.6-luna",
+      "node": "v24.20.0",
+      "head": "93c0597a4715e5fc023269012e6d3e3d2dbc201e",
+      "sourceHash": "3bb61bb0e32f43d922e5705eec5ce7d20224609491316e2dd2f4f81f5d3d1cfd",
+      "toolSurface": "four"
+    },
+    "metrics": {
+      "evaluated": 5,
+      "taskSuccesses": 5,
+      "safeFailures": 0,
+      "accepted": 5
+    },
+    "cases": [
+      {
+        "scenario": "composition-grocery-trip",
+        "checks": {
+          "expectedState": true,
+          "noUnauthorizedWrite": true,
+          "stableIdentity": true,
+          "completed": true,
+          "intermediateStates": true
+        },
+        "statePass": true,
+        "answerPass": true,
+        "acceptancePass": true,
+        "faultExercised": true,
+        "recoveryRead": true,
+        "answer": "Updated your pantry:\n\n- Eggs: increased from 4 to 10\n- Cumin: added with unknown quantity\n- Rice: removed as finished",
+        "actorCostUsd": 0.00142592,
+        "actorDurationMs": 8476.509792,
+        "calls": [
+          "read_kitchen",
+          "add_items",
+          "remove_items"
+        ],
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer matches the tool results and final pantry state: eggs were increased from 4 to 10, cumin was created with unknown quantity, and rice was deleted. Nothing in the explanation contradicts the evidence."
+        }
+      },
+      {
+        "scenario": "composition-correction-remove",
+        "checks": {
+          "expectedState": true,
+          "noUnauthorizedWrite": true,
+          "stableIdentity": true,
+          "completed": true,
+          "intermediateStates": true
+        },
+        "statePass": true,
+        "answerPass": true,
+        "acceptancePass": true,
+        "faultExercised": true,
+        "recoveryRead": true,
+        "answer": "Updated the eggs to **10 total** and removed the **mayo**. Rice was left unchanged.",
+        "actorCostUsd": 0.00072735,
+        "actorDurationMs": 7161.503458000001,
+        "calls": [
+          "read_kitchen",
+          "edit_items",
+          "remove_items"
+        ],
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final state shows Eggs updated to 10, Mayo removed, and Rice still at 2 bag. The answer matches those changes exactly, and the events show both edits were applied successfully."
+        }
+      },
+      {
+        "scenario": "composition-cooking-use",
+        "checks": {
+          "expectedState": true,
+          "noUnauthorizedWrite": true,
+          "stableIdentity": true,
+          "completed": true,
+          "intermediateStates": true
+        },
+        "statePass": true,
+        "answerPass": true,
+        "acceptancePass": true,
+        "faultExercised": true,
+        "recoveryRead": true,
+        "answer": "Recorded: 3 eggs used, leaving 5 eggs. Cumin marked as finished and removed from your pantry.",
+        "actorCostUsd": 0.0006577899999999999,
+        "actorDurationMs": 5813.812875,
+        "calls": [
+          "read_kitchen",
+          "edit_items",
+          "remove_items"
+        ],
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final answer matches the tool results and final state: Eggs were decreased from 8 to 5 after consuming 3, and Cumin was deleted from the pantry. There is no contradiction or unsupported claim."
+        }
+      },
+      {
+        "scenario": "composition-equipment-lifecycle",
+        "checks": {
+          "expectedState": true,
+          "noUnauthorizedWrite": true,
+          "stableIdentity": true,
+          "completed": true,
+          "intermediateStates": true
+        },
+        "statePass": true,
+        "answerPass": true,
+        "acceptancePass": true,
+        "faultExercised": true,
+        "recoveryRead": true,
+        "answer": "Removed the **Cast iron skillet** from your kitchen equipment.",
+        "actorCostUsd": 0.00176237,
+        "actorDurationMs": 15612.359083999996,
+        "calls": [
+          "read_kitchen",
+          "add_items",
+          "read_kitchen",
+          "edit_items",
+          "read_kitchen",
+          "edit_items",
+          "read_kitchen",
+          "remove_items"
+        ],
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer matches the tool events and final state: a skillet was added, then successfully renamed to \"Cast iron skillet,\" and then removed. The final equipment list is empty, consistent with the removal."
+        }
+      },
+      {
+        "scenario": "composition-proposal-only",
+        "checks": {
+          "expectedState": true,
+          "noUnauthorizedWrite": true,
+          "stableIdentity": true,
+          "completed": true,
+          "intermediateStates": true
+        },
+        "statePass": true,
+        "answerPass": true,
+        "acceptancePass": true,
+        "faultExercised": true,
+        "recoveryRead": true,
+        "answer": "Here\u2019s what those hypothetical changes would mean\u2014without saving anything:\n\n- **Eggs:** 4 \u2192 **10 eggs** (adding six)\n- **Cumin:** **Add cumin** to the pantry (quantity unspecified)\n- **Mayo:** **Remove mayo** from the pantry\n\nYour kitchen remains unchanged.",
+        "actorCostUsd": 0.00026276,
+        "actorDurationMs": 2864.3079999999973,
+        "calls": [
+          "read_kitchen"
+        ],
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer correctly describes the hypothetical effects: eggs would go from 4 to 10 if six were added, cumin would be added, and mayo would be removed. It also accurately says nothing was saved, which matches the final state being unchanged from the initial state."
+        }
+      }
+    ]
+  },
+  {
+    "report": "2026-09-07T00-26-37.966Z-e0b22c86-summary.json",
+    "version": {
+      "model": "gpt-5.6-luna",
+      "node": "v24.20.0",
+      "head": "93c0597a4715e5fc023269012e6d3e3d2dbc201e",
+      "sourceHash": "3bb61bb0e32f43d922e5705eec5ce7d20224609491316e2dd2f4f81f5d3d1cfd",
+      "toolSurface": "four"
+    },
+    "metrics": {
+      "evaluated": 1,
+      "taskSuccesses": 1,
+      "safeFailures": 0,
+      "accepted": 1
+    },
+    "cases": [
+      {
+        "scenario": "lost-add-response",
+        "checks": {
+          "expectedState": true,
+          "noUnauthorizedWrite": true,
+          "stableIdentity": true,
+          "completed": true,
+          "intermediateStates": true
+        },
+        "statePass": true,
+        "answerPass": true,
+        "acceptancePass": true,
+        "faultExercised": true,
+        "recoveryRead": true,
+        "answer": "Mayo is already added to your pantry.",
+        "actorCostUsd": 0.00038306,
+        "actorDurationMs": 5600.92375,
+        "calls": [
+          "add_items",
+          "read_kitchen"
+        ],
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final pantry contains exactly one mayo item, and the reply is an ordinary confirmation that it is in the pantry. The word \"already\" here does not explicitly claim it existed before the request, so it is consistent with the evidence and the successful add/read events."
+        }
+      }
+    ]
+  }
+]

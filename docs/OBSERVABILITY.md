@@ -40,8 +40,8 @@ quantity clearing. It uses no model/API credits. The first run downloads the
 pinned Inspector package. Reports stay in ignored `.eval-results/kitchen/`.
 
 For model scenarios, set the same OTLP endpoint when running `pnpm run eval:kitchen`.
-Each recorded tool call includes a trace ID. Model calls still use the shared $5
-budget ledger. Local traces and metrics cost no cloud fees; the optional Grafana
+Each recorded tool call includes a trace ID. Model calls report per-run usage and estimated cost automatically; the user removed
+the former cumulative cap and ledger requirement. Local traces and metrics cost no cloud fees; the optional Grafana
 container uses local disk and memory. Stop it with:
 
 ```sh

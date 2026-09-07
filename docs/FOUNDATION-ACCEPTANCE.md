@@ -1,81 +1,39 @@
-# Kitchen foundation acceptance
+# Kitchen foundation: decision and verification
 
-Reviewed 2026-09-06 against issue #191 and the objective: make core kitchen writes
-measurable, reliable, and easy to improve through a repeatable local evaluation loop.
-This is the current acceptance index; historical experiment reports are evidence,
-not instructions or permanent product requirements.
+Reviewed 2026-09-06. The active goal ends at determining the tool interface and why,
+with a repeatable local measurement loop. The user selected four tools. This is
+not a declaration that every release requirement or future kitchen feature is done.
 
-| Requirement | Evidence | Status |
+The current decision is [four composable kitchen tools](audits/2026-09-06/four-tool-decision.md).
+Older roadmap/audit proposals remain historical evidence, not mandatory scope.
+
+| Goal requirement | Authoritative evidence | Conclusion |
 | --- | --- | --- |
-| Repeatable local command | `pnpm run eval:kitchen --all`; isolated synthetic users, actual MCP HTTP client and local restricted Postgres writes | Verified on the pnpm dependency baseline |
-| Versioned natural-language cases | Ten baseline, two fault, four observed validation, seven everyday, three dialogue cases in `evals/kitchen/scenarios.ts` | Latest full Luna run: 26/26 accepted; 25 task passes and one expected safe failure |
-| Effects independently checked | Initial/final SQL snapshots, expected state, duplicate prevention, stable identities, forbidden writes; 14 real MCP/database cases | Verified; not a guarantee for every possible retry history |
-| Semantic outcomes and correlation | Command/tool/HTTP outcomes, safe logs, OTel traces and local Grafana collector; `docs/OBSERVABILITY.md` | Local evidence available; production collection not deployed |
-| Answer correctness evaluated | Versioned grader, explicit false-success controls, 12 calibration examples, one user-adjudicated answer | Implemented; fallible model score, most labels remain agent-authored |
-| Failures and recovery observable | Response-loss and persistent-service-failure cases; actual server result distinguished from model observation | Verified in the evaluation adapter, not ChatGPT |
-| Reproducibility and spend | Model, source/catalog/instruction hashes, pnpm lock/config hash and per-run usage | Recorded; cumulative cap/ledger removed by user direction |
-| Comparable simplification experiment | `docs/audits/2026-09-06/kitchen-evaluation.md`: quantity uncertainty before/after | Recorded; existing schema columns reused |
-| Automated validation | 250 unit tests, 181 integration tests, TypeScript and lint on reconciled pnpm branch; pre-push build | Local checks and exact-head CI pass at `de30fa6` |
-| Real host/account linking | Updated `docs/mcp-golden-prompts.md`, including unknown/text/cleared quantities | Pending actual authenticated ChatGPT development check |
-| Review and rollback | Draft PRs #192, #194, #198; reversible code changes, no migration/vendor change | Delivered for review; not merged or deployed |
+| Repeatable local evaluation | `evals/kitchen/README.md`, fixture/run/scenarios code; current `four-tool-final-model-check.json` | Real MCP HTTP, synthetic users, owned local writes, independent SQL effects, versioned reports |
+| Everyday intent and edge cases | 26-case baseline, 23-case paired non-fault comparison, five composition cases, per-turn equipment checks | Addition, unknown quantities, totals vs deltas, finished removal, proposals without writes, repeated purchases covered; not exhaustive |
+| Truthful confirmation/recovery | Answer rubric/calibration artifacts; current lost-add-response model case | Add then reread successfully confirms saved state; grader flags remain fallible and visible |
+| Semantic telemetry | `docs/OBSERVABILITY.md`, `telemetry-verification.json`, instrumented server/service | Command, tool, HTTP outcomes and traces distinguish transport success from applied writes; local collector only |
+| Compare tool variations | `tool-surface-pair.json`, `tool-composition-pairs.json`, bias review | Four is capable and simpler; no proven universal latency/accuracy advantage |
+| Four-tool depth | `kitchen-command-contract.ts`, `kitchen-commands.ts`, 19 focused schema/DB/HTTP checks | Optional pantry fields; mixed new/restock lists; atomic rollback and durable replay; ownership retained |
+| Current model recheck | `four-tool-final-model-check.json`, commit `93c0597` | Five composition cases and lost-response case passed; regression checks, not fresh holdouts |
+| Inspector and real host | `four-tool-host-check.json` | Inspector discovers four; refreshed ChatGPT connector passes four-turn add/restock/edit/remove/equipment workflow with SQL verification |
+| Reviewable result | PR #208, linked #203/#191, decision record | Implementation/evidence pushed; four selected; no merge or deployment |
 
-Latest combined-run evidence:
-[pnpm foundation verification](audits/2026-09-06/pnpm-foundation-verification.json).
-Earlier recovery-instruction experiments were rejected. A subsequent user decision
-now maps fully finished pantry items to removal; product guidance was updated for
-that behavior. Seven new everyday cases all passed in the latest run. See
-[everyday before](audits/2026-09-06/everyday-before.json) and
-[everyday after](audits/2026-09-06/everyday-after.json).
-The latter also preserves a judge verdict inconsistent with its approved rubric:
-correct saved-state confirmation after recovery was labeled misleading. Judge
-reliability needs work; this run is not reported as all passing.
+The previous baseline mayo failure remains in `chatgpt-host-verification.json`.
+The fresh four-tool conversation used ChatGPT Chat/Instant; its underlying model
+is not exposed. Do not attribute its improvement to tool count alone: descriptions,
+contracts, server instructions, and conversation context changed as well.
 
-## Remaining acceptance
+## Release work, distinct from the completed decision
 
-Exact-head CI passed for `de30fa6` ([run 34064778220](https://github.com/tanayvenkata/meal-prep/actions/runs/34064778220)).
-The candidate now runs against a separate local Supabase project,
-`mise-host-acceptance`, on ports 553xx with one synthetic account and empty kitchen.
-Public OAuth discovery, ES256 JWKS, password login, and unauthenticated MCP rejection
-passed. See [host preflight evidence](audits/2026-09-06/host-preflight.json).
+PR #208 remains draft. Preserve the 12-tool baseline until integration/review.
+Complete four-tool persistent-dependency-failure injection, structured mutation
+output schemas, and reconciliation with the current main SDK/toolchain before
+rollout. The full historical 26-case corpus has not been rerun on the latest four-
+tool implementation. Receipt-image interpretation and production telemetry are
+also not established by these checks. Keep these limitations in the issue/PR;
+do not quietly promote local evidence into production guarantees.
 
-**Mise Foundation Test** successfully linked to the isolated synthetic account on
-2026-09-06. Existing credentials worked; the old OAuth request had expired. A fresh
-authorization completed and ChatGPT displayed “Mise Foundation Test is installed.”
-Host empty read passed, but the original mayo add failed: ChatGPT claimed a quantity
-was required and made no add attempt. Independent SQL remained empty. See
-[host evidence](audits/2026-09-06/chatgpt-host-verification.json). The existing Mise connector still targets production.
-Finish account linking and run the relevant golden prompts in a fresh development
-conversation with candidate metadata. Record exact endpoint/commit and independent
-before/after state. Preflight, Inspector, and API evaluations do not prove ChatGPT
-host acceptance.
-
-The temporary host environment is under `/tmp/mise-host-acceptance`; its private
-runtime file contains synthetic credentials and must never be committed. It uses a
-loopback routing proxy (8790), Next (3300), and the assigned ngrok origin. The proxy
-exposes only the needed auth paths and rejects auth admin/Data API routes. Stop
-ngrok and the proxy after host testing; stop only Supabase project
-`mise-host-acceptance`, never the shared development stack.
-
-## Deliberate limits
-
-This foundation measures a small set of workflows, not universal model reliability.
-Known delayed relative-write retry/ABA limitations remain documented in PROJECT.md;
-immediate-retry tests do not establish durable idempotency for those operations.
-Production telemetry retention and paid services remain separate decisions. No
-evidence currently justifies switching database vendors or giving the model an
-unrestricted pantry shell. Evaluate such alternatives against the same workflows
-when a measured limitation motivates them.
-
-The default eval actor is now Luna by user request. The fixed-judge comparison
-and parallel issue review are in [parallel direction review](audits/2026-09-06/parallel-direction-review.md).
-
-Three new two-turn Luna cases passed with intermediate state checks: missing
-purchase amount, total correction, and distinct repeated purchases. Evidence:
-[dialogue verification](audits/2026-09-06/dialogue-verification.json). This expands
-the corpus to 26; the previously reported 23-case run is not a claim that all 26
-have been run together on Luna. Scripted continuations do not prove general
-clarification quality.
-
-Full Luna evidence after dialogue support: [26-case verification](audits/2026-09-06/luna-full-verification.json).
-The judge remains fallible despite no flags in this run. User direction removed
-the cumulative budget and ledger; per-run usage remains automatic.
+No database vendor, hosting plan, or model-provider switch was justified by the
+comparison. The actor remains Luna per user direction; per-run usage/cost are
+recorded. The former cumulative cap and ledger are retired.

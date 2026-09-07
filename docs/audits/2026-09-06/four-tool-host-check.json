@@ -1,0 +1,120 @@
+{
+  "date": "2026-09-06 America/New_York",
+  "commit": "93c0597",
+  "surface": "four",
+  "host": "ChatGPT web, Chat mode, Instant (underlying model not exposed)",
+  "connector": "Mise Foundation Test",
+  "environment": "isolated local mise-host-acceptance synthetic account; production connector unchanged",
+  "conversation": "https://chatgpt.com/c/6a9e04f6-27e4-83ea-b68e-e6022a1e1f5e",
+  "catalogRefresh": [
+    "read_kitchen",
+    "add_items",
+    "edit_items",
+    "remove_items"
+  ],
+  "inspector": "2.5.0 CLI tools/list verified same four names on a separate authenticated loopback fixture",
+  "initial": {
+    "pantry": [],
+    "equipment": []
+  },
+  "checks": [
+    {
+      "prompt": "I have mayo, please add it.",
+      "visibleTool": "add_items",
+      "serverStatus": "applied",
+      "answer": "Added mayo to your pantry.",
+      "independentSQL": {
+        "pantry": [
+          {
+            "name": "mayo",
+            "quantity": ""
+          }
+        ]
+      },
+      "pass": true
+    },
+    {
+      "prompt": "Add four eggs and a cast iron skillet to my kitchen.",
+      "answer": "Added four eggs and a cast iron skillet to your kitchen.",
+      "independentSQL": {
+        "pantry": [
+          {
+            "name": "mayo",
+            "quantity": ""
+          },
+          {
+            "name": "eggs",
+            "quantity": "4"
+          }
+        ],
+        "equipment": [
+          {
+            "name": "cast iron skillet",
+            "kind": "cookware"
+          }
+        ]
+      },
+      "pass": true
+    },
+    {
+      "prompt": "I bought six more eggs and some cumin. Add them to what I have; I don't know how much cumin.",
+      "answer": "Added six eggs, bringing your total to 10, and added cumin with an unknown quantity.",
+      "independentSQL": {
+        "pantry": [
+          {
+            "name": "cumin",
+            "quantity": ""
+          },
+          {
+            "name": "eggs",
+            "quantity": "10"
+          },
+          {
+            "name": "mayo",
+            "quantity": ""
+          }
+        ]
+      },
+      "pass": true
+    },
+    {
+      "prompt": "Correction: I counted eight eggs total. We finished the mayo, so remove it. Rename my cast iron skillet to Lodge skillet.",
+      "visibleTools": [
+        "edit_items",
+        "remove_items"
+      ],
+      "serverStatuses": [
+        "applied",
+        "applied"
+      ],
+      "hostPermission": "Allow once for the requested synthetic edits; no global permission changes",
+      "answer": "Updated: 8 eggs total, mayo removed, and the cast iron skillet renamed to \u201cLodge skillet.\u201d",
+      "independentSQL": {
+        "pantry": [
+          {
+            "name": "cumin",
+            "quantity": ""
+          },
+          {
+            "name": "eggs",
+            "quantity": "8"
+          }
+        ],
+        "equipment": [
+          {
+            "name": "Lodge skillet",
+            "kind": "cookware"
+          }
+        ]
+      },
+      "pass": true
+    }
+  ],
+  "limitations": [
+    "One fresh four-turn host conversation, not a reliability rate.",
+    "No receipt image extraction was tested.",
+    "Unknown-quantity database representation is empty string with null numeric fields.",
+    "This check does not establish production rollout or full fault recovery."
+  ],
+  "cleanup": "After checks, stopped only the test Next server, routing proxy, ngrok tunnel, and mise-host-acceptance Supabase project with backup. Shared development stack and production connector unchanged."
+}
