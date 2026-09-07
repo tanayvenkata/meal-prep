@@ -71,9 +71,12 @@ style variables and theme updates are supported, with system color fallbacks.
 - Wrangler 4.129.0 deployment dry run passed: approximately 3.59 MiB Worker source,
   767 KiB compressed. No deployment occurred.
 
-Tests use synthetic data. Two-caller wire tests verify transport forwarding,
-not a new two-user real-database/RLS acceptance run. Existing ownership code is
-reused without modification.
+The added `inventory-card.integration.test.ts` now exercises two random local
+accounts through a real MCP client, the shared service, and Postgres under the
+non-owner application role. It verifies pantry/equipment isolation, descriptive
+and unknown quantities, equality with a fresh read, refresh after a saved change,
+and no read-side mutations. Fixture identities/data are cleaned up. Transport
+tokens are synthetic; this does not replace ChatGPT OAuth/host acceptance.
 
 ## Reproduce locally
 
@@ -117,3 +120,13 @@ Use the authenticated development HTTPS connector, after refreshing metadata:
 
 ChatGPT host acceptance, real-account end-to-end checks, and deployment are pending.
 Receipt review/approval and phone voice/lock-screen experiments remain separate.
+
+## Merge-readiness review — 2026-09-07
+
+Local two-user database acceptance passed, alongside all 354 unit tests,
+TypeScript, and focused lint before integration with the production telemetry PR.
+ChatGPT is signed in, but no development ngrok tunnel is running. The installed
+production connector serves the default four-tool catalog, so it cannot exercise
+this unmerged opt-in card. Keep this PR draft until an authenticated development
+HTTPS endpoint is connected and the host cases above pass. No production feature
+flag, connection, deployment, or inventory was changed by this review.
