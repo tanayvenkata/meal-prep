@@ -25,7 +25,7 @@ async function call(name: string, args: unknown, options: Parameters<typeof hand
   const response = await handleMiseMcpRequest(new Request("http://localhost:8787/mcp", {
     method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json", Accept: "application/json, text/event-stream", traceparent: `00-${traceId}-2222222222222222-01` },
     body: JSON.stringify({ jsonrpc: "2.0", id: secret, method: "tools/call", params: { name, arguments: args } }),
-  }), { verifyAccessToken: async token => ({ token, clientId: secret, scopes: ["openid"], expiresAt: Date.now() / 1000 + 60, extra: { userId: secret } }), ...options });
+  }), { toolSurface: "baseline", verifyAccessToken: async token => ({ token, clientId: secret, scopes: ["openid"], expiresAt: Date.now() / 1000 + 60, extra: { userId: secret } }), ...options });
   const body = await response.json();
   await telemetry.flush();
   return { status: response.status, body };
@@ -33,6 +33,17 @@ async function call(name: string, args: unknown, options: Parameters<typeof hand
 function events() { return logs.mock.calls.map(([line]) => JSON.parse(String(line))).filter(event => event.event === "kitchen_operation"); }
 
 describe("semantic observations at the real MCP response boundary", () => {
+  it("observes default four-tool writes and dependency failure through SDK v2", async () => {
+    const requestId = "4fbba759-84ba-49e7-80ef-3c72123b4d21";
+    const result = await call("add_items", { requestId, items: [{ name: secret }] }, {
+      toolSurface: undefined,
+      addItems: async () => { throw new Error(secret); },
+    });
+    expect(result.body.result.isError).toBe(true);
+    expect(events()).toMatchObject([{ layer: "command", operation: "add_items", outcome: "exception", traceId }, { layer: "tool", operation: "add_items", outcome: "tool_error", traceId }]);
+    expect(JSON.stringify(logs.mock.calls)).not.toContain(secret);
+  });
+
   it("captures schema rejection before a service callback despite HTTP 200", async () => {
     const createPantryItem = vi.fn();
     const result = await call("add_pantry_item", { name: secret, quantity: { amount: "bad", unit: "jar" } }, { createPantryItem });

@@ -26,25 +26,44 @@ The local evaluation slice is now being implemented in issue #191; its runnable
 instructions and limitations live in [the evaluation README](../evals/kitchen/README.md).
 Read the relevant sections when making a foundation decision; do not load all
 historical documents for routine changes.
+Current verified requirements and remaining gates are indexed in
+[foundation acceptance](FOUNDATION-ACCEPTANCE.md).
 
-Verified baseline: `c4debb6`. Unit and local integration lanes pass. The simple
-Mayo addition works through the real MCP handler and local database with injected
-auth. However, HTTP 200 can carry input errors, rejected changes, or backend tool
-errors. The draft observability slice now distinguishes tool and command outcomes
-and correlates them with OTel traces; see [observability](OBSERVABILITY.md).
-The MCP server was migrated to the modular TypeScript SDK v2 in #179, establishing
-dual-era compatibility for both the modern 2026-07-28 protocol revision (SEP-2243
-headers, capability discovery) and legacy 2025-11-25 ChatGPT Developer Mode.
-A past post-commit timestamp
-serialization failure was fixed in #188. The cause of the user's particular past
-failure is unproven. The first automated inventory-effect baseline and its
-before/after schema experiment are recorded in
-[the evaluation report](audits/2026-09-06/kitchen-evaluation.md); broader host and
-answer-quality acceptance remain pending.
+The local evaluation loop is implemented and the user selected four composable
+tools. See [the decision](audits/2026-09-06/four-tool-decision.md) and
+[rollout evidence](audits/2026-09-06/four-tool-rollout-final.json). The final combined
+Luna regression accepted 26/26 cases (25 task successes and one expected safe
+failure). These are measured cases, not a universal reliability claim. Local
+OpenTelemetry correlates command/tool/HTTP outcomes; production collection remains
+a separate operational choice. Actual rollout status lives in PR #208 and issue
+#203; older audit stages are not active implementation requirements.
 
-Before scheduling more features, prioritize observable writes and reproducible
-agent behavior. Keep a small real MCP-to-database test set alongside isolated unit
-tests. Evaluate tool-surface alternatives on the same task cases before choosing.
+## Evaluation spending — 2026-09-06
+
+The user removed the earlier $5 cumulative cap and ledger requirement. Run normal
+Luna evaluations with automatic per-run usage/cost reporting and bounded request
+loops. Earlier issue text, audit evidence, and ledger totals describe historical
+experiments, not an ongoing spending gate. Do not manage or update that ledger.
+
+## Tool direction — 2026-09-06
+
+The user selected four composable inventory tools: read, add, edit, and remove.
+Food, spices, equipment, quantity changes, and batches belong within that surface.
+Use optional fields for information that is not necessary to execute a request;
+keep identifiers and concurrency checks explicit where correctness requires them.
+PR #208 implements the four-tool default on MCP SDK v2. The old 12-tool reference
+requires explicit MISE_TOOL_SURFACE=baseline. A confirmed purchase can combine new
+items and restocks within one atomic add batch; no fifth receipt tool is needed.
+Spices are pantry items, with optional turnover metadata. Structured quantities
+support server-side arithmetic; unspecified quantities stay unknown.
+
+## Pantry availability decision — 2026-09-06
+
+The user prefers that explicit “finished” or “ran out” pantry updates remove the
+item, keeping the active pantry simple. Do not create a shopping-list/history
+system or retain zero-quantity entries solely for future restocking. A partial
+consumption statement does not imply removal. This is an accepted product direction;
+tool behavior and host acceptance must still be verified against it.
 
 ## Current implementation, not a permanent target
 
@@ -53,17 +72,14 @@ ChatGPT → authenticated /mcp → kitchen service → Postgres
 Website → authenticated APIs → same service → same data
 ```
 
-- TypeScript, Next.js 16.3.4, Node **24**, React, Zod, and the modular MCP TypeScript SDK v2
-  (`@modelcontextprotocol/server`, `@modelcontextprotocol/core`, etc.) supporting both the
-  2026-07-28 protocol revision and legacy 2025-11-25 ChatGPT Developer Mode.
+- TypeScript, Next.js 16.3.4, Node **24**, React, Zod, and the MCP TypeScript SDK.
 - Supabase provides Postgres and authentication, including the MCP OAuth server.
   `src/lib/db.ts` owns SQL; `src/lib/kitchen-service.ts` owns kitchen behavior.
-- MCP exposes 12 tools: kitchen read; pantry and equipment lifecycle changes;
-  exact quantity set, consume/restock, batch adjustments, and reviewed receipt import.
-  Context includes stable IDs. The local candidate now lets add/update preserve
-  unknown/text/structured quantities; relative arithmetic remains structured.
-  This contract change still needs actual ChatGPT host acceptance. No unit conversion
-  is implemented.
+- MCP defaults to four tools: read_kitchen, add_items, edit_items, remove_items.
+  All three write tools accept lists and expose structured outcomes. Food/spices
+  default to pantry; equipment uses the same actions with an explicit collection.
+  Preserve user-supplied names, optional quantities, and explicit removal intent.
+  No unit conversion is implemented.
 - The MCP surface is tool-only. The old kitchen widget and native website chat/history
   UI were removed. The website supports login, consent, and inventory correction.
 - Production uses the Next `/mcp` route on Vercel. Standalone Express plus ngrok is
@@ -86,9 +102,9 @@ Website → authenticated APIs → same service → same data
   credential-free and proves the build, not authenticated runtime behavior. Verify
   actual configuration rather than following obsolete provider references in the
   historical `docs/environments.md` narrative.
-- **Retry guarantees differ.** Receipt imports have durable operation receipts;
-  relative adjustments use expected quantities, which do not protect all delayed
-  retries after state changes away and back. Preserve or improve guarantees deliberately.
+- **Retry guarantees are per request.** Four-tool writes use durable operation
+  receipts plus fresh expectations. The legacy baseline relative tools retain
+  older expected-quantity-only limitations; do not confuse their guarantees.
 - **Legacy chat data remains.** `conversations` and `messages` contained user data at
   the last production audit. Their retained helpers/tests are compatibility code.
   Do not build new features on them or drop them without an export/retention decision.
@@ -110,3 +126,11 @@ Keep accepted decisions short, dated, evidence-backed, and revisitable. New audi
 proposals become project decisions when selected for implementation, not simply
 because an agent wrote them down.
 
+
+## Four-tool rollout preparation — 2026-09-06
+
+The user requested switching to four tools. The rollout branch integrates current
+main's MCP SDK v2 and defaults the application to read/add/edit/remove. The
+12-tool reference is explicit through MISE_TOOL_SURFACE=baseline; eval fixtures
+retain their explicit surface selection. Deployment is not implied by these local
+changes. The actual connected app changes after the rollout and catalog refresh.

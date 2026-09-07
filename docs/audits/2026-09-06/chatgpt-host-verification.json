@@ -1,0 +1,55 @@
+{
+  "date": "2026-09-06",
+  "commit": "69ff0994229bf08e6a92a0acc3ac6a551dc06c27",
+  "host": "ChatGPT Chat, Instant (exact underlying model not exposed)",
+  "connector": "Mise Foundation Test",
+  "endpoint": "https://scabby-erratic-roaming.ngrok-free.dev/mcp",
+  "environment": "isolated mise-host-acceptance synthetic account",
+  "accountLinking": "passed; existing credentials, fresh OAuth request",
+  "metadata": "Connected app UI lists add_pantry_item with required name only and optional quantity; delete description includes finished-item removal",
+  "cases": [
+    {
+      "prompt": "Show me my Mise kitchen.",
+      "tool": "get_kitchen_context",
+      "answer": "Your Mise kitchen is currently empty: no pantry items and no saved kitchen tools.",
+      "database": {
+        "pantry": 0,
+        "tools": 0
+      },
+      "result": "passed"
+    },
+    {
+      "prompt": "Using Mise Foundation Test: I have mayo, please add it.",
+      "observedTools": [
+        "get_kitchen_context"
+      ],
+      "answer": "I can add mayo, but Mise requires a quantity for a new pantry item. How much mayo do you have\u2014for example, 1 jar or 12 oz?",
+      "databasePantry": [],
+      "result": "failed",
+      "reason": "No add attempted; quantity requirement claim contradicts connected schema."
+    },
+    {
+      "prompt": "I don't know how much mayo remains. Please save it with unknown quantity in Mise Foundation Test.",
+      "observedTools": [
+        "add_pantry_item"
+      ],
+      "toolStatus": "created",
+      "answer": "Saved mayo in Mise Foundation Test with unknown quantity.",
+      "databasePantry": [
+        {
+          "id": 1,
+          "name": "mayo",
+          "quantity_text": "",
+          "quantity_value": null,
+          "quantity_unit": null
+        }
+      ],
+      "result": "passed",
+      "interpretation": "Explicit unknown quantity succeeds; original unqualified-add failure remains unresolved."
+    }
+  ],
+  "limits": [
+    "Host UI and independent SQL evidence; no inference about model-internal cause.",
+    "Remaining golden prompts unverified."
+  ]
+}

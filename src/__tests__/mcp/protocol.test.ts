@@ -349,6 +349,7 @@ beforeEach(async () => {
   });
 
   httpServer = createMiseHttpServer({
+    toolSurface: "baseline",
     verifyAccessToken: verifyTestAccessToken,
     loadKitchenContext: mockLoadKitchenContext,
     setPantryItemQuantity: mockSetPantryItemQuantity,
@@ -2106,6 +2107,7 @@ describe("Mise MCP OAuth wire contract", () => {
       }),
     });
     const response = await handleMiseMcpRequest(request, {
+      toolSurface: "baseline",
       verifyAccessToken: verifyTestAccessToken,
       loadKitchenContext: mockLoadKitchenContext,
       setPantryItemQuantity: mockSetPantryItemQuantity,
@@ -2166,6 +2168,7 @@ describe("Mise MCP OAuth wire contract", () => {
       }),
     });
     const response = await handleMiseMcpRequest(request, {
+      toolSurface: "baseline",
       verifyAccessToken: verifyTestAccessToken,
       loadKitchenContext: mockLoadKitchenContext,
       setPantryItemQuantity: mockSetPantryItemQuantity,
@@ -2232,6 +2235,7 @@ describe("Mise MCP OAuth wire contract", () => {
       }),
     });
     const response = await handleMiseMcpRequest(request, {
+      toolSurface: "baseline",
       verifyAccessToken: verifyTestAccessToken,
       loadKitchenContext: mockLoadKitchenContext,
       setPantryItemQuantity: mockSetPantryItemQuantity,
@@ -2367,6 +2371,7 @@ describe("Mise MCP OAuth wire contract", () => {
       }),
     });
     const response = await handleMiseMcpRequest(request, {
+      toolSurface: "baseline",
       verifyAccessToken: verifyTestAccessToken,
       loadKitchenContext: mockLoadKitchenContext,
       setPantryItemQuantity: mockSetPantryItemQuantity,

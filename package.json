@@ -16,14 +16,15 @@
     "test": "vitest",
     "test:unit": "vitest --run src/__tests__/api src/__tests__/components src/__tests__/services src/__tests__/lib/auth.test.ts src/__tests__/lib/db-config.test.ts src/__tests__/lib/inventory-list.test.ts src/__tests__/lib/pantry-api.test.ts src/__tests__/lib/theme.test.ts src/__tests__/middleware.test.ts src/__tests__/mcp",
     "test:integration": "vitest --run src/__tests__/lib",
-    "test:related": "vitest related --run",
     "eval:kitchen": "node scripts/eval-kitchen.mjs",
     "eval:kitchen:smoke": "tsx evals/kitchen/telemetry-smoke.ts",
     "eval:kitchen:inspector": "tsx evals/kitchen/inspector-smoke.ts",
     "db:provision-app-role": "node scripts/provision-mise-app-role.mjs",
     "mcp:serve": "tsx watch src/mcp/standalone.ts",
     "mcp:dev": "doppler run -- pnpm run mcp:serve",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:related": "vitest related --run",
+    "eval:kitchen:answers": "tsx evals/kitchen/calibrate-answers.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/core": "^2.0.0",

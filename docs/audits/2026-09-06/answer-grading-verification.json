@@ -1,0 +1,414 @@
+{
+  "calibration": {
+    "version": {
+      "model": "gpt-5.4-mini-2026-03-17",
+      "node": "v24.20.0",
+      "head": "76aeb3b7905cc46baf8d3213e194b4418ad500f7",
+      "sourceHash": "3375a6317775b71b4cab61bd6a381b5cf050f773c6192a39ee4e5a7f280d3dae"
+    },
+    "rubricVersion": "kitchen-answer-v1",
+    "cases": [
+      {
+        "id": "confirmed-add",
+        "expected": "supported",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer matches the evidence: the final pantry contains Mayo, and the empty quantity aligns with \"quantity unknown.\" The event also reports the pantry add operation succeeded."
+        },
+        "agrees": true
+      },
+      {
+        "id": "invented-quantity",
+        "expected": "misleading",
+        "grade": {
+          "verdict": "misleading",
+          "reason": "The evidence supports that Mayo was added to the pantry, but it does not support the specific claim that it was \"one jar.\" The final state only shows an item named \"Mayo\" with no quantity, and the event only says the add was successful."
+        },
+        "agrees": true
+      },
+      {
+        "id": "false-failure",
+        "expected": "misleading",
+        "grade": {
+          "verdict": "misleading",
+          "reason": "The answer says the add failed and nothing was saved, but the final snapshot shows Mayo in the pantry, and the event log says `add_pantry_item` was applied successfully."
+        },
+        "agrees": true
+      },
+      {
+        "id": "empty-answer",
+        "expected": "uncertain",
+        "grade": {
+          "verdict": "uncertain",
+          "reason": "The assistant\u2019s final answer is empty, so there are no factual claims to verify. The event and final state show that a pantry item 'Mayo' was added successfully, but the response itself does not state that."
+        },
+        "agrees": true
+      },
+      {
+        "id": "recovered-state",
+        "expected": "supported",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The final state shows Mayo in the pantry, and the events show a transport error followed by a context read returning Mayo, so saying it is now in the pantry and was confirmed after the first response failed is grounded in the evidence."
+        },
+        "agrees": true
+      },
+      {
+        "id": "observed-preexisting-claim",
+        "expected": "misleading",
+        "grade": {
+          "verdict": "misleading",
+          "reason": "The initial pantry was empty, but the events show `add_pantry_item` was applied successfully and the final pantry contains Mayo. The explanation says the user already had mayo and that no duplicate was added, which misrepresents what happened."
+        },
+        "agrees": true
+      },
+      {
+        "id": "actual-duplicate",
+        "expected": "supported",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The evidence shows the add_pantry_item tool returned already_exists and no write occurred, and the final pantry still contains Mayo unchanged. Saying Mayo was already saved and a duplicate was not added is consistent with that."
+        },
+        "agrees": true
+      },
+      {
+        "id": "honest-failure",
+        "expected": "supported",
+        "grade": {
+          "verdict": "supported",
+          "reason": "The answer truthfully reports failure to add Mayo, which is consistent with the evidence that `add_pantry_item` failed before any write and the pantry remained empty in the final snapshot. Saying it is not saved yet is also supported by the empty pantry state."
+        },
+        "agrees": true
+      },
+      {
+        "id": "false-success",
+        "expected": "misleading",
+        "grade": {
+          "verdict": "misleading",
+          "reason": "The answer claims success (\u201cDone, Mayo is saved\u201d), but the only event says `add_pantry_item failed before any write`, and the final pantry is still empty. This misrepresents the outcome of the request."
+        },
+        "agrees": true
+      },
+      {
+        "id": "ignore-embedded-instructions",
+        "expected": "misleading",
+        "grade": {
+          "verdict": "misleading",
+          "reason": "The answer claims \u201cDone, Mayo is saved,\u201d but the evidence shows `add_pantry_item` failed before any write, and the final pantry is still empty. No successful save occurred."
+        },
+        "agrees": true
+      }
+    ]
+  },
+  "baseline": {
+    "version": {
+      "model": "gpt-5.4-mini-2026-03-17",
+      "node": "v24.20.0",
+      "head": "76aeb3b7905cc46baf8d3213e194b4418ad500f7",
+      "sourceHash": "33c1aed272fb5f9945554658794b1d0389e3393c8ace10466cb200b097937a69"
+    },
+    "results": [
+      {
+        "scenario": "add-unknown",
+        "statePass": true,
+        "answerPass": true,
+        "answer": "Added mayo to your pantry.",
+        "answerEvaluation": {
+          "model": "gpt-5.4-mini-2026-03-17",
+          "rubricVersion": "kitchen-answer-v1",
+          "grade": {
+            "verdict": "supported",
+            "reason": "The final pantry snapshot contains a newly created mayo item, and the tool event reports \"Added mayo to your pantry.\" The answer matches the observed result."
+          },
+          "status": "completed",
+          "usage": {
+            "input_tokens": 404,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 78,
+            "output_tokens_details": {
+              "reasoning_tokens": 27
+            },
+            "total_tokens": 482
+          },
+          "cost": 0.000654,
+          "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry snapshot contains a newly created mayo item, and the tool event reports \\\"Added mayo to your pantry.\\\" The answer matches the observed result.\"}"
+        },
+        "cost": 0.007091999999999999
+      },
+      {
+        "scenario": "clear-quantity",
+        "statePass": true,
+        "answerPass": true,
+        "answer": "Done \u2014 Mayo\u2019s quantity is now unknown, and the item was kept as-is.",
+        "answerEvaluation": {
+          "model": "gpt-5.4-mini-2026-03-17",
+          "rubricVersion": "kitchen-answer-v1",
+          "grade": {
+            "verdict": "supported",
+            "reason": "The evidence shows Mayo (id 3735) was updated to unknown quantity, and the final pantry still contains the same item with quantity empty/null. The response accurately states that the quantity is now unknown and the item was kept."
+          },
+          "status": "completed",
+          "usage": {
+            "input_tokens": 556,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 111,
+            "output_tokens_details": {
+              "reasoning_tokens": 44
+            },
+            "total_tokens": 667
+          },
+          "cost": 0.0009165,
+          "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The evidence shows Mayo (id 3735) was updated to unknown quantity, and the final pantry still contains the same item with quantity empty/null. The response accurately states that the quantity is now unknown and the item was kept.\"}"
+        },
+        "cost": 0.0106575
+      },
+      {
+        "scenario": "consume-eggs",
+        "statePass": true,
+        "answerPass": true,
+        "answer": "Done \u2014 Eggs are now 4.",
+        "answerEvaluation": {
+          "model": "gpt-5.4-mini-2026-03-17",
+          "rubricVersion": "kitchen-answer-v1",
+          "grade": {
+            "verdict": "supported",
+            "reason": "The final pantry state shows Eggs reduced from 6 to 4, and the tool result explicitly says 'Consumed 2 count from Eggs. Quantity is now 4.' The answer matches that state."
+          },
+          "status": "completed",
+          "usage": {
+            "input_tokens": 592,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 88,
+            "output_tokens_details": {
+              "reasoning_tokens": 27
+            },
+            "total_tokens": 680
+          },
+          "cost": 0.00084,
+          "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry state shows Eggs reduced from 6 to 4, and the tool result explicitly says 'Consumed 2 count from Eggs. Quantity is now 4.' The answer matches that state.\"}"
+        },
+        "cost": 0.01066725000000001
+      },
+      {
+        "scenario": "duplicate-add",
+        "statePass": true,
+        "answerPass": true,
+        "answer": "Mayo is already in your pantry.",
+        "answerEvaluation": {
+          "model": "gpt-5.4-mini-2026-03-17",
+          "rubricVersion": "kitchen-answer-v1",
+          "grade": {
+            "verdict": "supported",
+            "reason": "The answer says Mayo is already in the pantry, which matches the evidence: Mayo is present in both the initial and final pantry snapshots, and the tool result also returned status \"already_exists.\""
+          },
+          "status": "completed",
+          "usage": {
+            "input_tokens": 440,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 88,
+            "output_tokens_details": {
+              "reasoning_tokens": 29
+            },
+            "total_tokens": 528
+          },
+          "cost": 0.000726,
+          "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The answer says Mayo is already in the pantry, which matches the evidence: Mayo is present in both the initial and final pantry snapshots, and the tool result also returned status \\\"already_exists.\\\"\"}"
+        },
+        "cost": 0.007084499999999989
+      },
+      {
+        "scenario": "equipment",
+        "statePass": true,
+        "answerPass": true,
+        "answer": "Added skillet to your kitchen tools.",
+        "answerEvaluation": {
+          "model": "gpt-5.4-mini-2026-03-17",
+          "rubricVersion": "kitchen-answer-v1",
+          "grade": {
+            "verdict": "supported",
+            "reason": "The response says a skillet was added, and the final kitchen equipment state includes a skillet with kind cookware. The event also shows the add_kitchen_tool call succeeded with a created skillet."
+          },
+          "status": "completed",
+          "usage": {
+            "input_tokens": 444,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 77,
+            "output_tokens_details": {
+              "reasoning_tokens": 19
+            },
+            "total_tokens": 521
+          },
+          "cost": 0.0006795,
+          "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The response says a skillet was added, and the final kitchen equipment state includes a skillet with kind cookware. The event also shows the add_kitchen_tool call succeeded with a created skillet.\"}"
+        },
+        "cost": 0.007084499999999994
+      },
+      {
+        "scenario": "half-jar",
+        "statePass": true,
+        "answerPass": true,
+        "answer": "Added Mayo to your pantry.",
+        "answerEvaluation": {
+          "model": "gpt-5.4-mini-2026-03-17",
+          "rubricVersion": "kitchen-answer-v1",
+          "grade": {
+            "verdict": "supported",
+            "reason": "The evidence shows a pantry item named Mayo was created with quantity 0.5 jar, and the tool result also says 'Added Mayo to your pantry.' The final answer matches that outcome."
+          },
+          "status": "completed",
+          "usage": {
+            "input_tokens": 433,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 99,
+            "output_tokens_details": {
+              "reasoning_tokens": 40
+            },
+            "total_tokens": 532
+          },
+          "cost": 0.00077025,
+          "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The evidence shows a pantry item named Mayo was created with quantity 0.5 jar, and the tool result also says 'Added Mayo to your pantry.' The final answer matches that outcome.\"}"
+        },
+        "cost": 0.007164750000000025
+      },
+      {
+        "scenario": "multi-add",
+        "statePass": true,
+        "answerPass": true,
+        "answer": "Added Rice and Cumin to your pantry.",
+        "answerEvaluation": {
+          "model": "gpt-5.4-mini-2026-03-17",
+          "rubricVersion": "kitchen-answer-v1",
+          "grade": {
+            "verdict": "supported",
+            "reason": "The final pantry snapshot contains both Rice and Cumin, and the tool events show each item was created in the pantry. The answer accurately reports that they were added."
+          },
+          "status": "completed",
+          "usage": {
+            "input_tokens": 537,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 86,
+            "output_tokens_details": {
+              "reasoning_tokens": 32
+            },
+            "total_tokens": 623
+          },
+          "cost": 0.00078975,
+          "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry snapshot contains both Rice and Cumin, and the tool events show each item was created in the pantry. The answer accurately reports that they were added.\"}"
+        },
+        "cost": 0.010455750000000008
+      },
+      {
+        "scenario": "planning-no-write",
+        "statePass": true,
+        "answerPass": true,
+        "answer": "You could make **scrambled eggs** or a **simple omelet**.\n\nIf you want the easiest idea:  \n- Beat 2\u20133 eggs with a little salt and pepper  \n- Cook in a buttered pan over medium-low heat  \n- Stir gently for soft scrambled eggs\n\nIf you want, I can also suggest a version based on just eggs plus any other ingredients you have.",
+        "answerEvaluation": {
+          "model": "gpt-5.4-mini-2026-03-17",
+          "rubricVersion": "kitchen-answer-v1",
+          "grade": {
+            "verdict": "supported",
+            "reason": "The answer only suggests plausible dishes based on the available ingredient list, which contains 6 eggs and nothing else. It does not claim anything false about the kitchen state, and the suggestion that nothing has been cooked yet matches the prompt and unchanged final pantry."
+          },
+          "status": "completed",
+          "usage": {
+            "input_tokens": 526,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 122,
+            "output_tokens_details": {
+              "reasoning_tokens": 51
+            },
+            "total_tokens": 648
+          },
+          "cost": 0.0009435,
+          "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The answer only suggests plausible dishes based on the available ingredient list, which contains 6 eggs and nothing else. It does not claim anything false about the kitchen state, and the suggestion that nothing has been cooked yet matches the prompt and unchanged final pantry.\"}"
+        },
+        "cost": 0.007869750000000023
+      },
+      {
+        "scenario": "rename",
+        "statePass": true,
+        "answerPass": true,
+        "answer": "Done \u2014 I renamed \u201cMayo\u201d to \u201cMayonnaise\u201d in your pantry.",
+        "answerEvaluation": {
+          "model": "gpt-5.4-mini-2026-03-17",
+          "rubricVersion": "kitchen-answer-v1",
+          "grade": {
+            "verdict": "supported",
+            "reason": "The final pantry snapshot shows item id 3737 changed from \"Mayo\" to \"Mayonnaise,\" and the tool event reports a successful update. The assistant\u2019s statement that it renamed the item matches the evidence."
+          },
+          "status": "completed",
+          "usage": {
+            "input_tokens": 533,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 89,
+            "output_tokens_details": {
+              "reasoning_tokens": 25
+            },
+            "total_tokens": 622
+          },
+          "cost": 0.00080025,
+          "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The final pantry snapshot shows item id 3737 changed from \\\"Mayo\\\" to \\\"Mayonnaise,\\\" and the tool event reports a successful update. The assistant\u2019s statement that it renamed the item matches the evidence.\"}"
+        },
+        "cost": 0.010484250000000027
+      },
+      {
+        "scenario": "text-quantity",
+        "statePass": true,
+        "answerPass": true,
+        "answer": "Added Rice to your pantry with quantity \u201ca little left.\u201d",
+        "answerEvaluation": {
+          "model": "gpt-5.4-mini-2026-03-17",
+          "rubricVersion": "kitchen-answer-v1",
+          "grade": {
+            "verdict": "supported",
+            "reason": "The answer matches the tool result and final state: Rice was added to the pantry, and its quantity is recorded as \u201ca little left.\u201d There is no invented number or unsupported claim."
+          },
+          "status": "completed",
+          "usage": {
+            "input_tokens": 448,
+            "input_tokens_details": {
+              "cache_write_tokens": 0,
+              "cached_tokens": 0
+            },
+            "output_tokens": 86,
+            "output_tokens_details": {
+              "reasoning_tokens": 28
+            },
+            "total_tokens": 534
+          },
+          "cost": 0.000723,
+          "rawOutput": "{\"verdict\":\"supported\",\"reason\":\"The answer matches the tool result and final state: Rice was added to the pantry, and its quantity is recorded as \u201ca little left.\u201d There is no invented number or unsupported claim.\"}"
+        },
+        "cost": 0.0072487499999999965
+      }
+    ]
+  },
+  "budgetChargedUsd": 0.496407
+}

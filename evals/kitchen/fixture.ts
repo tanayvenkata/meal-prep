@@ -4,23 +4,27 @@ import { promisify } from "node:util";
 import postgres from "postgres";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api";
+import type { addKitchenItems } from "../../src/lib/kitchen-commands";
 import type { createPantryItem } from "../../src/lib/kitchen-service";
 
-export const LOCAL_APP_DATABASE = "postgresql://mise_app:mise_app_local@127.0.0.1:54322/postgres";
-const LOCAL_ADMIN_DATABASE = "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+import { evaluationDatabases } from "./database-config";
+const evaluationDatabase = evaluationDatabases();
+export const LOCAL_APP_DATABASE = evaluationDatabase.app;
+const LOCAL_ADMIN_DATABASE = evaluationDatabase.admin;
 
 /** Synthetic identities and loopback only. Never inherit a production database. */
-export async function kitchenFixture(overrides: { createPantryItem?: typeof createPantryItem } = {}) {
+export async function kitchenFixture(overrides: { createPantryItem?: typeof createPantryItem; addItems?: typeof addKitchenItems } = {}) {
   if (process.env.DATABASE_URL !== LOCAL_APP_DATABASE) {
     throw new Error("Kitchen evaluations require the dedicated local mise_app database.");
   }
-  process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
+  process.env.NEXT_PUBLIC_SUPABASE_URL = evaluationDatabase.authUrl;
   process.env.MCP_PUBLIC_URL = "http://localhost:8787/mcp";
   const { createMiseHttpServer } = await import("../../src/mcp/server");
   const admin = postgres(LOCAL_ADMIN_DATABASE, { max: 1 });
   const userId = randomUUID();
   const token = randomUUID();
   const server = createMiseHttpServer({
+    toolSurface: process.env.MISE_TOOL_SURFACE === "four" ? "four" : "baseline",
     ...overrides,
     verifyAccessToken: async (presented) => {
       if (presented !== token) throw new Error("Invalid fixture token");

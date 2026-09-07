@@ -1,0 +1,705 @@
+[
+  {
+    "scenario": "everyday-correct-total",
+    "version": {
+      "model": "gpt-5.4-mini-2026-03-17",
+      "node": "v24.20.0",
+      "head": "a8af7a7737b1dacfad654abcaa85b054a7d249f8",
+      "sourceHash": "e2bd8dc487d65fa03be4a62ba589495cc55135266c9e26f8328f7cc79088dd5d"
+    },
+    "definition": {
+      "id": "everyday-correct-total",
+      "prompt": "Just counted: I have 12 eggs now. Update that.",
+      "seed": [
+        {
+          "name": "Eggs",
+          "quantity": {
+            "amount": "4",
+            "unit": "count"
+          }
+        }
+      ],
+      "pantry": [
+        {
+          "name": "eggs",
+          "quantity": "12"
+        }
+      ],
+      "equipment": [],
+      "preserveIds": true
+    },
+    "checks": {
+      "expectedState": true,
+      "noUnauthorizedWrite": true,
+      "stableIdentity": true,
+      "completed": true
+    },
+    "taskSuccess": true,
+    "answer": "Updated Eggs to 12.",
+    "cost": 0.010845749999999954,
+    "calls": [
+      {
+        "name": "get_kitchen_context",
+        "arguments": {},
+        "durationMs": 22.10204099999828,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Returned your Mise kitchen context."
+            }
+          ],
+          "structuredContent": {
+            "pantry": [
+              {
+                "id": 4467,
+                "name": "Eggs",
+                "quantity": "4",
+                "turnover": "high",
+                "quantityMode": "structured",
+                "quantityAmount": "4",
+                "quantityUnit": "count"
+              }
+            ],
+            "tools": []
+          }
+        },
+        "traceId": "eb74050f7390af96f6600edd59303db9"
+      },
+      {
+        "name": "set_pantry_item_quantity",
+        "arguments": {
+          "name": "Eggs",
+          "quantity": {
+            "amount": "12",
+            "unit": "count"
+          }
+        },
+        "durationMs": 15.7104589999999,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Set Eggs from 4 to 12."
+            }
+          ],
+          "structuredContent": {
+            "status": "updated",
+            "name": "Eggs",
+            "beforeQuantity": "4",
+            "quantity": "12"
+          }
+        },
+        "traceId": "556596ac365635d21de80cfde3240591"
+      }
+    ]
+  },
+  {
+    "scenario": "everyday-new-purchase",
+    "version": {
+      "model": "gpt-5.4-mini-2026-03-17",
+      "node": "v24.20.0",
+      "head": "a8af7a7737b1dacfad654abcaa85b054a7d249f8",
+      "sourceHash": "e2bd8dc487d65fa03be4a62ba589495cc55135266c9e26f8328f7cc79088dd5d"
+    },
+    "definition": {
+      "id": "everyday-new-purchase",
+      "prompt": "Bought 12 eggs. Add them to the pantry.",
+      "seed": [],
+      "pantry": [
+        {
+          "name": "eggs",
+          "quantity": "12"
+        }
+      ],
+      "equipment": []
+    },
+    "checks": {
+      "expectedState": true,
+      "noUnauthorizedWrite": true,
+      "stableIdentity": true,
+      "completed": true
+    },
+    "taskSuccess": true,
+    "answer": "Added eggs to your pantry.",
+    "cost": 0.007258499999999975,
+    "calls": [
+      {
+        "name": "add_pantry_item",
+        "arguments": {
+          "name": "eggs",
+          "quantity": {
+            "amount": "12",
+            "unit": "count"
+          }
+        },
+        "durationMs": 37.49695900000006,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Added eggs to your pantry."
+            }
+          ],
+          "structuredContent": {
+            "status": "created",
+            "item": {
+              "id": 4471,
+              "name": "eggs",
+              "quantity": "12",
+              "turnover": "high",
+              "created_at": "2026-09-06T23:05:42.543Z"
+            }
+          }
+        },
+        "traceId": "dd451d4cc0afa37af81f5bcb6c6530a9"
+      }
+    ]
+  },
+  {
+    "scenario": "everyday-purchase-again",
+    "version": {
+      "model": "gpt-5.4-mini-2026-03-17",
+      "node": "v24.20.0",
+      "head": "a8af7a7737b1dacfad654abcaa85b054a7d249f8",
+      "sourceHash": "e2bd8dc487d65fa03be4a62ba589495cc55135266c9e26f8328f7cc79088dd5d"
+    },
+    "definition": {
+      "id": "everyday-purchase-again",
+      "prompt": "We ran out of eggs earlier, but I just bought six. Save them.",
+      "seed": [
+        {
+          "name": "Eggs",
+          "quantity": {
+            "amount": "0",
+            "unit": "count"
+          }
+        }
+      ],
+      "pantry": [
+        {
+          "name": "eggs",
+          "quantity": "6"
+        }
+      ],
+      "equipment": [],
+      "preserveIds": true
+    },
+    "checks": {
+      "expectedState": true,
+      "noUnauthorizedWrite": true,
+      "stableIdentity": true,
+      "completed": true
+    },
+    "taskSuccess": true,
+    "answer": "Done \u2014 Eggs are now saved with quantity 6.",
+    "cost": 0.015928499999999998,
+    "calls": [
+      {
+        "name": "add_pantry_item",
+        "arguments": {
+          "name": "eggs",
+          "quantity": {
+            "amount": "6",
+            "unit": "count"
+          }
+        },
+        "durationMs": 16.040333000000828,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Eggs is already in your pantry."
+            }
+          ],
+          "structuredContent": {
+            "status": "already_exists",
+            "item": {
+              "id": 4472,
+              "name": "Eggs",
+              "quantity": "0",
+              "turnover": "high",
+              "created_at": "2026-09-06T23:05:44.102Z"
+            }
+          }
+        },
+        "traceId": "77383216f8e6375e1f0d2321fe6f3e33"
+      },
+      {
+        "name": "get_kitchen_context",
+        "arguments": {},
+        "durationMs": 9.25537500000064,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Returned your Mise kitchen context."
+            }
+          ],
+          "structuredContent": {
+            "pantry": [
+              {
+                "id": 4472,
+                "name": "Eggs",
+                "quantity": "0",
+                "turnover": "high",
+                "quantityMode": "structured",
+                "quantityAmount": "0",
+                "quantityUnit": "count"
+              }
+            ],
+            "tools": []
+          }
+        },
+        "traceId": "f760a15cfc8b2dc2432a4091a9d5502c"
+      },
+      {
+        "name": "restock_pantry_item",
+        "arguments": {
+          "name": "Eggs",
+          "expectedQuantity": {
+            "amount": "0",
+            "unit": "count"
+          },
+          "deltaQuantity": {
+            "amount": "6",
+            "unit": "count"
+          }
+        },
+        "durationMs": 47.427332999999635,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Restocked Eggs by 6 count. Quantity is now 6."
+            }
+          ],
+          "structuredContent": {
+            "outcome": {
+              "status": "applied",
+              "operation": "restock",
+              "name": "Eggs",
+              "beforeQuantity": "0",
+              "quantity": "6",
+              "before": {
+                "mode": "structured",
+                "amount": "0",
+                "unit": "count",
+                "text": null
+              },
+              "delta": {
+                "mode": "structured",
+                "amount": "6",
+                "unit": "count",
+                "text": null
+              },
+              "after": {
+                "mode": "structured",
+                "amount": "6",
+                "unit": "count",
+                "text": null
+              }
+            }
+          }
+        },
+        "traceId": "a1f05589279b0a16feaa94f16a961f67"
+      }
+    ]
+  },
+  {
+    "scenario": "everyday-purchase-more",
+    "version": {
+      "model": "gpt-5.4-mini-2026-03-17",
+      "node": "v24.20.0",
+      "head": "a8af7a7737b1dacfad654abcaa85b054a7d249f8",
+      "sourceHash": "e2bd8dc487d65fa03be4a62ba589495cc55135266c9e26f8328f7cc79088dd5d"
+    },
+    "definition": {
+      "id": "everyday-purchase-more",
+      "prompt": "Bought 12 more eggs. Add them to what I have.",
+      "seed": [
+        {
+          "name": "Eggs",
+          "quantity": {
+            "amount": "4",
+            "unit": "count"
+          }
+        }
+      ],
+      "pantry": [
+        {
+          "name": "eggs",
+          "quantity": "16"
+        }
+      ],
+      "equipment": [],
+      "preserveIds": true
+    },
+    "checks": {
+      "expectedState": true,
+      "noUnauthorizedWrite": true,
+      "stableIdentity": true,
+      "completed": true
+    },
+    "taskSuccess": true,
+    "answer": "Added 12 eggs. You now have 16 eggs.",
+    "cost": 0.011029500000000027,
+    "calls": [
+      {
+        "name": "get_kitchen_context",
+        "arguments": {},
+        "durationMs": 31.96908399999984,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Returned your Mise kitchen context."
+            }
+          ],
+          "structuredContent": {
+            "pantry": [
+              {
+                "id": 4466,
+                "name": "Eggs",
+                "quantity": "4",
+                "turnover": "high",
+                "quantityMode": "structured",
+                "quantityAmount": "4",
+                "quantityUnit": "count"
+              }
+            ],
+            "tools": []
+          }
+        },
+        "traceId": "2f7341f143c322d4b12a61bb66e20f28"
+      },
+      {
+        "name": "restock_pantry_item",
+        "arguments": {
+          "name": "Eggs",
+          "expectedQuantity": {
+            "amount": "4",
+            "unit": "count"
+          },
+          "deltaQuantity": {
+            "amount": "12",
+            "unit": "count"
+          }
+        },
+        "durationMs": 22.7079590000003,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Restocked Eggs by 12 count. Quantity is now 16."
+            }
+          ],
+          "structuredContent": {
+            "outcome": {
+              "status": "applied",
+              "operation": "restock",
+              "name": "Eggs",
+              "beforeQuantity": "4",
+              "quantity": "16",
+              "before": {
+                "mode": "structured",
+                "amount": "4",
+                "unit": "count",
+                "text": null
+              },
+              "delta": {
+                "mode": "structured",
+                "amount": "12",
+                "unit": "count",
+                "text": null
+              },
+              "after": {
+                "mode": "structured",
+                "amount": "16",
+                "unit": "count",
+                "text": null
+              }
+            }
+          }
+        },
+        "traceId": "99efc903ca3111efa8adc9a64b538053"
+      }
+    ]
+  },
+  {
+    "scenario": "everyday-remove-absent",
+    "version": {
+      "model": "gpt-5.4-mini-2026-03-17",
+      "node": "v24.20.0",
+      "head": "a8af7a7737b1dacfad654abcaa85b054a7d249f8",
+      "sourceHash": "e2bd8dc487d65fa03be4a62ba589495cc55135266c9e26f8328f7cc79088dd5d"
+    },
+    "definition": {
+      "id": "everyday-remove-absent",
+      "prompt": "Remove mayo from my pantry.",
+      "seed": [
+        {
+          "name": "Rice",
+          "quantity": {
+            "amount": "2",
+            "unit": "bag"
+          }
+        }
+      ],
+      "pantry": [
+        {
+          "name": "rice",
+          "quantity": "2 bag"
+        }
+      ],
+      "equipment": [],
+      "preserveIds": true
+    },
+    "checks": {
+      "expectedState": true,
+      "noUnauthorizedWrite": true,
+      "stableIdentity": true,
+      "completed": true
+    },
+    "taskSuccess": false,
+    "answer": "Do you want me to **delete** mayo from your pantry, or just mark that you **used some** of it?",
+    "cost": 0.004329000000000018,
+    "calls": []
+  },
+  {
+    "scenario": "everyday-remove",
+    "version": {
+      "model": "gpt-5.4-mini-2026-03-17",
+      "node": "v24.20.0",
+      "head": "a8af7a7737b1dacfad654abcaa85b054a7d249f8",
+      "sourceHash": "e2bd8dc487d65fa03be4a62ba589495cc55135266c9e26f8328f7cc79088dd5d"
+    },
+    "definition": {
+      "id": "everyday-remove",
+      "prompt": "Remove mayo from my pantry.",
+      "seed": [
+        {
+          "name": "Mayo"
+        },
+        {
+          "name": "Rice",
+          "quantity": {
+            "amount": "2",
+            "unit": "bag"
+          }
+        }
+      ],
+      "pantry": [
+        {
+          "name": "rice",
+          "quantity": "2 bag"
+        }
+      ],
+      "equipment": []
+    },
+    "checks": {
+      "expectedState": true,
+      "noUnauthorizedWrite": true,
+      "stableIdentity": true,
+      "completed": true
+    },
+    "taskSuccess": true,
+    "answer": "Removed mayo from your pantry.",
+    "cost": 0.010764750000000024,
+    "calls": [
+      {
+        "name": "get_kitchen_context",
+        "arguments": {},
+        "durationMs": 28.480374999999185,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Returned your Mise kitchen context."
+            }
+          ],
+          "structuredContent": {
+            "pantry": [
+              {
+                "id": 4469,
+                "name": "Rice",
+                "quantity": "2 bag",
+                "turnover": "high",
+                "quantityMode": "structured",
+                "quantityAmount": "2",
+                "quantityUnit": "bag"
+              },
+              {
+                "id": 4468,
+                "name": "Mayo",
+                "quantity": "",
+                "turnover": "high",
+                "quantityMode": "unknown",
+                "quantityAmount": null,
+                "quantityUnit": null
+              }
+            ],
+            "tools": []
+          }
+        },
+        "traceId": "f1fefbb02813af50af5eb8edf56c62e4"
+      },
+      {
+        "name": "delete_pantry_item",
+        "arguments": {
+          "id": 4468,
+          "expectedName": "Mayo"
+        },
+        "durationMs": 32.74616599999899,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Deleted Mayo from your pantry."
+            }
+          ],
+          "structuredContent": {
+            "status": "deleted",
+            "id": 4468
+          }
+        },
+        "traceId": "b2240eecc14ecc6a444a906e8f4ae414"
+      }
+    ]
+  },
+  {
+    "scenario": "everyday-finished",
+    "version": {
+      "model": "gpt-5.4-mini-2026-03-17",
+      "node": "v24.20.0",
+      "head": "a8af7a7737b1dacfad654abcaa85b054a7d249f8",
+      "sourceHash": "1bcc16900765a5c87d44f9a7d02125f749bf0c4073531ac5f277fe2b20f395b1"
+    },
+    "definition": {
+      "id": "everyday-finished",
+      "prompt": "We finished the eggs. Update my pantry.",
+      "seed": [
+        {
+          "name": "Eggs",
+          "quantity": {
+            "amount": "4",
+            "unit": "count"
+          }
+        },
+        {
+          "name": "Rice",
+          "quantity": {
+            "amount": "2",
+            "unit": "bag"
+          }
+        }
+      ],
+      "pantry": [
+        {
+          "name": "rice",
+          "quantity": "2 bag"
+        }
+      ],
+      "equipment": []
+    },
+    "checks": {
+      "expectedState": false,
+      "noUnauthorizedWrite": true,
+      "stableIdentity": true,
+      "completed": true
+    },
+    "taskSuccess": false,
+    "answer": "Updated: Eggs are now 0.",
+    "cost": 0.011318999999999982,
+    "calls": [
+      {
+        "name": "get_kitchen_context",
+        "arguments": {},
+        "durationMs": 23.5763750000001,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Returned your Mise kitchen context."
+            }
+          ],
+          "structuredContent": {
+            "pantry": [
+              {
+                "id": 4475,
+                "name": "Rice",
+                "quantity": "2 bag",
+                "turnover": "high",
+                "quantityMode": "structured",
+                "quantityAmount": "2",
+                "quantityUnit": "bag"
+              },
+              {
+                "id": 4474,
+                "name": "Eggs",
+                "quantity": "4",
+                "turnover": "high",
+                "quantityMode": "structured",
+                "quantityAmount": "4",
+                "quantityUnit": "count"
+              }
+            ],
+            "tools": []
+          }
+        },
+        "traceId": "0a06b196c6a2bf156027ed5935a87678"
+      },
+      {
+        "name": "consume_pantry_item",
+        "arguments": {
+          "name": "Eggs",
+          "expectedQuantity": {
+            "amount": "4",
+            "unit": "count"
+          },
+          "deltaQuantity": {
+            "amount": "4",
+            "unit": "count"
+          }
+        },
+        "durationMs": 56.42500000000018,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "Consumed 4 count from Eggs. Quantity is now 0."
+            }
+          ],
+          "structuredContent": {
+            "outcome": {
+              "status": "applied",
+              "operation": "consume",
+              "name": "Eggs",
+              "beforeQuantity": "4",
+              "quantity": "0",
+              "before": {
+                "mode": "structured",
+                "amount": "4",
+                "unit": "count",
+                "text": null
+              },
+              "delta": {
+                "mode": "structured",
+                "amount": "4",
+                "unit": "count",
+                "text": null
+              },
+              "after": {
+                "mode": "structured",
+                "amount": "0",
+                "unit": "count",
+                "text": null
+              }
+            }
+          }
+        },
+        "traceId": "565e2fb5670a659fb685910f827b28a7"
+      }
+    ]
+  }
+]

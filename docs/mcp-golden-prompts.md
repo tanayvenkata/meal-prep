@@ -17,18 +17,45 @@ conversation proves real tool selection, account linking, and rendering.
    Do not record tokens, user IDs, or kitchen contents beyond the minimum needed to prove the
    expected result.
 
-## Protocol and Host Capability Matrix
+## Foundation candidate acceptance (2026-09-06)
 
-Mise supports both modern 2026-07-28 hosts and legacy 2025-11-25 clients:
+Use the separate **Mise Foundation Test** connector and synthetic local account for
+this pass. The existing Mise connector points at production and is not evidence
+for the candidate. The isolated environment and preflight are recorded in
+[foundation acceptance](FOUNDATION-ACCEPTANCE.md).
 
-| Capability / Seam | Modern 2026-07-28 Hosts | Legacy 2025-11-25 / ChatGPT Developer Mode |
+Run this sequence in a fresh conversation after account linking. Confirm the
+selected connector before each write. Capture the tool name, its semantic outcome,
+ChatGPT's answer, and an independent local database snapshot after each step.
+Use synthetic names only; never copy bearer tokens, session cookies, or passwords
+into reports.
+
+| Step | Prompt | Independent check |
 | --- | --- | --- |
-| Transport & Routing | `PerRequestHTTPServerTransport` via `createMcpHandler` (`/mcp`) | `StreamableHTTPServerTransport` with legacy fallback |
-| Session Identification | `mcp-session-id` / `mcp-protocol-version: 2026-07-28` | Traditional JSON-RPC 2.0 requests |
-| Discovery | Capability discovery via `server/discover` | `tools/list` initialization query |
-| Tool List Security | `tool._meta.securitySchemes` + top-level `securitySchemes` | Top-level `securitySchemes` on each tool descriptor |
-| HTTP Headers (SEP-2243) | `Mcp-Method` and `Mcp-Name` strictly validated | Relaxed header presence |
-| Auth Failure | Fail-closed RFC 6750 401 with `resource_metadata` | Fail-closed RFC 6750 401 with `resource_metadata` |
+| 1 | Show me my Mise kitchen. | Empty pantry and equipment; no invented entries. |
+| 2 | I have mayo, please add it. | Exactly one Mayo, unknown quantity. |
+| 3 | Add mayo. | Same item identity; no duplicate. |
+| 4 | My mayo is about half a jar; save that description. | Text quantity retains uncertainty rather than inventing an exact number. |
+| 5 | Clear the saved quantity for mayo; I don't know how much remains. | Same item, unknown quantity. |
+| 6 | Rename mayo to Mayonnaise. | Same item identity, updated name. |
+| 7 | Add Eggs, 6 count. | Exact quantity 6 count. |
+| 8 | I used 2 eggs; update Mise. | Exact quantity 4 count. |
+| 9 | Suggest a meal that could use 2 eggs. | Advice may read inventory; stored quantity stays 4 count. |
+| 10 | I own a cast-iron skillet; save it as cookware. | One owned cookware entry. |
+
+Then say “We finished the eggs; update Mise.” Verify Eggs is removed and unrelated
+items remain. The user selected removal over retaining zero on 2026-09-06.
+
+Then check a clearly unrelated prompt makes no Mise call. Use a second synthetic
+account to verify the first account's entries are absent. Verify disconnected or
+invalid authentication returns account linking without data. Inspect the response
+at a narrow viewport. Record any blocked host case as unverified, not passed by
+analogy with an API test.
+
+Do not force race conditions through repeated natural-language prompts: a new
+user request can authorize a new write. Response-loss, immediate stale retry, and
+atomic rollback checks have deterministic local fixtures. Their passing results
+must remain labeled separately from ChatGPT host observations.
 
 ## Prompt matrix
 
@@ -42,11 +69,15 @@ Mise supports both modern 2026-07-28 hosts and legacy 2025-11-25 clients:
 | Mobile host | Run the direct prompt in a narrow host viewport. | The ordinary ChatGPT result remains readable; no widget or UI resource is expected. |
 | Two-user isolation | Connect account A, record a distinctive safe item, then repeat with account B. | Each account sees only its own pantry/tools. Account A's distinctive item never appears for B. |
 | Add pantry item | “Add chicken broth to Mise as 1 carton.” | Calls `add_pantry_item` once with an exact structured quantity and no identity field; returns `created`. A fresh kitchen read and the Mise pantry page show the same item and stable ID. |
+| Unknown quantity add | “I have mayo, please add it. I don't know how much.” | Creates one Mayo with unknown quantity; does not invent an amount or require one. |
+| Clear quantity | For an existing measured item: “Keep this item, but clear its quantity; I don't know how much is left.” | Uses the existing stable ID and unknown quantity mode; preserves the row and clears measured quantity. |
+| Descriptive quantity | “Save the rice quantity as 'a little left'; don't invent a number.” | Uses text quantity mode on the existing item; a fresh read returns the description. |
 | Pantry create retry | Repeat the same add with canonical-equivalent case/whitespace. | Returns `already_exists` with the original display name; no duplicate item is created. |
 | Correct pantry item | After a fresh read, “That chicken breast entry should be chicken broth.” | Calls `update_pantry_item` with the stable ID, exact current name as `expectedName`, and only the replacement `name`; preserves quantity/turnover and returns `updated`. |
 | Stale pantry correction | Rename the item on the website after ChatGPT reads it, then submit the old ID/name update. | Returns `conflict` with the current safe item fields; nothing changes and ChatGPT rereads before proposing a retry. |
 | Delete pantry item | “Delete the chicken broth pantry item.” | Reads fresh context, then calls `delete_pantry_item` with the stable ID and exact current name. ChatGPT presents the destructive approval and returns `deleted`; a fresh read and website agree. |
-| No inferred pantry delete | “I used all the chicken broth” or “set chicken broth to zero.” | Does not call `delete_pantry_item`; consumption/exact quantity semantics remain distinct from permanent deletion. |
+| Finished pantry item | “I used all the chicken broth.” | Reads fresh context and removes the finished pantry item, following the user decision dated 2026-09-06. |
+| No inferred pantry delete | “Set chicken broth to zero” or a hypothetical recipe plan. | Does not infer permanent deletion from an exact zero alone or planning. |
 | Add kitchen tool | “Add my cast iron skillet to Mise as cookware.” | Calls `add_kitchen_tool` once with `name: "cast iron skillet"` and `kind: "cookware"` and no identity field; returns `created`. A fresh kitchen read and the Mise tools page show the same tool. |
 | Kitchen tool retry | Repeat the same add with different case or surrounding whitespace. | Returns `already_exists` with the original display name; no duplicate tool is created. |
 | Update kitchen tool | “Rename my Dutch oven to Enameled Dutch oven.” | Reads fresh context, then calls `update_kitchen_tool` with the stable ID, exact current name, complete replacement name, and current kind; returns `updated`. |
@@ -56,7 +87,7 @@ Mise supports both modern 2026-07-28 hosts and legacy 2025-11-25 clients:
 | Retry | Repeat the exact same quantity request. | Returns `unchanged`; the final quantity remains `6 count` and no duplicate item or cumulative change appears. |
 | Missing write target | “Set my Saffron quantity to 1 jar” when Saffron does not exist. | Returns `not_found`; nothing is created or mutated. |
 | No inferred write | Ask for a recipe that uses six eggs. | A kitchen read may occur, but the quantity tool does not run because the user did not ask to change saved inventory. |
-| No free-text exact set | “Set my rice to about half a bag.” | Does not call `set_pantry_item_quantity` because the request lacks an exact amount. ChatGPT asks for an exact quantity; the exact-set tool schema has no text fallback. |
+| Vague absolute quantity | “Save my rice quantity as about half a bag.” | May use `update_pantry_item` with text quantity mode to preserve the estimate. It must not invent exact precision; `set_pantry_item_quantity` remains exact-only. |
 | Consume | With structured `6 count` Eggs: “I used two eggs; update Mise.” | Reads current context, confirms the mutation, then calls `consume_pantry_item` with `expectedQuantity: { amount: "6", unit: "count" }` and `deltaQuantity: { amount: "2", unit: "count" }`; returns before `6 count` and after `4 count`. |
 | Consume retry | Immediately repeat the same consume call with the old `6 count` expectation. | Returns `conflict` with current `4 count`; final inventory remains `4 count` and ChatGPT refreshes before proposing another mutation. |
 | Restock | With structured `1 bag` Rice: “Add two bags of rice to my pantry.” | Reads current context, then calls `restock_pantry_item` with `expectedQuantity: { amount: "1", unit: "bag" }` and `deltaQuantity: { amount: "2", unit: "bag" }`; returns before `1 bag` and after `3 bag`. |
