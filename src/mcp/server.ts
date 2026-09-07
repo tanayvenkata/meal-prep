@@ -801,6 +801,213 @@ class OpenAiCompatibleWebStandardStreamableHTTPServerTransport extends WebStanda
   }
 }
 
+export function registerMisePrompts(
+  server: McpServer,
+  toolSurface: "baseline" | "four" = "four",
+) {
+  const readTool =
+    toolSurface === "four" ? "read_kitchen" : "get_kitchen_context";
+
+  server.registerPrompt(
+    "plan_meal",
+    {
+      title: "Plan Meal",
+      description:
+        "Suggest 3 quick, practical meal ideas based on current kitchen inventory, defaulting to 1 serving.",
+      argsSchema: z.object({
+        servings: z
+          .string()
+          .trim()
+          .max(20)
+          .optional()
+          .describe("Number of servings to prepare (default: 1)"),
+        dietary_notes: z
+          .string()
+          .trim()
+          .max(200)
+          .optional()
+          .describe(
+            "Dietary preferences, restrictions, or cravings (e.g. quick, high-protein, vegetarian)",
+          ),
+      }),
+    },
+    async (args) => {
+      const servings = args.servings?.trim() || "1";
+      const notes = args.dietary_notes?.trim()
+        ? ` with dietary notes: ${args.dietary_notes.trim()}`
+        : "";
+      return {
+        description: `Plan a meal for ${servings} serving(s)`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please inspect my kitchen inventory using ${readTool} and suggest 3 quick, delicious meal ideas for ${servings} serving(s)${notes}. Prioritize high-turnover ingredients and items that should be used soonest, and let me know if any equipment or staples are needed.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  server.registerPrompt(
+    "quick_bite",
+    {
+      title: "Quick Bite",
+      description:
+        "Suggest fast meal ideas ready in under 20 minutes with minimal cleanup and 1 pot/pan, defaulting to 1 serving.",
+      argsSchema: z.object({
+        max_minutes: z
+          .string()
+          .trim()
+          .max(20)
+          .optional()
+          .describe("Maximum cook and prep time in minutes (default: 20)"),
+        servings: z
+          .string()
+          .trim()
+          .max(20)
+          .optional()
+          .describe("Number of servings to prepare (default: 1)"),
+      }),
+    },
+    async (args) => {
+      const minutes = args.max_minutes?.trim() || "20";
+      const servings = args.servings?.trim() || "1";
+      return {
+        description: `Quick bite under ${minutes} minutes for ${servings} serving(s)`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please check my kitchen inventory using ${readTool} and propose 2-3 fast, satisfying meal ideas for ${servings} serving(s) ready in under ${minutes} minutes. Prioritize one-pot/one-pan cooking, minimal prep, and ingredients I already have on hand to keep dishes and cleanup to a minimum.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  server.registerPrompt(
+    "cook_something_cool",
+    {
+      title: "Cook Something Cool",
+      description:
+        "Suggest an ambitious, technique-driven dish that showcases your kitchen equipment and spices.",
+      argsSchema: z.object({
+        servings: z
+          .string()
+          .trim()
+          .max(20)
+          .optional()
+          .describe("Number of servings to prepare (default: 1)"),
+        cuisine_or_vibe: z
+          .string()
+          .trim()
+          .max(200)
+          .optional()
+          .describe(
+            "Cuisine, technique, or vibe you want to explore (e.g. braise, wok, Italian, comfort food)",
+          ),
+      }),
+    },
+    async (args) => {
+      const servings = args.servings?.trim() || "1";
+      const vibe = args.cuisine_or_vibe?.trim()
+        ? ` with a '${args.cuisine_or_vibe.trim()}' vibe`
+        : "";
+      return {
+        description: `Ambitious cooking project for ${servings} serving(s)`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `I have time to cook and want to make something special for ${servings} serving(s)${vibe}. Please inspect my kitchen inventory using ${readTool}—including my cookware, tools, and spices—and propose an elevated, technique-driven dish. Teach the key culinary techniques and explain how to make the most of my saved equipment.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  server.registerPrompt(
+    "pantry_audit",
+    {
+      title: "Pantry Audit",
+      description:
+        "Audit kitchen inventory for low stock, missing essentials, unit inconsistencies, and cleanup opportunities.",
+      argsSchema: z.object({
+        focus: z
+          .string()
+          .trim()
+          .max(50)
+          .optional()
+          .describe("Optional focus area (e.g. 'staples', 'spices', 'all')"),
+      }),
+    },
+    async (args) => {
+      const focus = args.focus?.trim() || "all";
+      return {
+        description: `Pantry audit focused on ${focus}`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Please inspect my current kitchen inventory using ${readTool} and perform a pantry audit focused on '${focus}'. Highlight: 1) Essential staples or high-turnover items running low or missing; 2) Any inconsistencies in quantities or units; 3) Stale or unused items; and 4) Actionable suggestions for restocking or cleanup.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+
+  server.registerPrompt(
+    "substitutions",
+    {
+      title: "Ingredient Substitutions",
+      description:
+        "Suggest pantry-available replacements for a missing recipe ingredient.",
+      argsSchema: z.object({
+        missing_ingredient: z
+          .string()
+          .trim()
+          .min(1, "Missing ingredient cannot be empty")
+          .max(100)
+          .describe("The ingredient that is missing or unavailable"),
+        recipe_dish: z
+          .string()
+          .trim()
+          .max(100)
+          .optional()
+          .describe("The recipe or dish being prepared for culinary context"),
+      }),
+    },
+    async (args) => {
+      const ingredient =
+        args.missing_ingredient?.trim() || "the missing ingredient";
+      const dishContext = args.recipe_dish?.trim()
+        ? ` while cooking ${args.recipe_dish.trim()}`
+        : "";
+      return {
+        description: `Ingredient substitutions for ${ingredient}`,
+        messages: [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `I need a substitution for '${ingredient}'${dishContext}. Please inspect my kitchen inventory using ${readTool} and recommend practical replacements using only ingredients and equipment I currently have on hand. Explain how each option affects flavor, texture, and cooking proportions.`,
+            },
+          },
+        ],
+      };
+    },
+  );
+}
+
 export async function createMiseServer(
   {
     toolSurface = process.env.MISE_TOOL_SURFACE === "baseline" ? "baseline" : "four",
@@ -891,6 +1098,8 @@ export async function createMiseServer(
       };
     },
   );
+
+  registerMisePrompts(server, toolSurface);
 
   if (toolSurface === "four") {
     const registerWrite = (name: "add_items" | "edit_items" | "remove_items", description: string,
