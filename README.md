@@ -6,7 +6,7 @@ changes, and keeps the data visible through a small Next.js account and kitchen
 management site. Built with Next.js 16, Cloudflare Workers (Hono), Supabase Postgres/Auth, and the MCP TypeScript SDK v2.
 
 Live web app: https://meal-prep-tawny-kappa.vercel.app
-Live MCP edge endpoint: https://mise-mcp.tanayvenkata.workers.dev/mcp
+Installed production MCP endpoint (verified 2026-09-07): https://meal-prep-tawny-kappa.vercel.app/mcp
 
 ## Getting started
 
@@ -118,23 +118,30 @@ Missing or foreign IDs, duplicate names, unsupported quantities, stale expectati
 unsafe arithmetic leave the kitchen completely unchanged. There is no raw database CRUD,
 and no MCP access to chat history or credentials.
 
-### Production and Edge Architecture
+### Production endpoints
 
-Mise decouples MCP execution from Next.js serverless to deliver sub-100ms response times
-at the edge:
+The installed Mise app uses **Next.js on Vercel**, verified in ChatGPT plugin
+settings on 2026-09-07. The Cloudflare Worker is deployed separately; its existence
+and health do not establish that the installed app uses it.
 
-- **Edge MCP Server (Cloudflare Workers + Hono)**:
-  - Endpoint: `https://mise-mcp.tanayvenkata.workers.dev/mcp`
-  - Health check: `https://mise-mcp.tanayvenkata.workers.dev/health`
-  - RFC 8414 OAuth discovery: `/.well-known/oauth-protected-resource`
-  - Background telemetry: Flushes OpenTelemetry spans asynchronously via `waitUntil` without blocking ChatGPT tool execution.
-- **Web Control Plane (Next.js on Vercel)**:
-  - Web application: `https://meal-prep-tawny-kappa.vercel.app`
-  - OAuth authorization & consent: `/oauth/consent`
-  - Supabase Site URL: `https://meal-prep-tawny-kappa.vercel.app` (application origin)
-  - Fallback serverless MCP handler: `/mcp`
+| Surface | Endpoint | Current role |
+| --- | --- | --- |
+| Installed MCP app | `https://meal-prep-tawny-kappa.vercel.app/mcp` | Verified production connection |
+| Website and consent | `https://meal-prep-tawny-kappa.vercel.app` | Account, inventory, and `/oauth/consent` |
+| Hono Worker | `https://mise-mcp.tanayvenkata.workers.dev/mcp` | Separate deployment; not the verified installed connection |
 
-`MCP_PUBLIC_URL` is the canonical OAuth resource identifier and matches the public MCP endpoint.
+`MCP_PUBLIC_URL` is the OAuth resource identifier and must match the endpoint
+served by each deployment. Do not change Vercel's identifier to the Worker URL
+without an intentional connector migration. The Supabase Site URL remains the
+website origin.
+
+Vercel deploys the web app and its `/mcp` handler from `main`. Worker deployment
+uses `pnpm run deploy:worker`; merging a PR does not update that Worker or switch
+the installed app. Worker telemetry flushes through `waitUntil`; this does not
+establish end-to-end ChatGPT latency.
+
+See [the endpoint verification runbook](docs/MCP-DEPLOYMENT.md) before diagnosing
+connection errors, refreshing metadata, or planning a cutover.
 
 ### Local development
 
