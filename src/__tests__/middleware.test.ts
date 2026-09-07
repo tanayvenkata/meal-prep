@@ -40,6 +40,19 @@ describe("middleware", () => {
   });
 
   it.each([
+    "/auth/callback",
+    "/auth/callback?code=abc",
+    "/reset-password",
+    "/reset-password?returnTo=/pantry",
+  ])("lets the auth route %s through without checking session", async (path) => {
+    const request = makeRequest(path);
+    const response = await middleware(request);
+
+    expect(mockCreateServerClient).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+  });
+
+  it.each([
     "/mcp",
     "/api/mcp/health",
     "/.well-known/oauth-protected-resource/mcp",
