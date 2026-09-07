@@ -37,8 +37,10 @@ yarn-error.log*
 # The leading "!" un-ignores a file that an earlier pattern ignored.
 !.env.example
 
-# vercel
+# vercel & cloudflare
 .vercel
+.wrangler/
+.dev.vars*
 
 # typescript
 *.tsbuildinfo

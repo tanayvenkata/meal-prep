@@ -1,0 +1,9 @@
+name = "mise-mcp"
+main = "src/mcp/worker.ts"
+compatibility_date = "2026-09-06"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+NEXT_PUBLIC_SUPABASE_URL = "https://omwvoxemybeukmhnyrhb.supabase.co"
+MCP_TOKEN_AUDIENCE = "authenticated"
+MISE_TOOL_SURFACE = "four"
